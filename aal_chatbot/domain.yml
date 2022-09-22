@@ -1,0 +1,34 @@
+version: "3.1"
+
+intents:
+  - cumprimentar
+  - despedir
+  - afirmar
+  - negação
+  - humor_fantastico
+  - humor_triste
+  - robot_desafio
+
+responses:
+  utter_greet:
+  - text: "Olá! Sou o SARKAN, como estás?"
+
+  utter_cheer_up:
+  - text: "Tenho aqui algo para te animar:"
+    image: "https://i.imgur.com/nGF1K8f.jpg"
+
+  utter_did_that_help:
+  - text: "Consegui ajudar-te?"
+
+  utter_happy:
+  - text: "Ainda bem, continua!"
+
+  utter_goodbye:
+  - text: "Adeus"
+
+  utter_iamabot:
+  - text: "Eu sou um robot desenvolvido pela Rasa."
+
+session_config:
+  session_expiration_time: 60
+  carry_over_slots_to_new_session: true

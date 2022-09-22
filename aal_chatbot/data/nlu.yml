@@ -1,0 +1,80 @@
+version: "3.1"
+
+nlu:
+- intent: cumprimentar
+  examples: |
+    - hey
+    - olá
+    - bom dia
+    - boa tarde,
+    - boa noite,
+    - olá malta,
+
+
+- intent: despedir
+  examples: |
+    - adeus
+    - tem um bom dia
+    - vemo-nos por aí
+    - boa noite
+    - boa tarde
+    - bom dia
+    - vemo-nos mais tarde
+
+- intent: afirmar
+  examples: |
+    - sim
+    - s
+    - com certeza
+    - claro
+    - parece-me bem
+    - correto
+
+- intent: negação
+  examples: |
+    - não
+    - n
+    - nunca
+    - eu acho que não
+    - não gosto disso
+    - nem pensar
+    - nem por isso
+
+- intent: humor_fantastico
+  examples: |
+    - perfeito
+    - fantástico
+    - maravilhoso
+    - sinto-me com um rei
+    - estou-me a sentir muito bem
+    - estou fantática
+    - estou maravilhosa
+    - eu vou salvar o mundo
+    - estou super empolgada
+    - extremamente feliz
+    - muito bom
+    - tão bom
+
+- intent: humor_triste
+  examples: |
+    - o dia foi horrível
+    - estou triste
+    - não me sinto bem
+    - estou desapontado
+    - muito triste
+    - estou com dores
+    - estou a passar mal
+    - muito triste
+    - estou infeliz
+    - não é bom
+    - extremamente triste
+    - estou ansioso
+    - estou stresasdo
+    - stresse
+
+- intent: robot_desafio
+  examples: |
+    - és mesmo um robot?
+    - és humano?
+    - estou a falar com um robot?
+    - estou a falar com um humano?
