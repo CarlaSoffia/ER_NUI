@@ -9,13 +9,12 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -35,6 +34,8 @@ import pt.ipleiria.estg.ciic.chatboternui.ui.theme.*
 import vosk.SpeechService
 import java.io.IOException
 import java.util.*
+import kotlin.math.pow
+import kotlin.math.sqrt
 
 
 private const val STATE_READY = 1
@@ -45,7 +46,7 @@ class MainActivity : ComponentActivity(), RecognitionListener {
     private var model: Model? = null
     private var speechService: SpeechService? = null
     private var _finishedLoading: MutableState<Boolean> = mutableStateOf(false)
-    private val _messages: MutableState<Array<Message>> = mutableStateOf(emptyArray())
+    private var _messages = mutableStateListOf<Message>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -115,13 +116,10 @@ class MainActivity : ComponentActivity(), RecognitionListener {
     }
     public override fun onDestroy() {
         super.onDestroy()
-       /* if (speechService != null) {
+        if (speechService != null) {
             speechService!!.stop()
             speechService!!.shutdown()
         }
-        if (speechStreamService != null) {
-            speechStreamService!!.stop()
-        }*/
     }
     override fun onResult(hypothesis: String) {
         val result = JSONObject(hypothesis)
@@ -136,15 +134,25 @@ class MainActivity : ComponentActivity(), RecognitionListener {
             val word = wordsConfs.getJSONObject(i)
             confs = confs.plus(word.get("conf").toString().toDouble())
         }
-        val medianAccuracy = calculate(confs)
+        val medianAccuracy = calculateRootMeanSquare(confs)
+
         var transcription = result.getString("text")
-        _messages.value.plus(Message(text = transcription, client_id ="1", accuracy = medianAccuracy, isChatbot = false))
+        _messages.add(Message(text = transcription, client_id ="1", accuracy = medianAccuracy, isChatbot = false))
         chatbotResponse(accuracy = medianAccuracy)
     }
-    private fun calculate(values: Array<Double>): Double {
-        Arrays.sort(values)
-        val size = values.size
-        return (values[size/2] + values[(size-1)/2]) / 2
+    private fun calculateRootMeanSquare(values: Array<Double>): Double {
+
+        var square : Double = 0.0
+        val root : Double
+        // Calculate square.
+        for (value in values) {
+            square += value.pow(2.0)
+        }
+        // Calculate Mean.
+        val mean : Double = square / values.size.toFloat()
+        // Calculate Root.
+        root = sqrt(mean)
+        return root
     }
     override fun onFinalResult(hypothesis: String) {
         // nothing
@@ -160,7 +168,7 @@ class MainActivity : ComponentActivity(), RecognitionListener {
     }
     private fun chatbotResponse(accuracy: Double){
         if(accuracy < 0.80){
-            _messages.value.plus(Message(text = "Não entendi quase nada, repita por favor", isChatbot = true))
+            _messages.add(Message(text = "Não entendi quase nada, repita por favor", isChatbot = true))
         }
     }
 
@@ -183,22 +191,22 @@ class MainActivity : ComponentActivity(), RecognitionListener {
     @Composable
     fun ChatSection() {
         val simpleDateFormat = SimpleDateFormat("h:mm a", Locale.ENGLISH)
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
-            reverseLayout = true
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp)
         ) {
-            items(_messages.value.size) {
-                _messages.value.forEach { chat ->
-                    MessageItem(
-                        messageText = chat.text,
-                        time = simpleDateFormat.format(chat.time),
-                        isChatbot = chat.isChatbot,
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
+
+            _messages.forEach { chat ->
+                MessageItem(
+                    messageText = chat.text,
+                    time = simpleDateFormat.format(chat.time),
+                    isChatbot = chat.isChatbot,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
             }
+
         }
     }
 
@@ -213,17 +221,21 @@ class MainActivity : ComponentActivity(), RecognitionListener {
         Column(
             modifier = Modifier
                 .fillMaxWidth(),
-            horizontalAlignment = if (isChatbot) Alignment.End else Alignment.Start
+            horizontalAlignment = if (!isChatbot) Alignment.End else Alignment.Start
         )
         {
             if (!messageText.isNullOrEmpty()) {
                 Box(
                     modifier = Modifier
                         .background(
-                            if (isChatbot) reseneWhite else reseneLightBlue,
+                            if (!isChatbot) reseneWhite else reseneLightBlue,
+                            shape = if (!isChatbot) authorChatBubbleShape else botChatBubbleShape
+                        )
+                        .border(
+                            1.dp,
+                            color = if (!isChatbot) reseneDarkWhite else reseneDarkBlue,
                             shape = if (isChatbot) authorChatBubbleShape else botChatBubbleShape
                         )
-                        .border(1 .dp, color = if (isChatbot) reseneDarkWhite else reseneDarkBlue, shape = if (isChatbot) authorChatBubbleShape else botChatBubbleShape)
                         .padding(
                             top = 8.dp,
                             bottom = 8.dp,
@@ -249,7 +261,8 @@ class MainActivity : ComponentActivity(), RecognitionListener {
     @Composable
     fun AppPreview(){
         ChatbotERNUITheme {
-            ChatSection()
+
+            //ChatSection()
         }
     }
 }
