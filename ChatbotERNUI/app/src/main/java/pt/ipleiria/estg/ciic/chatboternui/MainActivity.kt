@@ -2,22 +2,23 @@ package pt.ipleiria.estg.ciic.chatboternui
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.icu.text.SimpleDateFormat
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
@@ -33,7 +34,9 @@ import pt.ipleiria.estg.ciic.chatboternui.models.Message
 import pt.ipleiria.estg.ciic.chatboternui.ui.theme.*
 import vosk.SpeechService
 import java.io.IOException
-import java.util.*
+import java.time.Duration
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import kotlin.math.pow
 import kotlin.math.sqrt
 
@@ -47,16 +50,17 @@ class MainActivity : ComponentActivity(), RecognitionListener {
     private var speechService: SpeechService? = null
     private var _finishedLoading: MutableState<Boolean> = mutableStateOf(false)
     private var _messages = mutableStateListOf<Message>()
-
+    private var _message : MutableState<String> = mutableStateOf("")
+    private var _microActive : MutableState<Boolean> = mutableStateOf(true)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         checkPermission()
         setContent {
             ChatbotERNUITheme {
                 if(!_finishedLoading.value){
-                    CircularProgressBar()
+                    LoadScreen()
                 }else{
-                    ChatSection()
+                    MainScreen()
                     recognizeMicrophone()
                 }
             }
@@ -137,7 +141,7 @@ class MainActivity : ComponentActivity(), RecognitionListener {
         val medianAccuracy = calculateRootMeanSquare(confs)
 
         var transcription = result.getString("text")
-        _messages.add(Message(text = transcription, client_id ="1", accuracy = medianAccuracy, isChatbot = false))
+        _messages.add(Message(id = _messages.size.toLong()+1, text = transcription, client_id ="1", accuracy = medianAccuracy, isChatbot = false))
         chatbotResponse(accuracy = medianAccuracy)
     }
     private fun calculateRootMeanSquare(values: Array<Double>): Double {
@@ -168,37 +172,49 @@ class MainActivity : ComponentActivity(), RecognitionListener {
     }
     private fun chatbotResponse(accuracy: Double){
         if(accuracy < 0.80){
-            _messages.add(Message(text = "Não entendi quase nada, repita por favor", isChatbot = true))
+            _messages.add(Message(id = _messages.size.toLong()+1, text = "Não entendi quase nada, repita por favor", isChatbot = true))
         }
     }
-
+    private fun checkTime(time: LocalDateTime): DateTimeFormatter {
+        val now = LocalDateTime.now()
+        val duration = Duration.between(time, now)
+        if(duration.toDays() <= 1){
+            return DateTimeFormatter.ofPattern("H:mm")
+        }
+        if(duration.toDays() in 2..7){
+            return DateTimeFormatter.ofPattern("E H:mm")
+        }
+        return DateTimeFormatter.ofPattern("dd-MM-yyyy H:mm")
+    }
     @Composable
-    private fun CircularProgressBar(){
+    private fun LoadScreen(){
         Column(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
+            Image(
+                painter = painterResource(R.drawable.chatbot),
+                contentDescription = "Chatbot"
+            )
             CircularProgressIndicator(
                 modifier = Modifier.padding(vertical = 26.dp),
-                color = blueDM
+                color = LightColorScheme.tertiary
             )
-            Text(text = "A Carregar...")
+            Text(text = "A Carregar...", fontSize = Typography.titleLarge.fontSize, color = LightColorScheme.surface)
 
         }
     }
     @Composable
-    fun ChatSection() {
-        val simpleDateFormat = SimpleDateFormat("h:mm a", Locale.ENGLISH)
-        Column(
-            modifier = Modifier
+    fun ChatSection(modifier: Modifier = Modifier) {
+        LazyColumn(
+            modifier = modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp)
+                .padding(16.dp),
+                reverseLayout = true
         ) {
-
-            _messages.forEach { chat ->
+        items(_messages.reversed()) { chat ->
+                val simpleDateFormat = checkTime(chat.time)
                 MessageItem(
                     messageText = chat.text,
                     time = simpleDateFormat.format(chat.time),
@@ -206,7 +222,6 @@ class MainActivity : ComponentActivity(), RecognitionListener {
                 )
                 Spacer(modifier = Modifier.height(8.dp))
             }
-
         }
     }
 
@@ -225,16 +240,24 @@ class MainActivity : ComponentActivity(), RecognitionListener {
         )
         {
             if (!messageText.isNullOrEmpty()) {
+
+                Text(
+                    text = if(!isChatbot) "Você" else "Chatbot",
+                    fontSize = Typography.bodyLarge.fontSize,
+                    modifier = Modifier.padding(start = 8.dp),
+                    color = LightColorScheme.surface
+                )
+
                 Box(
                     modifier = Modifier
                         .background(
-                            if (!isChatbot) reseneWhite else reseneLightBlue,
+                            if (!isChatbot) LightColorScheme.primary else LightColorScheme.secondary,
                             shape = if (!isChatbot) authorChatBubbleShape else botChatBubbleShape
                         )
                         .border(
                             1.dp,
-                            color = if (!isChatbot) reseneDarkWhite else reseneDarkBlue,
-                            shape = if (isChatbot) authorChatBubbleShape else botChatBubbleShape
+                            color = if (!isChatbot) LightColorScheme.onPrimary else LightColorScheme.onSecondary,
+                            shape = if (!isChatbot) authorChatBubbleShape else botChatBubbleShape
                         )
                         .padding(
                             top = 8.dp,
@@ -245,24 +268,121 @@ class MainActivity : ComponentActivity(), RecognitionListener {
                 ) {
                     Text(
                         text = messageText,
-                        color = black,
-                        fontSize = 18.sp
+                        color = LightColorScheme.surface,
+                        fontSize = Typography.bodyLarge.fontSize
                     )
                 }
-            Text(
-                text = time,
-                fontSize = 16.sp,
-                modifier = Modifier.padding(start = 8.dp)
-            )
+                Text(
+                    text = time,
+                    fontSize = Typography.bodyLarge.fontSize,
+                    modifier = Modifier.padding(start = 8.dp),
+                    color = LightColorScheme.surface
+                )
             }
         }
     }
+    @Composable
+    fun MessageSection() {
+        Row(modifier = Modifier
+            .fillMaxWidth()
+            .padding(2.dp)
+            .height(60.dp))
+             {
+            TextField(
+                colors = TextFieldDefaults.outlinedTextFieldColors(
+                    focusedBorderColor = LightColorScheme.primary,
+                    unfocusedBorderColor = LightColorScheme.primary
+                ),
+                textStyle = TextStyle.Default.copy(fontSize = Typography.bodyLarge.fontSize),
+                placeholder = {
+                    Text("Escreva aqui", fontSize = Typography.bodyLarge.fontSize, color = LightColorScheme.surface)
+                },
+                value = _message.value,
+                onValueChange = {
+                    _message.value = it
+                },
+                modifier = Modifier
+                    .fillMaxWidth(0.88F)
+                    .background(
+                        color = LightColorScheme.primary,
+                        shape = RoundedCornerShape(40.dp, 40.dp, 40.dp, 40.dp)
+                    )
+            )
+            Spacer(Modifier.weight(1f))
+            Icon(
+                painter = painterResource(id = R.drawable.send),
+                contentDescription = "Botão enviar",
+                tint = LightColorScheme.tertiary,
+                modifier = Modifier.clickable {
+                    _messages.add(
+                        Message(
+                            id = _messages.size.toLong() + 1,
+                            text = _message.value,
+                            client_id = "1",
+                            isChatbot = false
+                        )
+                    )
+                    _message.value = ""
+                }
+                .align(Alignment.CenterVertically)
+                .size(35.dp)
+            )
+            Spacer(Modifier.weight(1f))
+        }
+    }
+    @Composable
+    fun TopBar(title: String){
+        Row(modifier = Modifier
+            .fillMaxWidth()
+            .padding(0.dp)
+            .height(60.dp)
+            .background(LightColorScheme.secondary)) {
+            Icon(
+                painter = painterResource(id = R.drawable.back),
+                contentDescription = "Botão voltar atrás",
+                tint = LightColorScheme.tertiary,
+                modifier = Modifier.clickable {
+                    // change view
+                }
+                .align(Alignment.CenterVertically)
+                .size(40.dp)
+            )
+            Spacer(modifier = Modifier.fillMaxWidth(0.3f))
+            Text(title, fontSize = Typography.titleLarge.fontSize, color = LightColorScheme.surface, modifier = Modifier.align(Alignment.CenterVertically))
+            Spacer(modifier = Modifier.fillMaxWidth(0.75f))
+            Icon(
+                painter = painterResource(id = if (_microActive.value) R.drawable.write else R.drawable.speak),
+                contentDescription = "Botão alternar entre voz e texto",
+                tint = LightColorScheme.tertiary,
+                modifier = Modifier.clickable {
+                    _microActive.value = !_microActive.value
+                }
+                    .align(Alignment.CenterVertically)
+                    .size(30.dp)
+            )
+        }
+    }
+    @Composable
+    fun MainScreen() {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+          //  verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            TopBar("Chatbot")
+            ChatSection(Modifier.weight(1f))
+            if(!_microActive.value){
+                MessageSection()
+            }else{
+                recognizeMicrophone()
+            }
+        }
+    }
+
     @Preview(showBackground = true)
     @Composable
     fun AppPreview(){
         ChatbotERNUITheme {
-
-            //ChatSection()
+            LoadScreen()
         }
     }
 }
