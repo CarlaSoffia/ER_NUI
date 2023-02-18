@@ -43,12 +43,13 @@ import kotlin.math.sqrt
 
 private const val STATE_READY = 1
 private const val STATE_DONE = 2
+
 private const val PERMISSIONS_REQUEST_RECORD_AUDIO = 1
 
 class MainActivity : ComponentActivity(), RecognitionListener {
     private var model: Model? = null
     private var speechService: SpeechService? = null
-    private var _finishedLoading: MutableState<Boolean> = mutableStateOf(false)
+    private var _finishedLoading: MutableState<Int> = mutableStateOf(0)
     private var _messages = mutableStateListOf<Message>()
     private var _message : MutableState<String> = mutableStateOf("")
     private var _microActive : MutableState<Boolean> = mutableStateOf(true)
@@ -57,11 +58,14 @@ class MainActivity : ComponentActivity(), RecognitionListener {
         checkPermission()
         setContent {
             ChatbotERNUITheme {
-                if(!_finishedLoading.value){
-                    LoadScreen()
+                if(_finishedLoading.value != STATE_DONE){
+                    if(_finishedLoading.value != STATE_READY){
+                        LoadScreen()
+                    }else{
+                        recognizeMicrophone()
+                    }
                 }else{
                     MainScreen()
-                    recognizeMicrophone()
                 }
             }
         }
@@ -82,15 +86,12 @@ class MainActivity : ComponentActivity(), RecognitionListener {
         }
     }
     private fun recognizeMicrophone() {
-        if (speechService != null) {
-            setUiState(STATE_DONE)
-            speechService!!.stop()
-            speechService = null
-        } else {
+        if (speechService == null) {
             try {
                 val rec = Recognizer(model, 16000.0f)
                 speechService = SpeechService(rec, 16000.0f)
                 speechService!!.startListening(this)
+                setUiState(STATE_DONE)
             } catch (e: IOException) {
                 setErrorState(e.message)
             }
@@ -110,10 +111,10 @@ class MainActivity : ComponentActivity(), RecognitionListener {
     private fun setUiState(state: Int) {
         when (state) {
             STATE_READY -> {
-                _finishedLoading.value = true
+                _finishedLoading.value = STATE_READY
             }
             STATE_DONE -> {
-                // user stopped talking
+                _finishedLoading.value = STATE_DONE
             }
             else -> throw IllegalStateException("Unexpected value: $state")
         }
