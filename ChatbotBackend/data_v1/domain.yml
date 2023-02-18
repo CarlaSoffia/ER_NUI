@@ -1,0 +1,116 @@
+version: '3.1'
+
+entities:
+  - family_friends
+  
+slots:
+  family_friends:
+    type: text
+    mappings:
+    - type: from_entity
+      entity: family_friends 
+
+intents:
+- Greeting
+- Good_Morning
+- Good_Afternoon
+- Good_Night
+- Goodbye
+- Affirm
+- Deny
+- Mood_great
+- Mood_unhappy
+- Ask_help
+- Collect_person_help
+
+responses:
+  utter_greeting:
+  - text: Olá. Como lhe está a correr o dia?
+  - text: ola. Como se sente hoje?
+  - text: Oi. Como está?
+  - text: Viva. Como te sentes hoje?
+  utter_good_morning:
+  - text: Bom dia. Como lhe está a correr o dia?
+  - text: Bons dias. Como te sentes hoje?
+  utter_good_afternoon:
+  - text: Boa tarde. Como está?
+  - text: Boas tardes. Tudo bem?
+  utter_good_night:
+  - text: Boa noite. Como foi o dia?
+  - text: Bos noites. Como tem passado?
+  utter_goodbye:
+  - text: Vemo-nos por aí.
+  - text: Adeus.
+  - text: Até logo.
+  - text: Até mais logo.
+  - text: Tenha um bom dia.
+  - text: Resto de um bom dia.
+  utter_affirm:
+  - text: Sim. Obviamente.
+  - text: De facto. Obviamente.
+  - text: Claro. Lógico.
+  - text: Parece-me bem. Sem dúvida.
+  - text: Correcto. Obviamente.
+  - text: Certo. Naturalmente
+  utter_deny:
+  - text: Não.
+  - text: Nunca.
+  - text: Não me parece.
+  - text: Não gosto disso.
+  - text: Nem pensar.
+  - text: Não concordo.
+  - text: Na verdade não.
+  utter_mood_great:
+  - text: Ainda bem!
+  - text: Muito bem!
+  - text: Fico feliz
+  - text: Fico contente.
+  - text: Estou feliz.
+  - text: Estou contente!
+  utter_mood_unhappy:
+  - text: Lamento
+  - text: Irei animá-lo!
+  - text: Podemos jogar um jogo se quiser
+  - text: Precisa de ajuda?
+  - text: Quer ligar a alguém?
+  - text: Quer que avise alguém?
+  - text: Há alguma coisa na sua mente que gostaria de falar?
+  - text: Alguma coisa que gostaria de falar?
+  - text: Pode desabafar comigo!
+  - text: Tem sentido alguma dor ou desconforto ultimamente?
+  - text: Sente alguma dor?
+  - text: Sente algum desconforto?
+  utter_cheer_up:
+  - text: 'Algo para te animar: bleh'
+  utter_did_that_help:
+  - text: Consegui ajudar?
+  - text: Como se sente?
+  - text: Está melhor?
+  - text: Sente-se melhor?
+  utter_ask_who_call:
+  - text: A quem quer ligar?
+  - text: A quem quer contactar?
+  - text: A quem quer avisar?
+  - text: Quem devo contactar?
+  - text: Quem devo avisar?
+  - text: Quem devo ligar?
+  - text: Que pessoa ou entidade devo contactar?
+  - text: Que pessoa ou entidade devo ligar?
+  - text: Que pessoa ou entidade devo avisar?
+  utter_contacting:
+  - text: A pessoa {family_friends} já está a ser contactada.
+  - text: A pessoa {family_friends} já está a ser informada.
+  - text: A pessoa {family_friends} já está a ser avisada.
+  - text: A entidade {family_friends} já está a ser contactada.
+  - text: A entidade {family_friends} já está a ser informada.
+  - text: A entidade {family_friends} já está a ser avisada.
+  - text: Já avisei a pessoa {family_friends} indicada.
+  - text: Já avisei a entidade {family_friends} indicada.
+  - text: Já avisei a pessoa {family_friends} que indicou.
+  - text: Já avisei a entidade {family_friends} indicou.
+
+ 
+
+session_config:
+  session_expiration_time: 60
+  carry_over_slots_to_new_session: true
