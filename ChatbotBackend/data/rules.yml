@@ -1,21 +1,23 @@
 version: '3.1'
 rules:
-- rule: Say greeting anytime the user says greeting
+- rule: Say greeting anytime the user says greeting and start questionnaire
   steps:
   - intent: Greeting
-  - action: utter_greeting
-- rule: Say good morning anytime the user says good morning
+  - action: action_respond_greeting
+  - action: utter_begin_questionnaire
+  - action: question_form
+  - active_loop: question_form
+  
+- rule: Submit questionnaire form
+  condition:
+  - active_loop: question_form
   steps:
-  - intent: Good_Morning
-  - action: utter_good_morning
-- rule: Say good afternoon anytime the user says good afternoon
-  steps:
-  - intent: Good_Afternoon
-  - action: utter_good_afternoon
-- rule: Say good night anytime the user says good night
-  steps:
-  - intent: Good_Night
-  - action: utter_good_night
+  - action: question_form
+  - active_loop: null
+  - slot_was_set:
+    - requested_slot: null
+  - action: utter_end_questionnaire  
+
 - rule: Say goodbye anytime the user says goodbye
   steps:
   - intent: Goodbye
@@ -47,3 +49,7 @@ rules:
   steps:
   - intent: Thanks
   - action: utter_response_thank
+- rule: Say I am good each time user asks how are you
+  steps:
+  - intent: How_are_you
+  - action: utter_great

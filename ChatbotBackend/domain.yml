@@ -2,25 +2,68 @@ version: '3.1'
 entities:
 - family_friends
 - user_name
+
 slots:
+
   family_friends:
     type: text
     mappings:
     - type: from_entity
       entity: family_friends
+
   user_name:
     type: text
     mappings:
     - type: from_entity
       entity: user_name
+
+  depressionQuestionnairePoints:
+    type: float
+    initial_value: 0.0
+    min_value: 0.0
+    max_value: 15.0
+    mappings:
+    - type: custom
+
+  questionNumber: 
+    type: float
+    initial_value: 0.0
+    min_value: 0.0
+    max_value: 15.0
+    mappings:
+    - type: custom 
+
+  response_question:
+    type: text
+    influence_conversation: true
+    mappings:
+    - type: from_intent
+      value: Não
+      intent: Deny  
+    - type: from_intent
+      value: Sim
+      intent: Affirm
+      conditions:
+       - active_loop: question_form
+         requested_slot: response_question
+
+  why_question:
+    type: text
+    influence_conversation: true
+    mappings:
+    - type: from_text
+      conditions:
+       - active_loop: question_form
+         requested_slot: why_question
+forms:
+  question_form:
+    required_slots:
+      - response_question
+      - why_question
+    
 intents:
 - Greeting
-- Good_Morning
-- Good_Afternoon
-- Good_Night
 - Goodbye
-- Affirm
-- Deny
 - Mood_great
 - Mood_unhappy
 - Ask_help
@@ -29,21 +72,12 @@ intents:
 - My_name
 - Features
 - Thanks
+- How_are_you
+- Agree
+- Disagree
+- Affirm
+- Deny
 responses:
-  utter_greeting:
-  - text: Olá.
-  - text: ola.
-  - text: Oi.
-  - text: Viva.
-  utter_good_morning:
-  - text: Bom dia. Como lhe está a correr o dia?
-  - text: Bons dias. Como te sentes hoje?
-  utter_good_afternoon:
-  - text: Boa tarde. Como está?
-  - text: Boas tardes. Tudo bem?
-  utter_good_night:
-  - text: Boa noite. Como foi o dia?
-  - text: Bos noites. Como tem passado?
   utter_goodbye:
   - text: Vemo-nos por aí.
   - text: Adeus.
@@ -51,15 +85,13 @@ responses:
   - text: Até mais logo.
   - text: Tenha um bom dia.
   - text: Resto de um bom dia.
-  utter_affirm:
-  - text: Sim. Obviamente.
-  - text: De facto. Obviamente.
-  - text: Claro. Lógico.
-  - text: Parece-me bem. Sem dúvida.
-  - text: Correcto. Obviamente.
-  - text: Certo. Naturalmente
-  utter_deny:
-  - text: Não.
+  utter_agree:
+  - text: De facto.
+  - text: Claro.
+  - text: Parece-me bem.
+  - text: Correcto.
+  - text: Certo.
+  utter_disagree:
   - text: Nunca.
   - text: Não me parece.
   - text: Não gosto disso.
@@ -69,14 +101,16 @@ responses:
   utter_mood_great:
   - text: Ainda bem!
   - text: Muito bem!
-  - text: Fico feliz
+  - text: Fico feliz.
   - text: Fico contente.
-  - text: Estou feliz.
-  - text: Estou contente!
+  utter_great:
+  - text: Estou feliz, muito obrigado.
+  - text: Estou contente, muito obrigado.
+  - text: Estou bem, obrigado!
+  - text: Está tudo bem obrigado.
   utter_mood_unhappy:
-  - text: Lamento
+  - text: Lamento...
   - text: Irei animá-lo!
-  - text: Podemos jogar um jogo se quiser
   - text: Precisa de ajuda?
   - text: Quer ligar a alguém?
   - text: Quer que avise alguém?
@@ -87,7 +121,8 @@ responses:
   - text: Sente alguma dor?
   - text: Sente algum desconforto?
   utter_cheer_up:
-  - text: 'Algo para te animar: bleh'
+  - text: 'Algo para te animar:'
+    image: https://lexnau.com/wp-content/uploads/2023/02/Baby-Foxes-show-up-at-Grandmas-House-and-Decide-to-Make-her-Porch-their-Personal-Playground.jpg
   utter_did_that_help:
   - text: Consegui ajudar?
   - text: Como se sente?
@@ -119,16 +154,26 @@ responses:
   - text: Ainda não tenho muitas funcionalidades.
   - text: Estou a aprender.
   utter_response_thank:
-  - text: De nada
-  - text: Não tem de quê
-  - text: Não tens de quê
-  - text: Sempre às ordens
-  - text: Sempre às suas ordens
-  - text: Foi um prazer
-  - text: Foi um prazer ajudar
-  - text: Ainda bem que consegui ser útil
+  - text: De nada.
+  - text: Não tem de quê.
+  - text: Não tens de quê.
+  - text: Sempre às ordens.
+  - text: Sempre às suas ordens.
+  - text: Foi um prazer.
+  - text: Foi um prazer ajudar.
+  - text: Ainda bem que consegui ser útil.
+  utter_begin_questionnaire:
+  - text: Por favor, responda às próximas perguntas com Sim ou Não.
+  - text: Responda às próximas perguntas com Sim ou Não, por favor.
+  utter_end_questionnaire:
+  - text: Obrigado por responder às perguntas.
+  - text: Obrigado pela sinceridade da resposta às perguntas.
 session_config:
   session_expiration_time: 60
   carry_over_slots_to_new_session: true
 actions:
 - action_retrieve_entities
+- action_respond_greeting
+- validate_question_form
+- action_ask_question_form_response_question
+- action_ask_question_form_why_question

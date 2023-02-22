@@ -3,27 +3,21 @@ nlu:
 - intent: Greeting
   examples: '- Olá.
 
-    - ola.
+    - Oi.
 
     - Oi.
 
     - Viva.
 
-    '
-- intent: Good_Morning
-  examples: '- Bom dia.
+    - Bom dia. 
 
     - Bons dias.
 
-    '
-- intent: Good_Afternoon
-  examples: '- Boa tarde.
+    - Boa tarde.
 
     - Boas tardes.
 
-    '
-- intent: Good_Night
-  examples: '- Boa noite.
+    - Boa noite.
 
     - Bos noites.
 
@@ -44,21 +38,56 @@ nlu:
     '
 - intent: Affirm
   examples: '- Sim.
+    
+    - sim.
+    
+    - sim
 
-    - De facto.
-
-    - Claro.
-
-    - Parece-me bem.
-
-    - Correcto.
-
+    - Sim
+    '    
+- intent: Agree
+  examples: '- Sim.
+    
+    - sim.        
+    
+    - De facto.      
+    
+    - Claro.      
+    
+    - Parece-me bem.      
+    
+    - Correcto.      
+    
     - Certo.
-
+    
     '
+
 - intent: Deny
   examples: '- Não.
+    - Nao.
 
+    - não.
+
+    - nao.
+
+    - Não
+
+    - não
+
+    - Nao
+
+    - nao
+    
+    '
+
+- intent: Disagree
+  examples: '- Não.
+    - Nao.
+
+    - não.
+
+    - nao.
+  
     - Nunca.
 
     - Não me parece.
@@ -110,8 +139,6 @@ nlu:
     - Extremamente bom.
 
     - Está tudo bem.
-
-    - Tudo bem.
 
     - Estou melhor sim.
 
@@ -192,199 +219,7 @@ nlu:
     - Ligue à minha [mãe](family_friends)
 
     - Informe a minha [mãe](family_friends)
-
-    - Avise o meu [avó](family_friends)
-
-    - Ligue ao meu [avó](family_friends)
-
-    - Informe o meu [avó](family_friends)
-
-    - Avise a minha [avô](family_friends)
-
-    - Ligue à minha [avô](family_friends)
-
-    - Informe a minha [avô](family_friends)
-
-    - Avise o meu [filho](family_friends)
-
-    - Ligue ao meu [filho](family_friends)
-
-    - Informe o meu [filho](family_friends)
-
-    - Avise a minha [filha](family_friends)
-
-    - Ligue à minha [filha](family_friends)
-
-    - Informe a minha [filha](family_friends)
-
-    - Avise o meu [irmão](family_friends)
-
-    - Ligue ao meu [irmão](family_friends)
-
-    - Informe o meu [irmão](family_friends)
-
-    - Avise a minha [irmã](family_friends)
-
-    - Ligue à minha [irmã](family_friends)
-
-    - Informe a minha [irmã](family_friends)
-
-    - Avise o meu [tio](family_friends)
-
-    - Ligue ao meu [tio](family_friends)
-
-    - Informe o meu [tio](family_friends)
-
-    - Avise a minha [tia](family_friends)
-
-    - Ligue à minha [tia](family_friends)
-
-    - Informe a minha [tia](family_friends)
-
-    - Avise o meu [primo](family_friends)
-
-    - Ligue ao meu [primo](family_friends)
-
-    - Informe o meu [primo](family_friends)
-
-    - Avise a minha [prima](family_friends)
-
-    - Ligue à minha [prima](family_friends)
-
-    - Informe a minha [prima](family_friends)
-
-    - Avise o meu [sobrinho](family_friends)
-
-    - Ligue ao meu [sobrinho](family_friends)
-
-    - Informe o meu [sobrinho](family_friends)
-
-    - Avise a minha [sobrinha](family_friends)
-
-    - Ligue à minha [sobrinha](family_friends)
-
-    - Informe a minha [sobrinha](family_friends)
-
-    - Avise o meu [neto](family_friends)
-
-    - Ligue ao meu [neto](family_friends)
-
-    - Informe o meu [neto](family_friends)
-
-    - Avise a minha [neta](family_friends)
-
-    - Ligue à minha [neta](family_friends)
-
-    - Informe a minha [neta](family_friends)
-
-    - Avise o meu [padrasto](family_friends)
-
-    - Ligue ao meu [padrasto](family_friends)
-
-    - Informe o meu [padrasto](family_friends)
-
-    - Avise a minha [madrasta](family_friends)
-
-    - Ligue à minha [madrasta](family_friends)
-
-    - Informe a minha [madrasta](family_friends)
-
-    - Avise o meu [enteado](family_friends)
-
-    - Ligue ao meu [enteado](family_friends)
-
-    - Informe o meu [enteado](family_friends)
-
-    - Avise a minha [enteada](family_friends)
-
-    - Ligue à minha [enteada](family_friends)
-
-    - Informe a minha [enteada](family_friends)
-
-    - Avise o meu [cunhado](family_friends)
-
-    - Ligue ao meu [cunhado](family_friends)
-
-    - Informe o meu [cunhado](family_friends)
-
-    - Avise a minha [cunhada](family_friends)
-
-    - Ligue à minha [cunhada](family_friends)
-
-    - Informe a minha [cunhada](family_friends)
-
-    - Avise o meu [genro](family_friends)
-
-    - Ligue ao meu [genro](family_friends)
-
-    - Informe o meu [genro](family_friends)
-
-    - Avise a minha [nora](family_friends)
-
-    - Ligue à minha [nora](family_friends)
-
-    - Informe a minha [nora](family_friends)
-
-    - Avise o meu [amigo](family_friends)
-
-    - Ligue ao meu [amigo](family_friends)
-
-    - Informe o meu [amigo](family_friends)
-
-    - Avise a minha [amiga](family_friends)
-
-    - Ligue à minha [amiga](family_friends)
-
-    - Informe a minha [amiga](family_friends)
-
-    - Avise o meu [vizinho](family_friends)
-
-    - Ligue ao meu [vizinho](family_friends)
-
-    - Informe o meu [vizinho](family_friends)
-
-    - Avise a minha [vizinha](family_friends)
-
-    - Ligue à minha [vizinha](family_friends)
-
-    - Informe a minha [vizinha](family_friends)
-
-    - Avise algum [médico](socialworker)
-
-    - Ligue algum [médico](socialworker)
-
-    - Informe algum [médico](socialworker)
-
-    - Avise algum [médica](socialworker)
-
-    - Ligue algum [médica](socialworker)
-
-    - Informe algum [médica](socialworker)
-
-    - Avise algum [polícia](socialworker)
-
-    - Ligue algum [polícia](socialworker)
-
-    - Informe algum [polícia](socialworker)
-
-    - Avise algum [bombeiro](socialworker)
-
-    - Ligue algum [bombeiro](socialworker)
-
-    - Informe algum [bombeiro](socialworker)
-
-    - Avise algum [enfermeiro](socialworker)
-
-    - Ligue algum [enfermeiro](socialworker)
-
-    - Informe algum [enfermeiro](socialworker)
-
-    - Avise algum [enfermeira](socialworker)
-
-    - Ligue algum [enfermeira](socialworker)
-
-    - Informe algum [enfermeira](socialworker)
-
+    
     - Avise algum [paramédico](socialworker)
 
     - Ligue algum [paramédico](socialworker)
@@ -446,27 +281,35 @@ nlu:
     '
 - intent: Thanks
   examples: '- Obrigada
-  
-  - Muito obrigada
 
-  - Obrigado
+    - Muito obrigada
 
-  - Muito obrigado
+    - Obrigado
 
-  - Agradeço-lhe
+    - Muito obrigado
 
-  - Agradeço-te
+    - Agradeço-lhe
 
-  - Muito agradecido
+    - Agradeço-te
 
-  - Muito agradecida
+    - Muito agradecido
 
-  - Estou muito agradecido
+    - Muito agradecida
 
-  - Estou muito agradecida
+    - Estou muito agradecido
 
-  - Estou muito grato
+    - Estou muito agradecida
 
-  - Estou muito grata
+    - Estou muito grato
+
+    - Estou muito grata
+
+    '
+- intent: How_are_you
+  examples: '- Como está?
+
+  - Tudo bem?
+
+  - Como estás?
 
   '
