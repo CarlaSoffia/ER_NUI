@@ -44,6 +44,7 @@ nlu:
     - sim
 
     - Sim
+
     '    
 - intent: Agree
   examples: '- Sim.
@@ -64,6 +65,7 @@ nlu:
 
 - intent: Deny
   examples: '- Não.
+  
     - Nao.
 
     - não.
@@ -77,7 +79,7 @@ nlu:
     - Nao
 
     - nao
-    
+
     '
 
 - intent: Disagree

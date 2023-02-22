@@ -13,18 +13,18 @@ import random
 #
 from rasa_sdk import Action, Tracker
 from rasa_sdk.executor import CollectingDispatcher
-from rasa_sdk.events import SlotSet
+#from rasa_sdk.events import SlotSet
 from rasa_sdk import Tracker, FormValidationAction
 from rasa_sdk.events import EventType
 #
-
-class AskWhyuestionnaire(Action):
+# Action: Ask Why for Question
+class ActionAskWhyQuestion(Action):
     def name(self) -> Text:
-        return "action_ask_question_form_why_question"
+        return "action_ask_why_question"
     def run(self, dispatcher: CollectingDispatcher,
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[EventType]:
-         questions = ["Por favor, explique o porquê.", "Detalhe o porquê da sua resposta, por favor."
+         questions = ["Por favor, explique o porquê.", "Detalhe o porquê da sua resposta, por favor.",
          "Por favor, explique a sua resposta.",  "Explique-me o motivo, por favor."]
          idx = random.randint(0,len(questions)-1)
          dispatcher.utter_message(questions[idx])
@@ -54,12 +54,10 @@ class AskQuestionQuestionnaire(Action):
                      "Acha que as outras pessoas estão melhores que si?"]
         
         idx = int(tracker.get_slot("questionNumber"))
-        dispatcher.utter_message(questions[idx])
         if idx + 1 == 16:
-            dispatcher.utter_message("Obrigado por responder ao questionário")
             return []
-        else:
-            return [SlotSet("questionNumber", idx+1)]
+        dispatcher.utter_message(questions[idx])
+        
     
 # Action: Responds to the user greeting
 class RespondGreeting(Action):
@@ -74,6 +72,26 @@ class RespondGreeting(Action):
 class ValidateQuestionForm(FormValidationAction):
     def name(self) -> Text:
         return "validate_question_form"
+    
+    async def required_slots(
+        self,
+        domain_slots: List[Text],
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain:  Dict[Text, Any],
+    ) -> List[Text]:
+        additional_slots = ["response_question"]
+        questionsPointsNo = [1,5,7,11,13]
+        idx = int(tracker.get_slot("questionNumber"))
+        slot_value = tracker.slots.get("response_question")
+
+        if slot_value == None:
+            return additional_slots
+        
+        if (slot_value == "Não" and idx in questionsPointsNo) or (slot_value == "Sim" and idx not in questionsPointsNo):
+            additional_slots.append("why_question")    
+        return additional_slots + domain_slots  
+    
     def validate_response_question(
         self,
         slot_value: Any,
@@ -81,29 +99,23 @@ class ValidateQuestionForm(FormValidationAction):
         tracker: Tracker,
         domain:  Dict[Text, Any],
     ) -> Dict[Text, Any]:
-    
-        questionsPointsNo = ["utter_question_1","utter_question_5","utter_question_7","utter_question_11","utter_question_13"]
-        intentDeny = ["Não", "não","Nao", "nao","Não.", "não.","Nao.", "nao."] 
-        intentAgree = ["Sim.", "sim.","Sim", "sim"]
-        lastBotUtterance = ""
+        question = int(tracker.get_slot("questionNumber")) + 1
+        response_question = slot_value
+        questionsPointsNo = [1,5,7,11,13]
+        if (response_question == "Não" and question in questionsPointsNo) or (response_question == "Sim" and question not in questionsPointsNo):
+            return {"response_question": slot_value, "questionNumber":question, "depressionQuestionnairePoints":tracker.get_slot("depressionQuestionnairePoints")+1.0, "why_question": None}
+        else:
+            responses = tracker.get_slot("responses")
+            if tracker.get_slot("responses") == None : 
+                responses = [] 
+            newResponse = {
+                            "question": question-1,
+                            "response":slot_value,
+                            "why":""
+                        }
+            responses.append(newResponse)
+            return {"response_question": slot_value,"responses": responses, "questionNumber":question, "why_question": None}
 
-        if slot_value not in intentDeny and slot_value not in intentAgree:
-            return {"response_question": None}
-        
-        for event in reversed(tracker.events):
-           if event["event"] == "bot":
-               try:
-                   lastBotUtterance = event["metadata"]["utter_action"]
-                   break
-               except:
-                   pass
-        print(tracker.get_slot("depressionQuestionnairePoints"))  
-        print("Response to question: "+slot_value)
-        if (slot_value in intentDeny and lastBotUtterance in questionsPointsNo) or (slot_value not in intentDeny and lastBotUtterance not in questionsPointsNo):
-            value = tracker.get_slot("depressionQuestionnairePoints")+1.0
-            SlotSet("depressionQuestionnairePoints", value) 
-        return {"response_question": slot_value}
-    
     def validate_why_question(
         self,
         slot_value: Any,
@@ -111,11 +123,19 @@ class ValidateQuestionForm(FormValidationAction):
         tracker: Tracker,
         domain:  Dict[Text, Any],
     ) -> Dict[Text, Any]:
-        print("Answer to why:", slot_value)
-        if len(slot_value)>0:
-            return {"why_question": slot_value}
-        return {"why_question": None}  
-
+        question = int(tracker.get_slot("questionNumber"))
+        response = tracker.get_slot("response_question")
+        responses = tracker.get_slot("responses")
+        if tracker.get_slot("responses") == None : 
+            responses = [] 
+        newResponse = {
+                         "question": question,
+                         "response":response,
+                         "why":slot_value
+                       }
+        responses.append(newResponse)
+        return {"why_question": slot_value, "responses": responses, "response_question": None}
+    
 # Action: retrieve entities from text    
 class ActionRetrieveEntities(Action):
     def name(self) -> Text:

@@ -7,10 +7,12 @@ rules:
   - action: utter_begin_questionnaire
   - action: question_form
   - active_loop: question_form
-  
+
 - rule: Submit questionnaire form
   condition:
   - active_loop: question_form
+  - slot_was_set:
+    - questionNumber: 15
   steps:
   - action: question_form
   - active_loop: null

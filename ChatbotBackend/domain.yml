@@ -25,6 +25,12 @@ slots:
     mappings:
     - type: custom
 
+  responses:
+      type: list
+      influence_conversation: false
+      mappings:
+      - type: custom
+      
   questionNumber: 
     type: float
     initial_value: 0.0
@@ -34,8 +40,7 @@ slots:
     - type: custom 
 
   response_question:
-    type: text
-    influence_conversation: true
+    type: any
     mappings:
     - type: from_intent
       value: Não
@@ -49,17 +54,16 @@ slots:
 
   why_question:
     type: text
-    influence_conversation: true
     mappings:
     - type: from_text
       conditions:
-       - active_loop: question_form
-         requested_slot: why_question
+        - active_loop: question_form
+          requested_slot: why_question
+
 forms:
   question_form:
     required_slots:
       - response_question
-      - why_question
     
 intents:
 - Greeting
@@ -176,4 +180,4 @@ actions:
 - action_respond_greeting
 - validate_question_form
 - action_ask_question_form_response_question
-- action_ask_question_form_why_question
+- action_ask_why_question
