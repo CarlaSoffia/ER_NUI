@@ -26,13 +26,14 @@ slots:
     - type: custom
 
   responses:
-      type: list
-      influence_conversation: false
-      mappings:
-      - type: custom
+    type: list
+    influence_conversation: false
+    mappings:
+    - type: custom
       
   questionNumber: 
     type: float
+    influence_conversation: true
     initial_value: 0.0
     min_value: 0.0
     max_value: 15.0

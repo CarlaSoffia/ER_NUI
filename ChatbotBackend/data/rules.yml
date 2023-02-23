@@ -12,14 +12,13 @@ rules:
   condition:
   - active_loop: question_form
   - slot_was_set:
-    - questionNumber: 15
+    - questionNumber: 15.0
   steps:
   - action: question_form
   - active_loop: null
   - slot_was_set:
     - requested_slot: null
-  - action: utter_end_questionnaire  
-
+  - action: utter_end_questionnaire
 - rule: Say goodbye anytime the user says goodbye
   steps:
   - intent: Goodbye
