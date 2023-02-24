@@ -12,7 +12,7 @@ rules:
   condition:
   - active_loop: question_form
   - slot_was_set:
-    - questionNumber: 15.0
+    - finishedQuestionnaire: True
   steps:
   - action: question_form
   - active_loop: null

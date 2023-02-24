@@ -61,8 +61,11 @@ class AskQuestionQuestionnaire(Action):
                      "No momento, está a sentir-se cheio de energia?",
                      "Sente que perdeu a sua esperança?",
                      "Acha que as outras pessoas estão melhores que si?"]
-        
-        idx = int(tracker.get_slot("questionNumber"))
+        responses = tracker.get_slot("responses")
+        if responses == None:
+            idx = 0
+        else:
+            idx = len(responses)
         if idx > 14:
             return []
         dispatcher.utter_message(questions[idx])
@@ -94,6 +97,7 @@ class ValidateQuestionForm(FormValidationAction):
         responses = tracker.get_slot("responses")
         if responses == None:
             return domain_slots
+        
         size = len(responses)-1
         response = responses[size]["response"]
         idx = responses[size]["question"]
@@ -101,6 +105,7 @@ class ValidateQuestionForm(FormValidationAction):
             return domain_slots
         if idx==15 and response == "Não":
             return domain_slots
+        
         if (response == "Não" and idx in questionsPointsNo) or (response == "Sim" and idx not in questionsPointsNo):
             additional_slots.append("why_question") 
         if (response == "Não" and idx not in questionsPointsNo) or (response == "Sim" and idx in questionsPointsNo):
@@ -114,12 +119,14 @@ class ValidateQuestionForm(FormValidationAction):
         tracker: Tracker,
         domain:  Dict[Text, Any],
     ) -> Dict[Text, Any]:
-        question = int(tracker.get_slot("questionNumber")) + 1
-        questionsPointsNo = [1,5,7,11,13]
-
         responses = tracker.get_slot("responses")
-        if tracker.get_slot("responses") == None : 
+        if responses == None : 
             responses = [] 
+            question = 1
+        else:
+            question = len(responses)+1
+        questionsPointsNo = [1,5,7,11,13]
+        
         newResponse = {
                         "question": question,
                         "response":slot_value,
@@ -127,13 +134,11 @@ class ValidateQuestionForm(FormValidationAction):
                     }
         responses.append(newResponse)
         if (slot_value == "Não" and question in questionsPointsNo) or (slot_value == "Sim" and question not in questionsPointsNo):
-            if question == 15:
-                 return {"response_question": slot_value,"responses": responses, "questionNumber":question-1, "depressionQuestionnairePoints":tracker.get_slot("depressionQuestionnairePoints")+1.0, "why_question": None}      
-            return {"response_question": slot_value,"responses": responses, "questionNumber":question, "depressionQuestionnairePoints":tracker.get_slot("depressionQuestionnairePoints")+1.0, "why_question": None}
+            return {"response_question": slot_value,"responses": responses, "depressionQuestionnairePoints":tracker.get_slot("depressionQuestionnairePoints")+1.0, "why_question": None}
         if (slot_value == "Sim" and question in questionsPointsNo) or (slot_value == "Não" and question not in questionsPointsNo):            
             if question == 15:
-                return {"response_question": slot_value,"responses": responses, "questionNumber":question, "why_question": None}
-            return {"response_question": None,"responses": responses, "questionNumber":question, "why_question": None}
+                return {"response_question": slot_value,"responses": responses, "why_question": None, "finishedQuestionnaire":True}
+            return {"response_question": None,"responses": responses, "why_question": None}
 
     def validate_why_question(
         self,
@@ -142,19 +147,17 @@ class ValidateQuestionForm(FormValidationAction):
         tracker: Tracker,
         domain:  Dict[Text, Any],
     ) -> Dict[Text, Any]:
-        question = int(tracker.get_slot("questionNumber"))
+        question = len(tracker.get_slot("responses"))
         responses = tracker.get_slot("responses")
-        response = responses[question-1]["response"]
-        if tracker.get_slot("responses") == None : 
-            responses = []    
+        response = responses[question-1]["response"]            
         newResponse = {
                          "question": question,
                          "response":response,
                          "why":slot_value
                        }
         responses.append(newResponse)
-        if question == 14 and responses[question]["response"] == "Sim":
-            return {"questionNumber":15.0,"why_question": slot_value, "responses": responses, "response_question": response}
+        if question == 15 and responses[question-1]["response"] == "Sim":
+            return {"why_question": slot_value, "responses": responses, "response_question": response, "finishedQuestionnaire":True}
         return {"why_question": slot_value, "responses": responses, "response_question": None}
     
 # Action: retrieve entities from text    

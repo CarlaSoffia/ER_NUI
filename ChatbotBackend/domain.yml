@@ -31,17 +31,15 @@ slots:
     mappings:
     - type: custom
       
-  questionNumber: 
-    type: float
-    influence_conversation: true
-    initial_value: 0.0
-    min_value: 0.0
-    max_value: 15.0
+  finishedQuestionnaire:
+    type: bool
+    initial_value: False
     mappings:
-    - type: custom 
+    - type: custom  
 
   response_question:
-    type: any
+    type: text
+    influence_conversation: true
     mappings:
     - type: from_intent
       value: Não
