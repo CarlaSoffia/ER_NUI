@@ -182,3 +182,4 @@ actions:
 - validate_question_form
 - action_ask_question_form_response_question
 - action_ask_why_question
+- submit_question_form
