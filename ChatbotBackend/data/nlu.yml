@@ -245,16 +245,6 @@ nlu:
     - Alguma novidade para hoje?
 
     '
-- intent: My_name
-  examples: '- O meu nome é [Carla](user_name).
-
-    - Chamo-me [João](user_name).
-
-    - Eu sou a [Carla](user_name).
-
-    - Eu sou o [João](user_name).
-
-    '
 - intent: Features
   examples: '- O que permites fazer?
 

@@ -3,7 +3,7 @@
 #
 # See this guide on how to implement these action:
 # https://rasa.com/docs/rasa/custom-actions
-
+# https://www.postman.com/bold-firefly-183322/workspace/tcc-chatbot-rasa/request/4600719-1b3df0b1-4730-487e-827e-d13497c8c41d
 
 # This is a simple example for a custom action which utters "Hello World!"
 
@@ -13,11 +13,73 @@ import random
 #
 from rasa_sdk import Action, Tracker
 from rasa_sdk.executor import CollectingDispatcher
-from rasa_sdk.events import SlotSet
+from rasa_sdk.events import SlotSet, SessionStarted, ActionExecuted, EventType
 from rasa_sdk import Tracker, FormValidationAction
-from rasa_sdk.events import EventType
-#
+import requests
+import os
+from dotenv import load_dotenv
+import json
+import datetime
 
+#
+load_dotenv()
+API_URL = str(os.getenv('API_URL'))
+
+def request(type, url, token, data=None):
+    if token == None:
+        return "[Error] - No token"   
+    if data != None:
+        headers = {"Authorization": "Bearer " + str(token), "Accept": "application/json", 'Content-Type': 'application/json'}
+        r = requests.request(type, API_URL+url, headers=headers, data=data)
+    else:
+        headers = {"Authorization": "Bearer " + str(token), "Accept": "application/json"}
+        r = requests.request(type, API_URL+url, headers=headers)   
+    if r.status_code == 403:
+        return "[Error][{r.status_code}] - Invalid token"
+    return r.json()["data"]
+    
+def collectToken(events):
+    for event in events:
+        if event["event"] == "user":
+            try:
+                return str(event["metadata"]["token"])
+            except:
+                return None  
+
+def has_week_passed(date):
+    date = datetime.datetime.fromtimestamp(date).date()
+    # Get the current date
+    current_date = datetime.date.today()
+    # Calculate the difference in days between the input date and the current date
+    days_passed = (current_date - date).days
+    # Check if a week has passed (7 days or more)
+    if days_passed >= 7:
+        return True
+    else:
+        return False
+
+class SessionStartAction(Action):
+    def name(self) -> Text:
+        return "action_session_start"
+    
+    async def run(self, dispatcher: CollectingDispatcher,
+                  tracker: Tracker,
+                  domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+
+        # Your action code goes here
+        # the session should begin with a `session_started` event
+        token = tracker.get_slot("session_started_metadata")
+        if token != None: 
+            lastDateQuestionnaire = request("GET","geriatricQuestionnaires",token)
+            if str(lastDateQuestionnaire).find("[Error]") == -1:
+                if len(lastDateQuestionnaire) == 0:
+                    return [SlotSet("token",token), SlotSet("finishedQuestionnaire",False)]
+                 
+                weekPassedSinceLastQuestionnaire = has_week_passed(lastDateQuestionnaire[0]["created_at"])
+                if weekPassedSinceLastQuestionnaire:
+                    return [SlotSet("token",token), SlotSet("finishedQuestionnaire",False)]                 
+            return [SlotSet("token",token)] 
+                               
 # Action: Submit the form
 class ActionSubmitQuestionForm(Action):
     def name(self) -> Text:
@@ -25,7 +87,20 @@ class ActionSubmitQuestionForm(Action):
     def run(self, dispatcher: CollectingDispatcher,
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[EventType]:
-        print(tracker.get_slot("responses"))
+        # send to API
+        responses = []
+        for res in tracker.get_slot("responses"):
+            responses.append(str(res).replace("'","\""))
+        message = request("POST","geriatricQuestionnaires",tracker.get_slot("token"),json.dumps({"points":tracker.get_slot("depressionQuestionnairePoints"),"responses":responses}))
+        if str(message).find("[Error]") == -1:
+            SlotSet("responses",None)
+            SlotSet("depressionQuestionnairePoints",0.0)
+            SlotSet("finishedQuestionnaire",False)
+            SlotSet("response_question",None)
+            SlotSet("why_question",None)
+            dispatcher.utter_message(message["id"])
+        else:
+            dispatcher.utter_message(str(message))
 # Action: Ask Why for Question
 class ActionAskWhyQuestion(Action):
     def name(self) -> Text:
@@ -69,17 +144,15 @@ class AskQuestionQuestionnaire(Action):
         if idx > 14:
             return []
         dispatcher.utter_message(questions[idx])
-        
-    
 # Action: Responds to the user greeting
 class RespondGreeting(Action):
     def name(self) -> Text:
         return "action_respond_greeting"
     def run(self, dispatcher: CollectingDispatcher,
             tracker: Tracker,
-            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+            domain: Dict[Text, Any]) -> Dict[Text, Any]:
         dispatcher.utter_message((tracker.latest_message)['text'])
-
+        
 # Action: Collects the user's response to a questionnaire's question
 class ValidateQuestionForm(FormValidationAction):
     def name(self) -> Text:
@@ -129,8 +202,7 @@ class ValidateQuestionForm(FormValidationAction):
         
         newResponse = {
                         "question": question,
-                        "response":slot_value,
-                        "why":""
+                        "response":slot_value
                     }
         responses.append(newResponse)
         if (slot_value == "Não" and question in questionsPointsNo) or (slot_value == "Sim" and question not in questionsPointsNo):
@@ -150,12 +222,7 @@ class ValidateQuestionForm(FormValidationAction):
         question = len(tracker.get_slot("responses"))
         responses = tracker.get_slot("responses")
         response = responses[question-1]["response"]            
-        newResponse = {
-                         "question": question,
-                         "response":response,
-                         "why":slot_value
-                       }
-        responses.append(newResponse)
+        responses[question-1]["why"] = slot_value
         if question == 15 and responses[question-1]["response"] == "Sim":
             return {"why_question": slot_value, "responses": responses, "response_question": response, "finishedQuestionnaire":True}
         return {"why_question": slot_value, "responses": responses, "response_question": None}

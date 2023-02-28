@@ -1,7 +1,6 @@
 version: '3.1'
 entities:
 - family_friends
-- user_name
 
 slots:
 
@@ -10,12 +9,6 @@ slots:
     mappings:
     - type: from_entity
       entity: family_friends
-
-  user_name:
-    type: text
-    mappings:
-    - type: from_entity
-      entity: user_name
 
   depressionQuestionnairePoints:
     type: float
@@ -57,13 +50,16 @@ slots:
     - type: from_text
       conditions:
         - active_loop: question_form
-          requested_slot: why_question
-
+          requested_slot: why_question    
+  token:
+    type: text
+    initial_value: null
+    mappings:  
+    - type: custom             
 forms:
   question_form:
     required_slots:
-      - response_question
-    
+      - response_question  
 intents:
 - Greeting
 - Goodbye
@@ -181,3 +177,4 @@ actions:
 - action_ask_question_form_response_question
 - action_ask_why_question
 - submit_question_form
+- action_session_start
