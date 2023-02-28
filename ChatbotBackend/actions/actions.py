@@ -37,14 +37,6 @@ def request(type, url, token, data=None):
     if r.status_code == 403:
         return "[Error][{r.status_code}] - Invalid token"
     return r.json()["data"]
-    
-def collectToken(events):
-    for event in events:
-        if event["event"] == "user":
-            try:
-                return str(event["metadata"]["token"])
-            except:
-                return None  
 
 def has_week_passed(date):
     date = datetime.datetime.fromtimestamp(date).date()
