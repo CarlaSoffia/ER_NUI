@@ -34,8 +34,8 @@ def request(type, url, token, data=None):
     else:
         headers = {"Authorization": "Bearer " + str(token), "Accept": "application/json"}
         r = requests.request(type, API_URL+url, headers=headers)   
-    if r.status_code == 403:
-        return "[Error][{r.status_code}] - Invalid token"
+    if r.status_code == 403 or r.status_code == 401:
+        return "[Error]["+str(r.status_code)+"] - Invalid token"  + str(r.json())
     return r.json()["data"]
 
 def has_week_passed(date):
@@ -50,7 +50,7 @@ def has_week_passed(date):
     else:
         return False
 
-class SessionStartAction(Action):
+class ActionSessionStart(Action):
     def name(self) -> Text:
         return "action_session_start"
     
@@ -60,18 +60,18 @@ class SessionStartAction(Action):
 
         # Your action code goes here
         # the session should begin with a `session_started` event
-        token = tracker.get_slot("session_started_metadata")
+        token = tracker.get_slot("session_started_metadata")["token"]
         if token != None: 
             lastDateQuestionnaire = request("GET","geriatricQuestionnaires",token)
             if str(lastDateQuestionnaire).find("[Error]") == -1:
                 if len(lastDateQuestionnaire) == 0:
-                    return [SlotSet("token",token), SlotSet("finishedQuestionnaire",False)]
-                 
+                    return [SlotSet("token",token), SlotSet("finishedQuestionnaire",False),ActionExecuted("action_listen")]
                 weekPassedSinceLastQuestionnaire = has_week_passed(lastDateQuestionnaire[0]["created_at"])
                 if weekPassedSinceLastQuestionnaire:
-                    return [SlotSet("token",token), SlotSet("finishedQuestionnaire",False)]                 
-            return [SlotSet("token",token)] 
-                               
+                    return [SlotSet("token",token), SlotSet("finishedQuestionnaire",False),ActionExecuted("action_listen")]                 
+            return [SlotSet("token",token),ActionExecuted("action_listen")] 
+        return ActionExecuted("action_listen")
+    
 # Action: Submit the form
 class ActionSubmitQuestionForm(Action):
     def name(self) -> Text:
@@ -83,16 +83,17 @@ class ActionSubmitQuestionForm(Action):
         responses = []
         for res in tracker.get_slot("responses"):
             responses.append(str(res).replace("'","\""))
-        message = request("POST","geriatricQuestionnaires",tracker.get_slot("token"),json.dumps({"points":tracker.get_slot("depressionQuestionnairePoints"),"responses":responses}))
+        token = tracker.get_slot("token")   
+        message = request("POST","geriatricQuestionnaires",token,json.dumps({"points":tracker.get_slot("depressionQuestionnairePoints"),"responses":responses}))
         if str(message).find("[Error]") == -1:
             SlotSet("responses",None)
             SlotSet("depressionQuestionnairePoints",0.0)
             SlotSet("finishedQuestionnaire",False)
             SlotSet("response_question",None)
             SlotSet("why_question",None)
-            dispatcher.utter_message(message["id"])
-        else:
-            dispatcher.utter_message(str(message))
+            
+        dispatcher.utter_message(str(message))
+        
 # Action: Ask Why for Question
 class ActionAskWhyQuestion(Action):
     def name(self) -> Text:
@@ -158,7 +159,6 @@ class ValidateQuestionForm(FormValidationAction):
         domain:  Dict[Text, Any],
     ) -> List[Text]:
         additional_slots = ["response_question"]
-        questionsPointsNo = [1,5,7,11,13]
         responses = tracker.get_slot("responses")
         if responses == None:
             return domain_slots
@@ -168,13 +168,7 @@ class ValidateQuestionForm(FormValidationAction):
         idx = responses[size]["question"]
         if idx == 0:
             return domain_slots
-        if idx==15 and response == "Não":
-            return domain_slots
-        
-        if (response == "Não" and idx in questionsPointsNo) or (response == "Sim" and idx not in questionsPointsNo):
-            additional_slots.append("why_question") 
-        if (response == "Não" and idx not in questionsPointsNo) or (response == "Sim" and idx in questionsPointsNo):
-            additional_slots.append("response_question") 
+        additional_slots.append("why_question")
         return additional_slots + domain_slots
     
     def validate_response_question(
@@ -194,15 +188,14 @@ class ValidateQuestionForm(FormValidationAction):
         
         newResponse = {
                         "question": question,
-                        "response":slot_value
+                        "response":slot_value,
+                        "why":""
                     }
         responses.append(newResponse)
         if (slot_value == "Não" and question in questionsPointsNo) or (slot_value == "Sim" and question not in questionsPointsNo):
             return {"response_question": slot_value,"responses": responses, "depressionQuestionnairePoints":tracker.get_slot("depressionQuestionnairePoints")+1.0, "why_question": None}
         if (slot_value == "Sim" and question in questionsPointsNo) or (slot_value == "Não" and question not in questionsPointsNo):            
-            if question == 15:
-                return {"response_question": slot_value,"responses": responses, "why_question": None, "finishedQuestionnaire":True}
-            return {"response_question": None,"responses": responses, "why_question": None}
+            return {"response_question": slot_value,"responses": responses, "why_question": None}
 
     def validate_why_question(
         self,
@@ -215,9 +208,9 @@ class ValidateQuestionForm(FormValidationAction):
         responses = tracker.get_slot("responses")
         response = responses[question-1]["response"]            
         responses[question-1]["why"] = slot_value
-        if question == 15 and responses[question-1]["response"] == "Sim":
+        if question == 15:
             return {"why_question": slot_value, "responses": responses, "response_question": response, "finishedQuestionnaire":True}
-        return {"why_question": slot_value, "responses": responses, "response_question": None}
+        return {"why_question": slot_value, "responses": responses, "response_question": None,"finishedQuestionnaire":True}
     
 # Action: retrieve entities from text    
 class ActionRetrieveEntities(Action):
