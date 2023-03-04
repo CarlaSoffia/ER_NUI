@@ -1,7 +1,7 @@
 package pt.ipleiria.estg.ciic.chatboternui
 
-import android.Manifest
-import android.content.pm.PackageManager
+import android.content.Context
+import android.content.SharedPreferences
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -14,55 +14,52 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
-import org.vosk.Model
-import org.vosk.Recognizer
 import org.vosk.android.RecognitionListener
-import org.vosk.android.StorageService
 import pt.ipleiria.estg.ciic.chatboternui.models.Message
 import pt.ipleiria.estg.ciic.chatboternui.ui.theme.*
-import vosk.SpeechService
-import java.io.IOException
-import java.time.Duration
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
-import kotlin.math.pow
-import kotlin.math.sqrt
-
+import pt.ipleiria.estg.ciic.chatboternui.utils.*
 
 private const val STATE_READY = 1
 private const val STATE_DONE = 2
 
-private const val PERMISSIONS_REQUEST_RECORD_AUDIO = 1
-
-class MainActivity : ComponentActivity(), RecognitionListener {
-    private var model: Model? = null
-    private var speechService: SpeechService? = null
-    private var _finishedLoading: MutableState<Int> = mutableStateOf(0)
+private const val URL_LARAVEL = "https://aalemotion.dei.estg.ipleiria.pt/api/"
+private const val WEBHOOK_RASA = "https://aalemotion.dei.estg.ipleiria.pt/webhooks/rest/webhook"
+class ConversationActivity : ComponentActivity(), RecognitionListener {
+    private lateinit var speechListener: SpeechListener
     private var _messages = mutableStateListOf<Message>()
     private var _message : MutableState<String> = mutableStateOf("")
     private var _microActive : MutableState<Boolean> = mutableStateOf(true)
+    private val utils = Others()
+    private val httpRequests = HTTPRequests()
+    private val scope = CoroutineScope(Dispatchers.Main)
+    private lateinit var sharedPreferences : SharedPreferences
+    private var _finishedLoading: MutableState<Int> = mutableStateOf(0)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        checkPermission()
+        sharedPreferences = getSharedPreferences("ERNUI", Context.MODE_PRIVATE)
+        speechListener = SpeechListener(sharedPreferences)
+        speechListener.checkPermission(this, applicationContext)
+
         setContent {
             ChatbotERNUITheme {
                 if(_finishedLoading.value != STATE_DONE){
                     if(_finishedLoading.value != STATE_READY){
                         LoadScreen()
                     }else{
-                        recognizeMicrophone()
+                        speechListener.recognizeMicrophone(this)
+                    }
+                    if(_microActive.value){
+                        speechListener.recognizeMicrophone(this)
                     }
                 }else{
                     MainScreen()
@@ -70,63 +67,17 @@ class MainActivity : ComponentActivity(), RecognitionListener {
             }
         }
    }
-    private fun checkPermission(){
-        // Check if user has given permission to record audio, init the model after permission is granted
-        val permissionCheck = ContextCompat.checkSelfPermission(
-            applicationContext, Manifest.permission.RECORD_AUDIO
-        )
-        if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.RECORD_AUDIO),
-                PERMISSIONS_REQUEST_RECORD_AUDIO
-            )
-        } else {
-            initModel()
-        }
-    }
-    private fun recognizeMicrophone() {
-        if (speechService == null) {
-            try {
-                val rec = Recognizer(model, 16000.0f)
-                speechService = SpeechService(rec, 16000.0f)
-                speechService!!.startListening(this)
-                setUiState(STATE_DONE)
-            } catch (e: IOException) {
-                setErrorState(e.message)
-            }
-        }
-    }
-    private fun initModel() {
-        StorageService.unpack(applicationContext, "model-pt", "model",
-            { model: Model? ->
-                this.model = model
-                setUiState(STATE_READY)
-            }
-        ) { exception: IOException -> setErrorState("Failed to unpack the model" + exception.message) }
-    }
-    private fun setErrorState(message: String?) {
-        print(message)
-    }
-    private fun setUiState(state: Int) {
-        when (state) {
-            STATE_READY -> {
-                _finishedLoading.value = STATE_READY
-            }
-            STATE_DONE -> {
-                _finishedLoading.value = STATE_DONE
-            }
-            else -> throw IllegalStateException("Unexpected value: $state")
-        }
-    }
+
     public override fun onDestroy() {
         super.onDestroy()
-        if (speechService != null) {
-            speechService!!.stop()
-            speechService!!.shutdown()
-        }
+        speechListener.stopSpeechService()
     }
-    override fun onResult(hypothesis: String) {
+
+    override fun onPartialResult(hypothesis: String?) {
+        // Nothing
+    }
+
+    override fun onResult(hypothesis: String?) {
         val result = JSONObject(hypothesis)
         var confs = emptyArray<Double>()
         val wordsConfs: JSONArray
@@ -139,53 +90,63 @@ class MainActivity : ComponentActivity(), RecognitionListener {
             val word = wordsConfs.getJSONObject(i)
             confs = confs.plus(word.get("conf").toString().toDouble())
         }
-        val medianAccuracy = calculateRootMeanSquare(confs)
-
-        var transcription = result.getString("text")
-        _messages.add(Message(id = _messages.size.toLong()+1, text = transcription, client_id ="1", accuracy = medianAccuracy, isChatbot = false))
-        chatbotResponse(accuracy = medianAccuracy)
+        val medianAccuracy = utils.calculateRootMeanSquare(confs)
+        val transcription = result.getString("text")
+        _messages.add(Message(id = _messages.size.toLong()+1, text = transcription, isChatbot = false))
+        //chatbotResponse(transcription = transcription, accuracy = medianAccuracy)
     }
-    private fun calculateRootMeanSquare(values: Array<Double>): Double {
 
-        var square : Double = 0.0
-        val root : Double
-        // Calculate square.
-        for (value in values) {
-            square += value.pow(2.0)
+    override fun onFinalResult(hypothesis: String?) {
+        // Nothing
+    }
+
+    override fun onError(exception: Exception?) {
+        if (exception != null) {
+            utils.setErrorState(exception.message)
         }
-        // Calculate Mean.
-        val mean : Double = square / values.size.toFloat()
-        // Calculate Root.
-        root = sqrt(mean)
-        return root
     }
-    override fun onFinalResult(hypothesis: String) {
-        // nothing
-    }
-    override fun onPartialResult(hypothesis: String) {
-        // nothing
-    }
-    override fun onError(e: Exception) {
-        setErrorState(e.message)
-    }
+
     override fun onTimeout() {
-        setUiState(STATE_DONE)
+        // got quiet after a long while
+        _finishedLoading.value = STATE_DONE
     }
-    private fun chatbotResponse(accuracy: Double){
-        if(accuracy < 0.80){
-            _messages.add(Message(id = _messages.size.toLong()+1, text = "Não entendi quase nada, repita por favor", isChatbot = true))
+    private fun chatbotResponse(transcription: String, accuracy: Double=-1.0){
+        if (accuracy != -1.0 && accuracy < 80){
+            _messages.add(Message(id = _messages.size.toLong()+1, text = "Por favor, repita o que disse.", isChatbot = false))
+        }
+        val response = sendRasaServer(transcription)
+        val messages = JSONArray(response)
+        for (i in 0 until messages.length()) {
+            val message = JSONObject(messages[i].toString())
+            _messages.add(Message(id = _messages.size.toLong()+1, text = message["text"] as String?, isChatbot = false))
         }
     }
-    private fun checkTime(time: LocalDateTime): DateTimeFormatter {
-        val now = LocalDateTime.now()
-        val duration = Duration.between(time, now)
-        if(duration.toDays() <= 1){
-            return DateTimeFormatter.ofPattern("H:mm")
+    private fun refreshAccessToken(){
+        val body = JSONObject()
+        body.put("email",sharedPreferences.getString("username", ""))
+        body.put("password",sharedPreferences.getString("password", ""))
+        val context = this
+        scope.launch {
+            val response = httpRequests.request("POST", URL_LARAVEL, body.toString())
+            val data = JSONObject(response["data"].toString())
+            utils.addStringToStore(sharedPreferences,"access_token", data["access_token"].toString())
         }
-        if(duration.toDays() in 2..7){
-            return DateTimeFormatter.ofPattern("E H:mm")
+    }
+    private fun sendRasaServer(transcription: String): JSONObject? {
+        val messageRasa = JSONObject()
+        messageRasa.put("sender", sharedPreferences.getString("username", ""))
+        messageRasa.put("message", transcription)
+        messageRasa.put("metadata", JSONObject().put("token",sharedPreferences.getString("access_token", "")))
+        var response: JSONObject? = null
+        scope.launch {
+            response = httpRequests.request("POST",WEBHOOK_RASA,messageRasa.toString())
+            val code = response!!.getInt("status_code")
+            if(code == 403 || code == 401){
+                refreshAccessToken()
+                sendRasaServer(transcription)
+            }
         }
-        return DateTimeFormatter.ofPattern("dd-MM-yyyy H:mm")
+        return response
     }
     @Composable
     private fun LoadScreen(){
@@ -215,7 +176,7 @@ class MainActivity : ComponentActivity(), RecognitionListener {
                 reverseLayout = true
         ) {
         items(_messages.reversed()) { chat ->
-                val simpleDateFormat = checkTime(chat.time)
+                val simpleDateFormat = utils.checkTime(chat.time)
                 MessageItem(
                     messageText = chat.text,
                     time = simpleDateFormat.format(chat.time),
@@ -319,11 +280,12 @@ class MainActivity : ComponentActivity(), RecognitionListener {
                         Message(
                             id = _messages.size.toLong() + 1,
                             text = _message.value,
-                            client_id = "1",
                             isChatbot = false
                         )
                     )
+                    chatbotResponse(transcription = _message.value)
                     _message.value = ""
+
                 }
                 .align(Alignment.CenterVertically)
                 .size(35.dp)
@@ -366,19 +328,17 @@ class MainActivity : ComponentActivity(), RecognitionListener {
     @Composable
     fun MainScreen() {
         Column(
-            modifier = Modifier.fillMaxSize(),
-          //  verticalArrangement = Arrangement.SpaceBetween
+            modifier = Modifier.fillMaxSize()
         ) {
             TopBar("Chatbot")
             ChatSection(Modifier.weight(1f))
             if(!_microActive.value){
+                //stop recording
+                onDestroy()
                 MessageSection()
-            }else{
-                recognizeMicrophone()
             }
         }
     }
-
     @Preview(showBackground = true)
     @Composable
     fun AppPreview(){

@@ -1,4 +1,4 @@
-/*     */ package vosk;
+/*     */ package pt.ipleiria.estg.ciic.chatboternui.utils;
 /*     */
 /*     */ import android.annotation.SuppressLint;
 import android.media.AudioRecord;
@@ -6,7 +6,7 @@ import android.media.AudioRecord;
 /*     */ import android.os.Looper;
 /*     */ import java.io.IOException;
 /*     */ import org.vosk.Recognizer;
-          import org.vosk.android.RecognitionListener;
+/*     */ import org.vosk.android.RecognitionListener;
 /*     */
 /*     */
 /*     */
