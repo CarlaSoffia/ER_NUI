@@ -1,7 +1,9 @@
 package pt.ipleiria.estg.ciic.chatboternui
 
+import android.Manifest
 import android.content.Context
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -18,24 +20,30 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import okio.IOException
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
+import org.vosk.Model
+import org.vosk.Recognizer
 import org.vosk.android.RecognitionListener
+import org.vosk.android.StorageService
 import pt.ipleiria.estg.ciic.chatboternui.models.Message
 import pt.ipleiria.estg.ciic.chatboternui.ui.theme.*
 import pt.ipleiria.estg.ciic.chatboternui.utils.*
 
 private const val STATE_READY = 1
 private const val STATE_DONE = 2
+private const val PERMISSIONS_REQUEST_RECORD_AUDIO = 1
 
 private const val URL_LARAVEL = "https://aalemotion.dei.estg.ipleiria.pt/api/"
 private const val WEBHOOK_RASA = "https://aalemotion.dei.estg.ipleiria.pt/webhooks/rest/webhook"
 class ConversationActivity : ComponentActivity(), RecognitionListener {
-    private lateinit var speechListener: SpeechListener
     private var _messages = mutableStateListOf<Message>()
     private var _message : MutableState<String> = mutableStateOf("")
     private var _microActive : MutableState<Boolean> = mutableStateOf(true)
@@ -43,23 +51,20 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
     private val httpRequests = HTTPRequests()
     private val scope = CoroutineScope(Dispatchers.Main)
     private lateinit var sharedPreferences : SharedPreferences
+    private var model: Model? = null
+    private var speechService: SpeechService? = null
     private var _finishedLoading: MutableState<Int> = mutableStateOf(0)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        checkPermission()
         sharedPreferences = getSharedPreferences("ERNUI", Context.MODE_PRIVATE)
-        speechListener = SpeechListener(sharedPreferences)
-        speechListener.checkPermission(this, applicationContext)
-
         setContent {
             ChatbotERNUITheme {
                 if(_finishedLoading.value != STATE_DONE){
                     if(_finishedLoading.value != STATE_READY){
                         LoadScreen()
                     }else{
-                        speechListener.recognizeMicrophone(this)
-                    }
-                    if(_microActive.value){
-                        speechListener.recognizeMicrophone(this)
+                        recognizeMicrophone()
                     }
                 }else{
                     MainScreen()
@@ -67,17 +72,55 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
             }
         }
    }
-
+    private fun recognizeMicrophone() {
+        if (speechService == null) {
+            try {
+                val rec = Recognizer(model, 16000.0f)
+                speechService = SpeechService(rec, 16000.0f)
+                speechService!!.startListening(this)
+                _finishedLoading.value = STATE_DONE
+            } catch (e: IOException) {
+                utils.setErrorState(e.message)
+            }
+        }
+    }
+    private fun checkPermission(){
+        // Check if user has given permission to record audio, init the model after permission is granted
+        val permissionCheck = ContextCompat.checkSelfPermission(
+            applicationContext, Manifest.permission.RECORD_AUDIO
+        )
+        println(permissionCheck != PackageManager.PERMISSION_GRANTED)
+        if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.RECORD_AUDIO),
+                PERMISSIONS_REQUEST_RECORD_AUDIO
+            )
+        } else {
+            initModel()
+        }
+    }
+    private fun initModel() {
+        StorageService.unpack(applicationContext, "model-pt", "model",
+            { model: Model? ->
+                this.model = model
+                _finishedLoading.value = STATE_READY
+            }
+        ) { exception: IOException -> utils.setErrorState("Failed to unpack the model" + exception.message) }
+    }
     public override fun onDestroy() {
         super.onDestroy()
-        speechListener.stopSpeechService()
+        if (speechService != null) {
+            speechService!!.stop()
+            speechService!!.shutdown()
+        }
     }
 
-    override fun onPartialResult(hypothesis: String?) {
+    override fun onPartialResult(hypothesis: String) {
         // Nothing
     }
 
-    override fun onResult(hypothesis: String?) {
+    override fun onResult(hypothesis: String) {
         val result = JSONObject(hypothesis)
         var confs = emptyArray<Double>()
         val wordsConfs: JSONArray
@@ -90,7 +133,7 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
             val word = wordsConfs.getJSONObject(i)
             confs = confs.plus(word.get("conf").toString().toDouble())
         }
-        val medianAccuracy = utils.calculateRootMeanSquare(confs)
+        //val medianAccuracy = utils.calculateRootMeanSquare(confs)
         val transcription = result.getString("text")
         _messages.add(Message(id = _messages.size.toLong()+1, text = transcription, isChatbot = false))
         //chatbotResponse(transcription = transcription, accuracy = medianAccuracy)
@@ -125,7 +168,6 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
         val body = JSONObject()
         body.put("email",sharedPreferences.getString("username", ""))
         body.put("password",sharedPreferences.getString("password", ""))
-        val context = this
         scope.launch {
             val response = httpRequests.request("POST", URL_LARAVEL, body.toString())
             val data = JSONObject(response["data"].toString())
@@ -243,6 +285,7 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
             }
         }
     }
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun MessageSection() {
         Row(modifier = Modifier
@@ -333,9 +376,10 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
             TopBar("Chatbot")
             ChatSection(Modifier.weight(1f))
             if(!_microActive.value){
-                //stop recording
                 onDestroy()
                 MessageSection()
+            }else {
+                recognizeMicrophone()
             }
         }
     }

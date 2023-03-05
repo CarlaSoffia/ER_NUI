@@ -47,12 +47,13 @@ class Others {
         editor.putString(key, value)
         editor.apply()
     }
-    fun addIntToStore(sharedPreferences:SharedPreferences, key: String, value: Int){
-        val editor = sharedPreferences.edit()
-        editor.putInt(key, value)
-        editor.apply()
-    }
     fun setErrorState(message: String?) {
         println(message)
+    }
+
+    fun startDetailActivity(context: Context, activityClass: Class<*>) {
+        val intent = Intent(context, activityClass)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        context.startActivity(intent)
     }
 }

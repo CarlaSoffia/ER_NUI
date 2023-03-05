@@ -6,10 +6,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Button
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
@@ -47,11 +44,12 @@ class LoginActivity : ComponentActivity() {
         setContent {
             ChatbotERNUITheme {
                if(sharedPreferences.getString("access_token","") != ""){
-                   // Start new activity here
+                   utils.startDetailActivity(applicationContext,ConversationActivity::class.java)
                 }else{
                    LoginScreen()
                }
             }
+
         }
     }
     private fun submitLogin(){
@@ -74,12 +72,13 @@ class LoginActivity : ComponentActivity() {
                 utils.addStringToStore(sharedPreferences,"username", _username.value)
                 utils.addStringToStore(sharedPreferences,"password", _password.value)
                 utils.addStringToStore(sharedPreferences,"access_token", data["access_token"].toString())
-                // Start new activity here
+                utils.startDetailActivity(applicationContext,ConversationActivity::class.java)
             }catch (ex : JSONException){
                 _response.value = "Email ou password inválidos."
             }
         }
     }
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun LoginScreen() {
         Column(
@@ -101,7 +100,7 @@ class LoginActivity : ComponentActivity() {
                 value = _username.value,
                 textStyle = TextStyle.Default.copy(fontSize = Typography.bodyLarge.fontSize),
                 onValueChange = { _username.value = it },
-                label = { Text(text = "Email") },
+                label = { Text(text = "Email", fontSize = Typography.bodyLarge.fontSize) },
                 placeholder = {
                     Text("Insira o seu email", fontSize = Typography.bodyLarge.fontSize, color = LightColorScheme.surface)
                 },
@@ -114,7 +113,7 @@ class LoginActivity : ComponentActivity() {
                 ),
                 value = _password.value,
                 onValueChange = { _password.value = it },
-                label = { Text(text = "Password") },
+                label = { Text(text = "Password", fontSize = Typography.bodyLarge.fontSize) },
                 placeholder = {
                     Text("Insira a sua Password", fontSize = Typography.bodyLarge.fontSize, color = LightColorScheme.surface)
                 },
@@ -124,7 +123,7 @@ class LoginActivity : ComponentActivity() {
             if(_response.value.isNotEmpty()){
                 Text(
                     text = _response.value,
-                    fontSize = 20.sp,
+                    fontSize = Typography.bodyLarge.fontSize,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(bottom = 32.dp)
                 )
@@ -134,7 +133,7 @@ class LoginActivity : ComponentActivity() {
                 modifier = Modifier.width(200.dp)
             ) {
                 Text(text = "Login",
-                    fontSize = 20.sp,
+                    fontSize = Typography.bodyLarge.fontSize,
                     fontWeight = FontWeight.Bold)
             }
         }
