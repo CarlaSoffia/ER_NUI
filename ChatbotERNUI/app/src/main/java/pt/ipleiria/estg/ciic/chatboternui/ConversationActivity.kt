@@ -155,6 +155,7 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
     private fun chatbotResponse(transcription: String, accuracy: Double=-1.0){
         if (accuracy != -1.0 && accuracy < 80){
             _messages.add(Message(id = _messages.size.toLong()+1, text = "Por favor, repita o que disse.", isChatbot = true))
+            return
         }
         val response = sendRasaServer(transcription)
         val messages :JSONArray = response["data"] as JSONArray
