@@ -22,9 +22,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
+import okhttp3.internal.wait
 import okio.IOException
 import org.json.JSONArray
 import org.json.JSONException
@@ -42,7 +41,7 @@ private const val STATE_DONE = 2
 private const val PERMISSIONS_REQUEST_RECORD_AUDIO = 1
 
 private const val URL_LARAVEL = "https://aalemotion.dei.estg.ipleiria.pt/api/"
-private const val WEBHOOK_RASA = "https://aalemotion.dei.estg.ipleiria.pt/webhooks/rest/webhook"
+
 class ConversationActivity : ComponentActivity(), RecognitionListener {
     private var _messages = mutableStateListOf<Message>()
     private var _message : MutableState<String> = mutableStateOf("")
@@ -63,7 +62,7 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
                 if(_finishedLoading.value != STATE_DONE){
                     if(_finishedLoading.value != STATE_READY){
                         LoadScreen()
-                    }else{
+                    }else if(_microActive.value){
                         recognizeMicrophone()
                     }
                 }else{
@@ -89,7 +88,6 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
         val permissionCheck = ContextCompat.checkSelfPermission(
             applicationContext, Manifest.permission.RECORD_AUDIO
         )
-        println(permissionCheck != PackageManager.PERMISSION_GRANTED)
         if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(
                 this,
@@ -113,6 +111,7 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
         if (speechService != null) {
             speechService!!.stop()
             speechService!!.shutdown()
+            speechService = null
         }
     }
 
@@ -133,10 +132,10 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
             val word = wordsConfs.getJSONObject(i)
             confs = confs.plus(word.get("conf").toString().toDouble())
         }
-        //val medianAccuracy = utils.calculateRootMeanSquare(confs)
+        val medianAccuracy = utils.calculateRootMeanSquare(confs)
         val transcription = result.getString("text")
         _messages.add(Message(id = _messages.size.toLong()+1, text = transcription, isChatbot = false))
-        //chatbotResponse(transcription = transcription, accuracy = medianAccuracy)
+        chatbotResponse(transcription = transcription, accuracy = medianAccuracy)
     }
 
     override fun onFinalResult(hypothesis: String?) {
@@ -155,13 +154,13 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
     }
     private fun chatbotResponse(transcription: String, accuracy: Double=-1.0){
         if (accuracy != -1.0 && accuracy < 80){
-            _messages.add(Message(id = _messages.size.toLong()+1, text = "Por favor, repita o que disse.", isChatbot = false))
+            _messages.add(Message(id = _messages.size.toLong()+1, text = "Por favor, repita o que disse.", isChatbot = true))
         }
         val response = sendRasaServer(transcription)
-        val messages = JSONArray(response)
+        val messages :JSONArray = response["data"] as JSONArray
         for (i in 0 until messages.length()) {
             val message = JSONObject(messages[i].toString())
-            _messages.add(Message(id = _messages.size.toLong()+1, text = message["text"] as String?, isChatbot = false))
+            _messages.add(Message(id = _messages.size.toLong()+1, text = message["text"] as String?, isChatbot = true))
         }
     }
     private fun refreshAccessToken(){
@@ -174,20 +173,20 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
             utils.addStringToStore(sharedPreferences,"access_token", data["access_token"].toString())
         }
     }
-    private fun sendRasaServer(transcription: String): JSONObject? {
+    private fun sendRasaServer(transcription: String): JSONObject {
         val messageRasa = JSONObject()
         messageRasa.put("sender", sharedPreferences.getString("username", ""))
         messageRasa.put("message", transcription)
         messageRasa.put("metadata", JSONObject().put("token",sharedPreferences.getString("access_token", "")))
-        var response: JSONObject? = null
-        scope.launch {
-            response = httpRequests.request("POST",WEBHOOK_RASA,messageRasa.toString())
-            val code = response!!.getInt("status_code")
-            if(code == 403 || code == 401){
-                refreshAccessToken()
-                sendRasaServer(transcription)
+        var response: JSONObject = JSONObject()
+        runBlocking {
+                response = httpRequests.requestRasa(messageRasa.toString())
+                val code = response["status_code"]
+                if(code == 403 || code == 401){
+                    refreshAccessToken()
+                    response = sendRasaServer(transcription)
+                }
             }
-        }
         return response
     }
     @Composable

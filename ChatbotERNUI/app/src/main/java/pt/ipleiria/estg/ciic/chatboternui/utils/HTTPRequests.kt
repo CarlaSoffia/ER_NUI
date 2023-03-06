@@ -3,33 +3,45 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.*
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 
-
+private const val WEBHOOK_RASA = "https://aalemotion.dei.estg.ipleiria.pt/webhooks/rest/webhook"
 class HTTPRequests {
     private val utils = Others()
+    suspend fun requestRasa(body:String): JSONObject{
+        return withContext(Dispatchers.IO) {
+            if (body.isEmpty()) {
+                throw IllegalArgumentException("[Error] - POST Request must have a body");
+            }
+            val requestBody = body.toRequestBody()
+            val okHttpClient = OkHttpClient()
+            val request = Request.Builder()
+                .method("POST", requestBody)
+                .addHeader("Content-Type", "application/json")
+                .addHeader("Accept", "application/json")
+                .url(WEBHOOK_RASA)
+                .build()
 
+            val response = okHttpClient.newCall(request).execute()
+            val result = JSONObject()
+            result.put("status_code", response.code)
+            val data = JSONArray(response.body?.string()!!)
+            result.put("data", data)
+        }
+    }
     suspend fun request(requestMethod:String,apiURL:String,body:String="",token:String=""): JSONObject{
         return withContext(Dispatchers.IO) {
             if (requestMethod != "GET" && body.isEmpty()) {
                 throw IllegalArgumentException("[Error] - $requestMethod Request must have a body");
             }
-            val isRasa = apiURL.contains("webhooks")
             val isAuth = apiURL.contains("login")
-            if (!isRasa && !isAuth && token.isEmpty()) {
+            if (!isAuth && token.isEmpty()) {
                 throw IllegalArgumentException("[Error] - $requestMethod Request must have a token");
             }
             val okHttpClient = OkHttpClient()
-            val request: Request = if (isRasa) {
-                val requestBody = body.toRequestBody()
-                Request.Builder()
-                    .method(requestMethod, requestBody)
-                    .addHeader("Content-Type", "application/json")
-                    .addHeader("Accept", "application/json")
-                    .url(apiURL)
-                    .build()
-            } else if (requestMethod != "GET" && !isAuth) {
+            val request: Request = if (requestMethod != "GET" && !isAuth) {
                 val requestBody = body.toRequestBody()
                 Request.Builder()
                     .method(requestMethod, requestBody)
@@ -54,7 +66,6 @@ class HTTPRequests {
                     .build()
             }
             // Use the OkHttp client to make an asynchronous request
-            okHttpClient.newCall(request)
             val response = okHttpClient.newCall(request).execute()
             val result = JSONObject()
             result.put("status_code", response.code)
