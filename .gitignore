@@ -14,7 +14,7 @@ ChatbotERNUI/.externalNativeBuild
 ChatbotERNUI/.cxx
 ChatbotERNUI/local.properties
 ChatbotERNUI/models
-ChatbotERNUI/app/src/ml
+ChatbotERNUI/app/src/main/ml
 ChatbotBackend/.rasa
 ChatbotBackend/models
 
