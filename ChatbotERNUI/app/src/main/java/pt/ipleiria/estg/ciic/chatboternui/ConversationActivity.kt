@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.*
-import okhttp3.internal.wait
 import okio.IOException
 import org.json.JSONArray
 import org.json.JSONException
@@ -179,7 +178,7 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
         messageRasa.put("sender", sharedPreferences.getString("username", ""))
         messageRasa.put("message", transcription)
         messageRasa.put("metadata", JSONObject().put("token",sharedPreferences.getString("access_token", "")))
-        var response: JSONObject = JSONObject()
+        var response: JSONObject
         runBlocking {
                 response = httpRequests.requestRasa(messageRasa.toString())
                 val code = response["status_code"]

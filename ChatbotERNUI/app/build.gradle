@@ -5,6 +5,9 @@ plugins {
 repositories {
     google()
     mavenCentral()
+    maven {
+        url "https://repo1.maven.org/maven2/org/tensorflow/tensorflow-lite/"
+    }
 }
 android {
     namespace 'pt.ipleiria.estg.ciic.chatboternui'
@@ -60,9 +63,6 @@ dependencies {
     implementation 'androidx.databinding:databinding-runtime:7.1.2'
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4"
     implementation "com.squareup.okhttp3:okhttp:4.9.3"
-    implementation 'org.tensorflow:tensorflow-lite-support:0.1.0'
-    implementation 'org.tensorflow:tensorflow-lite-metadata:0.1.0'
-    implementation 'org.tensorflow:tensorflow-lite-gpu:2.3.0'
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
