@@ -11,45 +11,106 @@ from typing import Any, Text, Dict, List
 import random
 
 #
+import os
+import json
+import time
+import glob
+import pickle
+import requests
+from tensorflow import keras
+from datetime import datetime
+from dotenv import load_dotenv
 from rasa_sdk import Action, Tracker
 from rasa_sdk.executor import CollectingDispatcher
-from rasa_sdk.events import SlotSet, SessionStarted, ActionExecuted, EventType
 from rasa_sdk import Tracker, FormValidationAction
-import requests
-import os
-from dotenv import load_dotenv
-import json
-import datetime
+from keras.preprocessing.sequence import pad_sequences
+from rasa_sdk.events import SlotSet, ActionExecuted, EventType
 
-#
+
 load_dotenv()
 API_URL = str(os.getenv('API_URL'))
+models_dir = glob.glob(os.path.join('./SA/', '*.h5'))
+models_dir = sorted(models_dir, reverse=True)
+MODEL_NAME = models_dir[0]
+num_words = 10000
+POS = 0
+NEG = 1
+NEU = 2
+LABELS = ["angry","disgust","fear","guilt","happy","sad","shame"]# some labels changed but position remains -> anger, disgust, fear, guilt, joy, sadness, shame
 
-def request(type, url, token, data=None):
+######################################################### FUNCTIONS #########################################################
+# Function: Sends request to LARAVEL API
+def request(type, url, token, data=None, ContentJson=True):
     if token == None:
         return "[Error] - No token"   
-    if data != None:
+    if data != None and ContentJson:
         headers = {"Authorization": "Bearer " + str(token), "Accept": "application/json", 'Content-Type': 'application/json'}
+        r = requests.request(type, API_URL+url, headers=headers, data=data)
+    elif ContentJson==False:
+        headers = {"Authorization": "Bearer " + str(token), "Accept": "application/json"}
         r = requests.request(type, API_URL+url, headers=headers, data=data)
     else:
         headers = {"Authorization": "Bearer " + str(token), "Accept": "application/json"}
         r = requests.request(type, API_URL+url, headers=headers)   
-    if r.status_code == 403 or r.status_code == 401:
-        return "[Error]["+str(r.status_code)+"] - Invalid token"  + str(r.json())
+    if r.status_code == 403 or r.status_code == 401 or r.status_code == 422:
+        return "[Error]["+str(r.status_code)+"] - "  + str(r.json()["message"])
     return r.json()["data"]
 
-def has_week_passed(date):
-    date = datetime.datetime.fromtimestamp(date).date()
-    # Get the current date
-    current_date = datetime.date.today()
-    # Calculate the difference in days between the input date and the current date
-    days_passed = (current_date - date).days
-    # Check if a week has passed (7 days or more)
-    if days_passed >= 7:
+# Function: Handles iteration    
+def requestIteration(token, macAddress, group):
+    message = request("POST","iterations",token,json.dumps({'macAddress': macAddress,'emotion':group,"type":'best'}))
+    if str(message).find("[Error]") == -1:
+         return {"id":message["id"],"usage_id":message["usage_id"]},""
+    return {},message
+
+# Function: Handles speech
+def requestSpeech(id, usage_id, accuracy, text, predictions, macAddress, group, token, iteration={}):
+    date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    payload = {'iteration_id':str(id), 'iteration_usage_id':str(usage_id), 'datesSpeeches[0]': str(date), 'accuraciesSpeeches[0]':str(accuracy), 'textsSpeeches[0]': text, 'preditionsSpeeches[0]':predictions}
+    # Send speech to LARAVEL API
+    message = request("POST","speeches",token,payload,False)  
+    if str(message).find("[Error]") != -1:
+        # Invalid usage_id -> need to create newnteration
+        if str(message).find("iteration usage id") != -1:
+            iteration, error = requestIteration(token, macAddress, group)  
+            # Error in POST iteration
+            if iteration == {}:
+                return error, {}
+            else:
+                return requestSpeech(iteration["id"], iteration["usage_id"], accuracy, text, predictions, macAddress, group, token, iteration)
+    return message, iteration
+
+# Function: Verifies if a week has passed from a given epoch time
+def has_week_passed(epoch_time):
+    now = time.time()
+    if (now - epoch_time) >= 604800:
         return True
     else:
         return False
 
+# Function: Predicts emotion based on text
+def predictSentiment(text):
+    sentiment={}
+    model = keras.models.load_model(MODEL_NAME)    
+    with open('./SA/tokenizer.pickle', 'rb') as handle:
+        tokenizer = pickle.load(handle)
+    text_sequence = tokenizer.texts_to_sequences([text])
+    text_padded = pad_sequences(text_sequence, maxlen=num_words, padding='post', truncating='post')
+
+    predictions = model.predict(text_padded)[0]
+    maxVal = predictions.argmax()
+    sentiment["accuracy"] =  float("{:.2f}".format(predictions[maxVal]*100))
+    sentiment["emotion"] = LABELS[maxVal]
+    sentiment["predictions"] = ""
+    for idx,pred in enumerate(predictions):
+        emotion = LABELS[idx]
+        sentiment["predictions"] += emotion + "#" + "{:.2f}".format(pred*100) +";"
+    sentiment["predictions"] = sentiment["predictions"][:-1]    
+    return sentiment
+
+########################################################### ATIONS ###########################################################
+
+# Action: Verify if questionnaire must be filled again - 1 week interval 
 class ActionSessionStart(Action):
     def name(self) -> Text:
         return "action_session_start"
@@ -60,17 +121,17 @@ class ActionSessionStart(Action):
 
         # Your action code goes here
         # the session should begin with a `session_started` event
-        token = tracker.get_slot("session_started_metadata")["token"]
+        token = (tracker.events[0]["value"]["token"])
         if token != None: 
             lastDateQuestionnaire = request("GET","geriatricQuestionnaires",token)
             if str(lastDateQuestionnaire).find("[Error]") == -1:
                 if len(lastDateQuestionnaire) == 0:
-                    return [SlotSet("token",token), SlotSet("finishedQuestionnaire",False),ActionExecuted("action_listen")]
-                weekPassedSinceLastQuestionnaire = has_week_passed(lastDateQuestionnaire[0]["created_at"])
-                if weekPassedSinceLastQuestionnaire:
-                    return [SlotSet("token",token), SlotSet("finishedQuestionnaire",False),ActionExecuted("action_listen")]                 
-            return [SlotSet("token",token),ActionExecuted("action_listen")] 
-        return ActionExecuted("action_listen")
+                    return [SlotSet("finishedQuestionnaire",False),ActionExecuted("action_listen")]
+                else:
+                    weekPassedSinceLastQuestionnaire = has_week_passed(lastDateQuestionnaire[0]["created_at"])
+                    if weekPassedSinceLastQuestionnaire:
+                        return [SlotSet("finishedQuestionnaire",False),ActionExecuted("action_listen")]         
+        return [ActionExecuted("action_listen")]
     
 # Action: Submit the form
 class ActionSubmitQuestionForm(Action):
@@ -83,7 +144,7 @@ class ActionSubmitQuestionForm(Action):
         responses = []
         for res in tracker.get_slot("responses"):
             responses.append(str(res).replace("'","\""))
-        token = tracker.get_slot("token")   
+        token = (tracker.latest_message)["metadata"]["token"] 
         message = request("POST","geriatricQuestionnaires",token,json.dumps({"points":tracker.get_slot("depressionQuestionnairePoints"),"responses":responses}))
         if str(message).find("[Error]") == -1:
             SlotSet("responses",None)
@@ -91,7 +152,6 @@ class ActionSubmitQuestionForm(Action):
             SlotSet("finishedQuestionnaire",False)
             SlotSet("response_question",None)
             SlotSet("why_question",None)
-            
         dispatcher.utter_message(str(message))
         
 # Action: Ask Why for Question
@@ -106,6 +166,7 @@ class ActionAskWhyQuestion(Action):
          idx = random.randint(0,len(questions)-1)
          dispatcher.utter_message(questions[idx])
          return []
+
 # Action: Dynamically show questions 
 class AskQuestionQuestionnaire(Action):
     def name(self) -> Text:
@@ -137,6 +198,7 @@ class AskQuestionQuestionnaire(Action):
         if idx > 14:
             return []
         dispatcher.utter_message(questions[idx])
+
 # Action: Responds to the user greeting
 class RespondGreeting(Action):
     def name(self) -> Text:
@@ -224,3 +286,42 @@ class ActionRetrieveEntities(Action):
         for entity in entities:
             dispatcher.utter_message(f"Entity: {entity['entity']}, Value: {entity['value']}")
         return []
+
+# Action: apply sentiment analysis model to every user input
+class CustomActionListen(Action):
+    def name(self) -> Text:
+        return "action_listen"
+
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        text = (tracker.latest_message)['text']
+        if text == None:
+            return [ActionExecuted("action_listen")]
+        sentiment = predictSentiment(text)
+
+        token = (tracker.latest_message)["metadata"]["token"]
+        macAddress = (tracker.latest_message)["metadata"]["macAddress"]
+        iterations = tracker.get_slot("iterations")
+        if sentiment["emotion"] == "happy":
+            group = "Positive"
+            idx = POS
+        elif sentiment["emotion"] == "shame":
+            group = "Neutral"
+            idx = NEU
+        else:
+            group = "Negative"
+            idx = NEG
+        if iterations == None: 
+            iterations = [{},{},{}] 
+        if iterations[idx] == {}: 
+            iterations[idx], error = requestIteration(token, macAddress, group)
+            if iterations[idx] == {}:
+                dispatcher.utter_message(error)
+                return [ActionExecuted("action_listen")]
+        id = iterations[idx]["id"]
+        usage_id = iterations[idx]["usage_id"]
+        message, iteration = requestSpeech(id, usage_id, sentiment["accuracy"], text, sentiment["predictions"], macAddress, group, token)
+        if iteration != {}:
+            iterations[idx] = iteration
+        return [SlotSet("iterations",iterations),ActionExecuted("action_listen")]   
