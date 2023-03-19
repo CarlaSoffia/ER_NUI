@@ -347,19 +347,12 @@ class CustomActionListen(Action):
     def run(self, dispatcher: CollectingDispatcher,
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
-        insideQuestionnaire = False
-        lastUserMessage = -1
-        for idx, event in enumerate(tracker.events):
-            if event.get("event")=="user":
-                lastUserMessage = idx 
-                
-        for idx, event in enumerate(tracker.events):
-            if event.get("event")=="action" and (event.get("name")=="utter_begin_questionnaire" or event.get("name")=="submit_question_form" or event.get("name")=="question_form") and lastUserMessage > idx:
-                insideQuestionnaire = True
-        
-        # Mid questionnaire - responses speeches are  not created here    
-        if insideQuestionnaire:
-            return [ActionExecuted("action_listen")]   
+        # Mid questionnaire - responses speeches are  not created here              
+        question_form = tracker.active_form.get("question_form")
+        if question_form:
+            return [ActionExecuted("action_listen")] 
+         
+        print("here") 
         text = (tracker.latest_message)['text'] 
         if text == None:
             return [ActionExecuted("action_listen")]
