@@ -75,10 +75,10 @@ def requestSpeech(id, usage_id, accuracy, text, predictions, macAddress, group, 
             iteration, error = requestIteration(token, macAddress, group)  
             # Error in POST iteration
             if iteration == {}:
-                return error, {}
+                return {}, {}, error
             else:
                 return requestSpeech(iteration["id"], iteration["usage_id"], accuracy, text, predictions, macAddress, group, token, iteration)
-    return message, iteration
+    return iteration, message, {}
 
 # Function: Verifies if a week has passed from a given epoch time
 def has_week_passed(epoch_time):
@@ -108,7 +108,19 @@ def predictSentiment(text):
     sentiment["predictions"] = sentiment["predictions"][:-1]    
     return sentiment
 
-########################################################### ATIONS ###########################################################
+# Function: Decides the group and idx based on the detected emotion
+def decideGroup(emotion):
+    if emotion == "happy":
+        return "Positive", POS
+    elif emotion == "shame":
+        return "Neutral", NEU
+    else:
+        return "Negative", NEG
+
+def questionToAsk(length):
+    if length % 2 == 0 and length >= 0 and length <= 28:
+        return (length // 2) + 1
+########################################################### ACTIONS ###########################################################
 
 # Action: Verify if questionnaire must be filled again - 1 week interval 
 class ActionSessionStart(Action):
@@ -129,8 +141,12 @@ class ActionSessionStart(Action):
                     return [SlotSet("finishedQuestionnaire",False),ActionExecuted("action_listen")]
                 else:
                     weekPassedSinceLastQuestionnaire = has_week_passed(lastDateQuestionnaire[0]["created_at"])
+                    # Repeat the questionnaire
                     if weekPassedSinceLastQuestionnaire:
-                        return [SlotSet("finishedQuestionnaire",False),ActionExecuted("action_listen")]         
+                        return [SlotSet("finishedQuestionnaire",False),ActionExecuted("action_listen")]      
+                    # Don't repeat the questionnaire
+                    else:
+                        return [SlotSet("finishedQuestionnaire",True),ActionExecuted("action_listen")]    
         return [ActionExecuted("action_listen")]
     
 # Action: Submit the form
@@ -143,17 +159,19 @@ class ActionSubmitQuestionForm(Action):
         # send to API
         responses = []
         for res in tracker.get_slot("responses"):
+            res = str(res).replace("'","\"")
+            res = str(res).replace("True","true")
+            res = str(res).replace("False","false")
             responses.append(str(res).replace("'","\""))
         token = (tracker.latest_message)["metadata"]["token"] 
         message = request("POST","geriatricQuestionnaires",token,json.dumps({"points":tracker.get_slot("depressionQuestionnairePoints"),"responses":responses}))
         if str(message).find("[Error]") == -1:
             SlotSet("responses",None)
             SlotSet("depressionQuestionnairePoints",0.0)
-            SlotSet("finishedQuestionnaire",False)
+            SlotSet("finishedQuestionnaire",True)
             SlotSet("response_question",None)
             SlotSet("why_question",None)
         dispatcher.utter_message(str(message))
-        
 # Action: Ask Why for Question
 class ActionAskWhyQuestion(Action):
     def name(self) -> Text:
@@ -174,7 +192,6 @@ class AskQuestionQuestionnaire(Action):
     def run(self, dispatcher: CollectingDispatcher,
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[EventType]:
-        
         questions = ["Sente-se satisfeito com a sua vida?",
                      "Abandonou muitos dos seus interesses e actividades?",
                      "Acha que falta significado na sua vida?",
@@ -194,7 +211,7 @@ class AskQuestionQuestionnaire(Action):
         if responses == None:
             idx = 0
         else:
-            idx = len(responses)
+            idx = questionToAsk(len(responses))-1
         if idx > 14:
             return []
         dispatcher.utter_message(questions[idx])
@@ -213,26 +230,6 @@ class ValidateQuestionForm(FormValidationAction):
     def name(self) -> Text:
         return "validate_question_form"
     
-    async def required_slots(
-        self,
-        domain_slots: List[Text],
-        dispatcher: CollectingDispatcher,
-        tracker: Tracker,
-        domain:  Dict[Text, Any],
-    ) -> List[Text]:
-        additional_slots = ["response_question"]
-        responses = tracker.get_slot("responses")
-        if responses == None:
-            return domain_slots
-        
-        size = len(responses)-1
-        response = responses[size]["response"]
-        idx = responses[size]["question"]
-        if idx == 0:
-            return domain_slots
-        additional_slots.append("why_question")
-        return additional_slots + domain_slots
-    
     def validate_response_question(
         self,
         slot_value: Any,
@@ -240,24 +237,54 @@ class ValidateQuestionForm(FormValidationAction):
         tracker: Tracker,
         domain:  Dict[Text, Any],
     ) -> Dict[Text, Any]:
+        if slot_value not in ["Sim","sim","Sim.","sim.", "Não.","não.", "Nao.", "nao.", "Não","não", "Nao", "nao"]:
+            return {"response_question": None}
+        
+        if slot_value in ["Sim","sim","Sim.","sim."]:
+            slot_value = "Sim"
+
+        if slot_value in ["Não.","não.", "Nao.", "nao.", "Não","não", "Nao", "nao"]:
+                    slot_value = "Não"
         responses = tracker.get_slot("responses")
         if responses == None : 
             responses = [] 
             question = 1
         else:
-            question = len(responses)+1
+            #for response in responses:
+            #    if response["is_why"] == False:
+            #        question = response["question"]
+            #question = question + 1
+            question = questionToAsk(len(responses))
         questionsPointsNo = [1,5,7,11,13]
-        
+        # Create speech --------
+        sentiment = predictSentiment(slot_value)
+        token = (tracker.latest_message)["metadata"]["token"]
+        macAddress = (tracker.latest_message)["metadata"]["macAddress"]
+        iterations = tracker.get_slot("iterations")
+        group, idx = decideGroup(sentiment["emotion"])
+        if iterations == None: 
+            iterations = [{},{},{}] 
+        if iterations[idx] == {}: 
+            iteration, error = requestIteration(token, macAddress, group)
+            if iteration == {}:
+                dispatcher.utter_message(error) 
+            else:
+               iterations[idx] = iteration           
+        iteration, message, error = requestSpeech(iterations[idx]["id"], iterations[idx]["usage_id"], sentiment["accuracy"], slot_value, sentiment["predictions"], macAddress, group, token)
+        if iteration != {}:
+            iterations[idx] = iteration
+        # -------------------
         newResponse = {
                         "question": question,
                         "response":slot_value,
-                        "why":""
+                        "speech_id":message["id"],
+                        "is_why": False
                     }
         responses.append(newResponse)
         if (slot_value == "Não" and question in questionsPointsNo) or (slot_value == "Sim" and question not in questionsPointsNo):
-            return {"response_question": slot_value,"responses": responses, "depressionQuestionnairePoints":tracker.get_slot("depressionQuestionnairePoints")+1.0, "why_question": None}
+            return {"iterations":iterations, "response_question": slot_value,"responses": responses, "depressionQuestionnairePoints":tracker.get_slot("depressionQuestionnairePoints")+1.0, "why_question": None}
         if (slot_value == "Sim" and question in questionsPointsNo) or (slot_value == "Não" and question not in questionsPointsNo):            
-            return {"response_question": slot_value,"responses": responses, "why_question": None}
+            return {"iterations":iterations, "response_question": slot_value,"responses": responses, "why_question": None}
 
     def validate_why_question(
         self,
@@ -266,13 +293,38 @@ class ValidateQuestionForm(FormValidationAction):
         tracker: Tracker,
         domain:  Dict[Text, Any],
     ) -> Dict[Text, Any]:
-        question = len(tracker.get_slot("responses"))
+        
+        # Create speech --------
+        sentiment = predictSentiment(slot_value)
+        token = (tracker.latest_message)["metadata"]["token"]
+        macAddress = (tracker.latest_message)["metadata"]["macAddress"]
+        iterations = tracker.get_slot("iterations")
+        group, idx = decideGroup(sentiment["emotion"])
+        if iterations == None: 
+            iterations = [{},{},{}] 
+        if iterations[idx] == {}: 
+            iteration, error = requestIteration(token, macAddress, group)
+            if iteration == {}:
+                dispatcher.utter_message(error)
+            else:
+                iterations[idx] = iteration      
+        iteration, message, error = requestSpeech(iterations[idx]["id"], iterations[idx]["usage_id"], sentiment["accuracy"], slot_value, sentiment["predictions"], macAddress, group, token)
+        if iteration != {}:
+            iterations[idx] = iteration
+        # -------------------
+        
         responses = tracker.get_slot("responses")
-        response = responses[question-1]["response"]            
-        responses[question-1]["why"] = slot_value
-        if question == 15:
-            return {"why_question": slot_value, "responses": responses, "response_question": response, "finishedQuestionnaire":True}
-        return {"why_question": slot_value, "responses": responses, "response_question": None,"finishedQuestionnaire":True}
+        last = len(responses)-1
+        newResponse = {
+                        "question": responses[last]["question"],
+                        "response":slot_value,
+                        "speech_id":message["id"],
+                        "is_why": True
+                    }
+        responses.append(newResponse)
+        if len(responses) == 30:
+            return {"iterations":iterations, "why_question": slot_value, "responses": responses, "response_question": slot_value, "finishedQuestionnaire":True}
+        return {"iterations":iterations, "why_question": slot_value, "responses": responses, "response_question": None,"finishedQuestionnaire":False}
     
 # Action: retrieve entities from text    
 class ActionRetrieveEntities(Action):
@@ -295,33 +347,38 @@ class CustomActionListen(Action):
     def run(self, dispatcher: CollectingDispatcher,
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
-        text = (tracker.latest_message)['text']
+        insideQuestionnaire = False
+        lastUserMessage = -1
+        for idx, event in enumerate(tracker.events):
+            if event.get("event")=="user":
+                lastUserMessage = idx 
+                
+        for idx, event in enumerate(tracker.events):
+            if event.get("event")=="action" and (event.get("name")=="utter_begin_questionnaire" or event.get("name")=="submit_question_form" or event.get("name")=="question_form") and lastUserMessage > idx:
+                insideQuestionnaire = True
+        
+        # Mid questionnaire - responses speeches are  not created here    
+        if insideQuestionnaire:
+            return [ActionExecuted("action_listen")]   
+        text = (tracker.latest_message)['text'] 
         if text == None:
             return [ActionExecuted("action_listen")]
         sentiment = predictSentiment(text)
-
         token = (tracker.latest_message)["metadata"]["token"]
         macAddress = (tracker.latest_message)["metadata"]["macAddress"]
         iterations = tracker.get_slot("iterations")
-        if sentiment["emotion"] == "happy":
-            group = "Positive"
-            idx = POS
-        elif sentiment["emotion"] == "shame":
-            group = "Neutral"
-            idx = NEU
-        else:
-            group = "Negative"
-            idx = NEG
+        group, idx = decideGroup(sentiment["emotion"])
         if iterations == None: 
             iterations = [{},{},{}] 
         if iterations[idx] == {}: 
-            iterations[idx], error = requestIteration(token, macAddress, group)
-            if iterations[idx] == {}:
-                dispatcher.utter_message(error)
+            iteration, error = requestIteration(token, macAddress, group)
+            if iteration == {}:
+                dispatcher.utter_message(str(error))
                 return [ActionExecuted("action_listen")]
-        id = iterations[idx]["id"]
-        usage_id = iterations[idx]["usage_id"]
-        message, iteration = requestSpeech(id, usage_id, sentiment["accuracy"], text, sentiment["predictions"], macAddress, group, token)
+            else:
+                iterations[idx] = iteration    
+        iteration, message, error = requestSpeech(iterations[idx]["id"], iterations[idx]["usage_id"], sentiment["accuracy"], text, sentiment["predictions"], macAddress, group, token)
         if iteration != {}:
             iterations[idx] = iteration
+        dispatcher.utter_message(str(message))
         return [SlotSet("iterations",iterations),ActionExecuted("action_listen")]   

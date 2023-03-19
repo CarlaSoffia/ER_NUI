@@ -32,17 +32,11 @@ slots:
 
   response_question:
     type: text
-    influence_conversation: true
     mappings:
-    - type: from_intent
-      value: Não
-      intent: Deny  
-    - type: from_intent
-      value: Sim
-      intent: Affirm
+    - type: from_text
       conditions:
-       - active_loop: question_form
-         requested_slot: response_question
+        - active_loop: question_form
+          requested_slot: response_question
 
   why_question:
     type: text
@@ -67,6 +61,7 @@ forms:
   question_form:
     required_slots:
       - response_question  
+      - why_question
 intents:
 - Greeting
 - Goodbye

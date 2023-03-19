@@ -34,3 +34,9 @@ policies:
 # # See https://rasa.com/docs/rasa/policies for more information.
 #   - name: MemoizationPolicy
   - name: RulePolicy
+    enable_fallback_prediction: False
+    
+session_config:
+  session_expiration_time: 60
+  carry_over_slots_to_new_session: true
+  auto_fill: false    
