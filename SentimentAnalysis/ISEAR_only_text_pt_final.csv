@@ -1,3 +1,4 @@
+sentiment;text
 joy;Senti felicidade durante o período de apaixonamento, cada vez que nos encontrávamos e especialmente quando não nos encontrávamos há muito tempo.
 fear;Quando estive envolvido num acidente de tráfico senti-me com medo.
 anger;Quando estava a conduzir para casa depois de vários dias de trabalho árduo, um condutor à minha frente, que estava a conduzir a 50 km/hora, recusou-se a deixar-me ultrapassar, apesar de ele ir em velocidade baixa. Fiquei furioso.
@@ -104,7 +105,7 @@ disgust;Foi quando li um artigo de jornal sobre o futuro, e eles previram que es
 shame;Quando deixei cair uma garrafa na loja estatal de bebidas e toda a gente começou a rir.
 guilt;Quando eu era jovem - 14 anos, fui beliscado de uma loja e fui apanhado. A loja contactou então os meus pais.
 joy;Quando a família inteira se reúne para uma semana de férias, todos se sentem livres e a viagem é bem planeada. Funciona bem, e nós divertimo-nos.
-fear;Quando não consegui encontrar a minha filha de 2 anos, corri e procurei por ela em todo o lado e não a consegui encontrar (finalmente encontrei-a; ela tinha ido para a cama dormir).
+fear;Quando não consegui encontrar a minha filha de 2 anos, corri e procurei por ela em todo o lado e não a consegui encontrar (finalmente encontrei-a,ela tinha ido para a cama dormir).
 anger;Quando os amigos tentam pôr-me no chão ou magoar-me.
 sadness;Crises matrimoniais. Tédio.
 disgust;Quando alguém faz avanços que não se quer.
@@ -121,7 +122,7 @@ joy;No dia em que me disseram que tinha sido aceite como estudante de economia.
 fear;Enquanto tomava um atalho pelo parque Vasa, estava rodeado por três pessoas que tentavam roubar-me o dinheiro. Fiquei assustado e fui salvo apenas pelo aparecimento de outras pessoas.
 anger;Num restaurante, observei como os ciganos tentavam arranjar dinheiro enganando os estrangeiros, isto é, não suecos falando. A minha raiva não tinha nada a ver com ódio contra os estrangeiros, mas era uma expressão da raiva que sinto quando vejo pessoas a serem usadas.
 sadness;No início de um novo curso, receia-se encontrar problemas que não se conseguem resolver. Os pensamentos giram em torno do fracasso do sujeito e das consequências que isso teria para o futuro.
-disgust;Enquanto andava na cidade, reparei como a polícia assediava um homem que estava sob a influência do álcool. Aterrorizaram-no com a ideia de o prender, conduzindo por perto atrás dele numa rua para peões. O meu desgosto foi dirigido aos gestos e expressões faciais dos polícias; eles pareciam estar a divertir-se.
+disgust;Enquanto andava na cidade, reparei como a polícia assediava um homem que estava sob a influência do álcool. Aterrorizaram-no com a ideia de o prender, conduzindo por perto atrás dele numa rua para peões. O meu desgosto foi dirigido aos gestos e expressões faciais dos polícias,eles pareciam estar a divertir-se.
 shame;Quando o meu namorado revelou que sabia que eu tinha descoberto coisas de natureza importante sobre ele, senti vergonha por não o ter mencionado antes.
 guilt;Quando sou desonesta para com um amigo de quem sou muito próxima, sinto-me culpada porque sei que ele dá uma versão diferente da verdade, e não corrigi esses erros, e ele está ciente de que sei que estão errados.
 joy;Quando descobri que tinha passado os dois últimos exames por uma margem de três pontos.
@@ -2631,7 +2632,7 @@ disgust;Fiquei enojado com o comportamento de uma amiga quando ela se embebedou 
 shame;Eu estava num protesto anti-nuclear e estava a gritar alto um protesto a alguns marinheiros americanos do Texas americano é um submarino. Um tipo veio ter comigo e disse que era o seu irmão a gritar, eu senti vergonha e percebi que gritar com outra pessoa não é um bom protesto. Agora sou um manifestante silencioso.
 guilt;Senti-me culpado depois de me ter zangado com um amigo e de ter tido uma discussão. Estava a ser teimoso e orgulhoso, e egoísta, porque a minha amiga desiludiu-me, sem culpa própria.
 joy;Quando conheci o meu namorado e descobrimos que partilhávamos os mesmos ideais e objectivos na vida e que podíamos partilhar todos os nossos sentimentos e pensamentos e sentir que o mundo não é assim tão mau quando se tem alguém perto de partilhar a vida com alguém.
-shame;Telefonei a um rapaz que tinha namorado comigo e disse-lhe que eu estava doente há algum tempo e que não queria sair com ele; mais tarde, ele perguntou-me se eu estava a sentir-me melhor, e depois senti-me envergonhado.
+shame;Telefonei a um rapaz que tinha namorado comigo e disse-lhe que eu estava doente há algum tempo e que não queria sair com ele,mais tarde, ele perguntou-me se eu estava a sentir-me melhor, e depois senti-me envergonhado.
 guilt;Quando magoei os meus pais de uma forma ou de outra.
 joy;Quando passei no exame de condução após três falhas.
 fear;Quando quase causei um acidente de viação com o meu carro.
@@ -2714,7 +2715,7 @@ shame;Quando faço algo indigno.
 guilt;Quando ofendi os meus pais sem o querer.
 joy;Depois de ter passado com sucesso no exame, fiquei feliz.
 fear;Uma amiga minha deu à luz uma criança. Um parto muito perigoso. um medo que eu tinha por ela e pelo bebé.
-anger; Fico zangado quando alguém imputa as coisas que nunca consigo fazer, uma coisa naturalmente negativa. Servilismo, ligações, impudência, traços que me enfurecem.
+anger;Fico zangado quando alguém imputa as coisas que nunca consigo fazer, uma coisa naturalmente negativa. Servilismo, ligações, impudência, traços que me enfurecem.
 sadness;O meu irmão é um soldado. Ele prometeu voltar para casa numa licença mas, no último momento, telefonou e disse que não podia vir.
 disgust;Estou enojado com mentirosos, hipócritas, caluniadores, e chumbos.
 shame;Recentemente vi uma jovem rapariga a bajular um homem. E para quê - dinheiro e coisas. Tive vergonha de ser uma mulher.
