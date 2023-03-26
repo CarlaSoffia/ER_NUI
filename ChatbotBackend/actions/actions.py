@@ -348,11 +348,9 @@ class CustomActionListen(Action):
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
         # Mid questionnaire - responses speeches are  not created here              
-        question_form = tracker.active_form.get("question_form")
+        question_form = tracker.active_loop.get("name") == "question_form"
         if question_form:
-            return [ActionExecuted("action_listen")] 
-         
-        print("here") 
+            return [ActionExecuted("action_listen")]  
         text = (tracker.latest_message)['text'] 
         if text == None:
             return [ActionExecuted("action_listen")]
