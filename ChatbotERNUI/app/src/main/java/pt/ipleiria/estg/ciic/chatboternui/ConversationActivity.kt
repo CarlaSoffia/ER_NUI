@@ -160,6 +160,10 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
         val messages :JSONArray = response["data"] as JSONArray
         for (i in 0 until messages.length()) {
             val message = JSONObject(messages[i].toString())
+            // if message has a laravel result resource
+            if(message["text"].toString().contains("{")){
+                continue
+            }
             _messages.add(Message(id = _messages.size.toLong()+1, text = message["text"] as String?, isChatbot = true))
         }
     }
@@ -177,14 +181,20 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
         val messageRasa = JSONObject()
         messageRasa.put("sender", sharedPreferences.getString("username", ""))
         messageRasa.put("message", transcription)
-        messageRasa.put("metadata", JSONObject().put("token",sharedPreferences.getString("access_token", "")))
+        messageRasa.put("metadata", JSONObject().put("token",sharedPreferences.getString("access_token", ""))
+                                                      .put("macAddress", sharedPreferences.getString("macAddress", "")))
+
         var response: JSONObject
         runBlocking {
                 response = httpRequests.requestRasa(messageRasa.toString())
-                val code = response["status_code"]
-                if(code == 403 || code == 401){
-                    refreshAccessToken()
-                    response = sendRasaServer(transcription)
+                val messages :JSONArray = response["data"] as JSONArray
+                for (i in 0 until messages.length()){
+                    val message = JSONObject(messages[i].toString())
+                    if (message["text"].toString().contains("[Error]")){
+                        refreshAccessToken()
+                        response = sendRasaServer(transcription)
+                        break
+                    }
                 }
             }
         return response

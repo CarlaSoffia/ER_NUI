@@ -9,7 +9,6 @@ import org.json.JSONObject
 
 private const val WEBHOOK_RASA = "https://aalemotion.dei.estg.ipleiria.pt/webhooks/rest/webhook"
 class HTTPRequests {
-    private val utils = Others()
     suspend fun requestRasa(body:String): JSONObject{
         return withContext(Dispatchers.IO) {
             if (body.isEmpty()) {
@@ -26,8 +25,10 @@ class HTTPRequests {
 
             val response = okHttpClient.newCall(request).execute()
             val result = JSONObject()
+
             result.put("status_code", response.code)
             val data = JSONArray(response.body?.string()!!)
+
             result.put("data", data)
         }
     }
@@ -74,6 +75,7 @@ class HTTPRequests {
                 data = JSONObject(data.get("data").toString())
             }catch(ex: JSONException){
                 // Do nothing, we are in the Auth Login situation
+                println(ex.message)
             }
             result.put("data", data)
         }

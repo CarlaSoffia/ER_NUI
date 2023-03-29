@@ -44,6 +44,7 @@ class LoginActivity : ComponentActivity() {
         setContent {
             ChatbotERNUITheme {
                if(sharedPreferences.getString("access_token","") != ""){
+                   utils.addStringToStore(sharedPreferences,"macAddress", utils.getAndroidMacAddress(this))
                    utils.startDetailActivity(applicationContext,ConversationActivity::class.java)
                 }else{
                    LoginScreen()

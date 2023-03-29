@@ -1,6 +1,5 @@
 package pt.ipleiria.estg.ciic.chatboternui.utils
 
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -9,6 +8,7 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import kotlin.math.pow
 import kotlin.math.sqrt
+import android.provider.Settings.Secure
 
 class Others {
 
@@ -56,4 +56,20 @@ class Others {
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
         context.startActivity(intent)
     }
+    fun getAndroidMacAddress(context: Context): String {
+        val identifier = Secure.getString(context.contentResolver, Secure.ANDROID_ID)
+        // Convert hex string to bytes
+        val hexBytes = identifier.chunked(2) // Split into pairs of characters
+            .map { it.toInt(16).toByte() } // Convert each pair to a byte
+
+        // Set MAC address format with hex bytes
+        val macBytes = byteArrayOf(0x00, 0x00, 0x00, 0x00, 0x00, 0x00)
+        for (i in 0 until minOf(hexBytes.size, 6)) {
+            macBytes[i] = hexBytes[i]
+        }
+
+        // Format MAC address as string
+        return macBytes.joinToString(":") { "%02X".format(it) }
+    }
+
 }
