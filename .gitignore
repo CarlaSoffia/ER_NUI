@@ -17,5 +17,6 @@ ChatbotERNUI/models
 ChatbotERNUI/app/src/main/ml
 ChatbotBackend/.rasa
 ChatbotBackend/models
-
-
+SentimentAnalysis/graphics
+SentimentAnalysis/models
+SentimentAnalysis/tests
