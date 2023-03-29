@@ -19,5 +19,4 @@ ChatbotBackend/.rasa
 ChatbotBackend/models
 SentimentAnalysis/graphics
 SentimentAnalysis/models
-SentimentAnalysis/tests
 SentimentAnalysis/architectures
