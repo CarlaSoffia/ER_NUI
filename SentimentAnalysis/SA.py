@@ -42,13 +42,13 @@ batch = 128
 dropout = 0.8
 filter_units = 32
 data = "pt"
-data_augmentation = False
+data_augmentation = True
 if data_augmentation:
     typeData = "data_augmentation"
     path = "./"
 else:
     typeData = "final"
-    path = "./datasets/preprocessed"
+    path = "./datasets"
 file = path + "/ISEAR_only_text_"+data+"_"+typeData+".csv"
 labels = ["anger","disgust","fear","guilt","joy","sadness","shame"]
 if train:
@@ -64,8 +64,7 @@ if train:
     dataset['sentiment'] = le.fit_transform(dataset['sentiment'])
     # Split the dataset into training and testing sets
     train_texts, test_texts, train_labels, test_labels = train_test_split(dataset['text'], dataset['sentiment'], test_size=test_size, random_state=np_seed)
-
-    # Tokenize the texts and convert them into sequences
+# Tokenize the texts and convert them into sequences
     tokenizer = Tokenizer(num_words=num_words, oov_token='<OOV>')
     tokenizer.fit_on_texts(train_texts)
     train_sequences = tokenizer.texts_to_sequences(train_texts)
@@ -78,14 +77,13 @@ if train:
     train_padded = pad_sequences(train_sequences, maxlen=num_words, padding='post', truncating='post')
     test_padded = pad_sequences(test_sequences, maxlen=num_words, padding='post', truncating='post')
 
+    
     # Define the model
     model = tf.keras.Sequential([
       tf.keras.layers.Embedding(input_dim=num_words, output_dim=100, input_length=num_words),
       tf.keras.layers.Conv1D(filters=filter_units, kernel_size=3, activation='relu'),
       tf.keras.layers.Dropout(dropout),
       tf.keras.layers.Flatten(),
-      #tf.keras.layers.Dense(units=filter_units, activation='relu'),
-      #tf.keras.layers.Dropout(dropout),
       tf.keras.layers.Dense(units=7, activation='softmax')
     ])
     early_stop = EarlyStopping(monitor='val_loss', patience=patience)
