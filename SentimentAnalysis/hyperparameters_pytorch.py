@@ -37,10 +37,6 @@ def objective(trial):
         include_lengths=False
     )
     text_field.build_vocab(train_texts, max_size=num_words)
-    #train_sequences = text_field.process(train_texts)[1]
-    #test_sequences = text_field.process(test_texts)[1]
-    #train_sequences = text_field.numericalize(text_field.pad(train_texts))
-    #test_sequences = text_field.numericalize(text_field.pad(test_texts))
     train_padded = text_field.pad(train_texts)
     test_padded = text_field.pad(test_texts)
     
