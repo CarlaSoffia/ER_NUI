@@ -177,15 +177,12 @@ def objective(trial):
     # Return the accuracy as the score for Optuna to optimize
     return trainer.callback_metrics['val_acc']
 
-
 def print_best_params(study, trial):
     with open("optuna_results.txt", "a") as file:
         file.write(
             f"[Trial {trial.number}] Accuracy: {study.best_value} | Best parameters - {trial.params}\n"
         )
 
-
-        
 # Define the optuna study object and start the optimization process
 study = optuna.create_study(direction="maximize")
 study.optimize(objective, n_trials=20, timeout=3600, callbacks=[print_best_params])
