@@ -20,3 +20,4 @@ ChatbotBackend/models
 SentimentAnalysis/graphics
 SentimentAnalysis/models
 SentimentAnalysis/architectures
+SentimentAnalysis/lightning_logs

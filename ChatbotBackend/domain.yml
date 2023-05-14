@@ -30,6 +30,12 @@ slots:
     mappings:
     - type: custom  
 
+  lastCheckHour:
+    type: text
+    initial_value: null
+    mappings:
+    - type: custom 
+
   response_question:
     type: text
     mappings:
@@ -181,4 +187,3 @@ actions:
 - action_ask_question_form_response_question
 - action_ask_why_question
 - submit_question_form
-- action_session_start

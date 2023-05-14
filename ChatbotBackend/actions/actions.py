@@ -69,6 +69,7 @@ def requestSpeech(id, usage_id, accuracy, text, predictions, macAddress, group, 
     payload = {'iteration_id':str(id), 'iteration_usage_id':str(usage_id), 'datesSpeeches[0]': str(date), 'accuraciesSpeeches[0]':str(accuracy), 'textsSpeeches[0]': text, 'preditionsSpeeches[0]':predictions}
     # Send speech to LARAVEL API
     message = request("POST","speeches",token,payload,False)  
+    iteration = {}
     if str(message).find("[Error]") != -1:
         # Invalid usage_id -> need to create newnteration
         if str(message).find("iteration usage id") != -1:
@@ -120,34 +121,25 @@ def decideGroup(emotion):
 def questionToAsk(length):
     if length % 2 == 0 and length >= 0 and length <= 28:
         return (length // 2) + 1
-########################################################### ACTIONS ###########################################################
-
-# Action: Verify if questionnaire must be filled again - 1 week interval 
-class ActionSessionStart(Action):
-    def name(self) -> Text:
-        return "action_session_start"
     
-    async def run(self, dispatcher: CollectingDispatcher,
-                  tracker: Tracker,
-                  domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+def haveQuestionnaire(token):
+    # Mid questionnaire - responses speeches are  not created here  
+    lastDateQuestionnaire = request("GET","geriatricQuestionnaires",token)
+    finishedQuestionnaire = True
+    if str(lastDateQuestionnaire).find("[Error]") == -1:
+        if len(lastDateQuestionnaire) == 0:
+            finishedQuestionnaire = False
+    else:
+        weekPassedSinceLastQuestionnaire = has_week_passed(lastDateQuestionnaire[0]["created_at"])
+        # Repeat the questionnaire
+        if weekPassedSinceLastQuestionnaire:
+            finishedQuestionnaire = False
+    return finishedQuestionnaire      
 
-        # Your action code goes here
-        # the session should begin with a `session_started` event
-        token = (tracker.events[0]["value"]["token"])
-        if token != None: 
-            lastDateQuestionnaire = request("GET","geriatricQuestionnaires",token)
-            if str(lastDateQuestionnaire).find("[Error]") == -1:
-                if len(lastDateQuestionnaire) == 0:
-                    return [SlotSet("finishedQuestionnaire",False),ActionExecuted("action_listen")]
-                else:
-                    weekPassedSinceLastQuestionnaire = has_week_passed(lastDateQuestionnaire[0]["created_at"])
-                    # Repeat the questionnaire
-                    if weekPassedSinceLastQuestionnaire:
-                        return [SlotSet("finishedQuestionnaire",False),ActionExecuted("action_listen")]      
-                    # Don't repeat the questionnaire
-                    else:
-                        return [SlotSet("finishedQuestionnaire",True),ActionExecuted("action_listen")]    
-        return [ActionExecuted("action_listen")]
+def has_an_hour_passed(date):
+    now = datetime.now()
+    return now.hour != date.hour
+########################################################### ACTIONS ###########################################################
     
 # Action: Submit the form
 class ActionSubmitQuestionForm(Action):
@@ -157,6 +149,7 @@ class ActionSubmitQuestionForm(Action):
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[EventType]:
         # send to API
+        print("-----------------------------------")
         responses = []
         for res in tracker.get_slot("responses"):
             res = str(res).replace("'","\"")
@@ -172,6 +165,7 @@ class ActionSubmitQuestionForm(Action):
             SlotSet("response_question",None)
             SlotSet("why_question",None)
         dispatcher.utter_message(str(message))
+
 # Action: Ask Why for Question
 class ActionAskWhyQuestion(Action):
     def name(self) -> Text:
@@ -250,10 +244,6 @@ class ValidateQuestionForm(FormValidationAction):
             responses = [] 
             question = 1
         else:
-            #for response in responses:
-            #    if response["is_why"] == False:
-            #        question = response["question"]
-            #question = question + 1
             question = questionToAsk(len(responses))
         questionsPointsNo = [1,5,7,11,13]
         # Create speech --------
@@ -347,7 +337,18 @@ class CustomActionListen(Action):
     def run(self, dispatcher: CollectingDispatcher,
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
-        # Mid questionnaire - responses speeches are  not created here              
+        lastCheckHour = tracker.get_slot("lastCheckHour")
+        if lastCheckHour is None:
+            lastCheckHour = datetime.now()
+        else:
+            lastCheckHour = datetime.strptime(lastCheckHour, "%Y-%m-%d %H:%M:%S.%f")
+        oneHourPassed = has_an_hour_passed(lastCheckHour)
+        lastCheckHour = str(lastCheckHour)
+        token = (tracker.latest_message)["metadata"]["token"]
+        if oneHourPassed==True:
+            finishedQuestionnaire = haveQuestionnaire(token)
+        else:
+            finishedQuestionnaire = tracker.get_slot("finishedQuestionnaire")        
         question_form = tracker.active_loop.get("name") == "question_form"
         if question_form:
             return [ActionExecuted("action_listen")]  
@@ -355,7 +356,6 @@ class CustomActionListen(Action):
         if text == None:
             return [ActionExecuted("action_listen")]
         sentiment = predictSentiment(text)
-        token = (tracker.latest_message)["metadata"]["token"]
         macAddress = (tracker.latest_message)["metadata"]["macAddress"]
         iterations = tracker.get_slot("iterations")
         group, idx = decideGroup(sentiment["emotion"])
@@ -365,11 +365,11 @@ class CustomActionListen(Action):
             iteration, error = requestIteration(token, macAddress, group)
             if iteration == {}:
                 dispatcher.utter_message(str(error))
-                return [ActionExecuted("action_listen")]
+                return [ActionExecuted("action_listen"),SlotSet("finishedQuestionnaire",finishedQuestionnaire),SlotSet("lastCheckHour",lastCheckHour)]
             else:
                 iterations[idx] = iteration    
         iteration, message, error = requestSpeech(iterations[idx]["id"], iterations[idx]["usage_id"], sentiment["accuracy"], text, sentiment["predictions"], macAddress, group, token)
         if iteration != {}:
             iterations[idx] = iteration
-        dispatcher.utter_message(str(message))
-        return [SlotSet("iterations",iterations),ActionExecuted("action_listen")]   
+        
+        return [ActionExecuted("action_listen"),SlotSet("iterations",iterations),SlotSet("finishedQuestionnaire",finishedQuestionnaire),SlotSet("lastCheckHour",lastCheckHour)]   

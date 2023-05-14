@@ -16,10 +16,6 @@ rules:
   - slot_was_set:
     - finishedQuestionnaire: True 
   steps:
-  - action: question_form
-  - active_loop: null
-  - slot_was_set:
-    - requested_slot: null
   - action: utter_end_questionnaire
   - action: submit_question_form
 - rule: Say goodbye anytime the user says goodbye
