@@ -1,55 +1,95 @@
 version: '3.1'
 rules:
-- rule: Say greeting anytime the user says greeting and start questionnaire
+- rule: Say greeting anytime the user says greeting
   steps:
   - intent: Greeting
   - action: action_respond_greeting
-  - slot_was_set:
-    - finishedQuestionnaire: False
-  - action: utter_begin_questionnaire
-  - action: question_form
-  - active_loop: question_form
 
-- rule: Submit questionnaire form
-  condition:
-  - active_loop: question_form
-  - slot_was_set:
-    - finishedQuestionnaire: True 
-  steps:
-  - action: utter_end_questionnaire
-  - action: submit_question_form
 - rule: Say goodbye anytime the user says goodbye
   steps:
   - intent: Goodbye
   - action: utter_goodbye
+
 - rule: Say mood great anytime the user says mood great
   steps:
   - intent: Mood_great
   - action: utter_mood_great
+
 - rule: Say mood unhappy anytime the user says mood unhappy and ask to cheer up
   steps:
   - intent: Mood_unhappy
   - action: utter_mood_unhappy
   - action: utter_cheer_up
   - action: utter_did_that_help
+
 - rule: Ask help
   steps:
   - intent: Ask_help
   - action: utter_ask_who_call
+
 - rule: Chatbot contact someone
   steps:
   - action: utter_ask_who_call
   - intent: Collect_person_help
   - action: utter_contacting
+
 - rule: Show the avaliable features when user asks
   steps:
   - intent: Features
   - action: utter_show_features
+
 - rule: Say you're welcome each time user says thanks
   steps:
   - intent: Thanks
   - action: utter_response_thank
+
 - rule: Say I am good each time user asks how are you
   steps:
   - intent: How_are_you
   - action: utter_great
+
+  # Geriatric Questionnaire ----------------------------------------------------
+
+- rule: Start geriatric questionnaire  
+  condition:
+  - slot_was_set:
+    - finished_geriatric_questionnaire: False
+  steps:
+  - intent: Start_Geriatric_Questionnaire
+  - action: utter_begin_questionnaire_yes_no
+  - action: geriatric_questionnaire_form
+  - active_loop: geriatric_questionnaire_form
+
+- rule: Submit geriatric questionnaire form
+  condition:
+  - active_loop: geriatric_questionnaire_form
+  steps:
+  - action: geriatric_questionnaire_form
+  - active_loop: null
+  - slot_was_set:
+    - requested_slot: null
+  - action: utter_end_questionnaire
+  - action: submit_geriatric_questionnaire_form
+
+  # Oxford Happiness Questionnaire ---------------------------------------------
+
+- rule: Start oxford happiness questionnaire  
+  condition:
+  - slot_was_set:
+    - finished_oxford_happiness_questionnaire: Falsef
+  steps:
+  - intent: Start_Oxford_Happiness_Questionnaire
+  - action: utter_begin_questionnaire_likert
+  - action: oxford_happiness_questionnaire
+  - active_loop: oxford_happiness_questionnaire
+
+- rule: Submit oxford happiness questionnaire
+  condition:
+  - active_loop: oxford_happiness_questionnaire
+  steps:
+  - action: oxford_happiness_questionnaire
+  - active_loop: null
+  - slot_was_set:
+    - requested_slot: null
+  - action: utter_end_questionnaire
+  - action: submit_oxford_happiness_questionnaire

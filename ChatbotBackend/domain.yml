@@ -3,6 +3,7 @@ entities:
 - family_friends
 
 slots:
+  # Other slots ----------------------------------------------------
 
   family_friends:
     type: text
@@ -10,47 +11,6 @@ slots:
     - type: from_entity
       entity: family_friends
 
-  depressionQuestionnairePoints:
-    type: float
-    initial_value: 0.0
-    min_value: 0.0
-    max_value: 15.0
-    mappings:
-    - type: custom
-
-  responses:
-    type: list
-    influence_conversation: false
-    mappings:
-    - type: custom
-      
-  finishedQuestionnaire:
-    type: bool
-    initial_value: False
-    mappings:
-    - type: custom  
-
-  lastCheckHour:
-    type: text
-    initial_value: null
-    mappings:
-    - type: custom 
-
-  response_question:
-    type: text
-    mappings:
-    - type: from_text
-      conditions:
-        - active_loop: question_form
-          requested_slot: response_question
-
-  why_question:
-    type: text
-    mappings:
-    - type: from_text
-      conditions:
-        - active_loop: question_form
-          requested_slot: why_question    
   token:
     type: text
     initial_value: null
@@ -62,12 +22,106 @@ slots:
     influence_conversation: false
     mappings:
     - type: custom 
+
+  # Geriatric Questionnaire ----------------------------------------------------
+
+  geriatric_questionnaire_points:
+    type: float
+    initial_value: 0.0
+    min_value: 0.0
+    max_value: 15.0
+    mappings:
+    - type: custom
+
+  responses_geriatric_questionnaire:
+    type: list
+    influence_conversation: false
+    mappings:
+    - type: custom
+      
+  finished_geriatric_questionnaire:
+    type: bool
+    initial_value: False
+    mappings:
+    - type: custom  
+
+  last_check_hour_geriatric_questionnaire:
+    type: text
+    initial_value: null
+    mappings:
+    - type: custom 
+
+  response_question_geriatric_questionnaire:
+    type: text
+    mappings:
+    - type: from_text
+      conditions:
+        - active_loop: geriatric_questionnaire_form
+          requested_slot: response_question_geriatric_questionnaire
+
+  why_question_geriatric_questionnaire:
+    type: text
+    mappings:
+    - type: from_text
+      conditions:
+        - active_loop: geriatric_questionnaire_form
+          requested_slot: why_question_geriatric_questionnaire    
+ 
+  last_check_hour_oxford_happiness_questionnaire:
+    type: text
+    initial_value: null
+    mappings:
+    - type: custom 
+  
+  # Oxford Happiness Questionnaire ---------------------------------------------
+
+  response_question_oxford_happiness_questionnaire:
+      type: text
+      mappings:
+      - type: from_text
+        conditions:
+          - active_loop: oxford_happiness_questionnaire
+            requested_slot: response_question_oxford_happiness_questionnaire  
+    
+  why_question_oxford_happiness_questionnaire:
+    type: text
+    mappings:
+    - type: from_text
+      conditions:
+        - active_loop: oxford_happiness_questionnaire
+          requested_slot: why_question_oxford_happiness_questionnaire  
+
+  finished_oxford_happiness_questionnaire:
+    type: bool
+    initial_value: False
+    mappings:
+    - type: custom  
+
+  oxford_happiness_questionnaire_points:
+    type: float
+    initial_value: 0.0
+    min_value: 0.0
+    max_value: 174.0
+    mappings:
+    - type: custom
+
+  responses_oxford_happiness_questionnaire:
+    type: list
+    influence_conversation: false
+    mappings:
+    - type: custom
     
 forms:
-  question_form:
+  geriatric_questionnaire_form:
     required_slots:
-      - response_question  
-      - why_question
+      - response_question_geriatric_questionnaire  
+      - why_question_geriatric_questionnaire
+  
+  oxford_happiness_questionnaire:
+    required_slots:
+      - response_question_oxford_happiness_questionnaire  
+      - why_question_oxford_happiness_questionnaire   
+
 intents:
 - Greeting
 - Goodbye
@@ -80,11 +134,12 @@ intents:
 - Features
 - Thanks
 - How_are_you
-- Agree
-- Disagree
 - Affirm
 - Deny
+- Start_Geriatric_Questionnaire
+- Start_Oxford_Happiness_Questionnaire
 responses:
+
   utter_goodbye:
   - text: Vemo-nos por aí.
   - text: Adeus.
@@ -92,12 +147,14 @@ responses:
   - text: Até mais logo.
   - text: Tenha um bom dia.
   - text: Resto de um bom dia.
+
   utter_agree:
   - text: De facto.
   - text: Claro.
   - text: Parece-me bem.
   - text: Correcto.
   - text: Certo.
+
   utter_disagree:
   - text: Nunca.
   - text: Não me parece.
@@ -105,16 +162,19 @@ responses:
   - text: Nem pensar.
   - text: Não concordo.
   - text: Na verdade não.
+
   utter_mood_great:
   - text: Ainda bem!
   - text: Muito bem!
   - text: Fico feliz.
   - text: Fico contente.
+
   utter_great:
   - text: Estou feliz, muito obrigado.
   - text: Estou contente, muito obrigado.
   - text: Estou bem, obrigado!
   - text: Está tudo bem obrigado.
+
   utter_mood_unhappy:
   - text: Lamento...
   - text: Irei animá-lo!
@@ -127,14 +187,17 @@ responses:
   - text: Tem sentido alguma dor ou desconforto ultimamente?
   - text: Sente alguma dor?
   - text: Sente algum desconforto?
+
   utter_cheer_up:
   - text: 'Algo para te animar:'
     image: https://lexnau.com/wp-content/uploads/2023/02/Baby-Foxes-show-up-at-Grandmas-House-and-Decide-to-Make-her-Porch-their-Personal-Playground.jpg
+
   utter_did_that_help:
   - text: Consegui ajudar?
   - text: Como se sente?
   - text: Está melhor?
   - text: Sente-se melhor?
+
   utter_ask_who_call:
   - text: A quem quer ligar?
   - text: A quem quer contactar?
@@ -145,6 +208,7 @@ responses:
   - text: Que pessoa ou entidade devo contactar?
   - text: Que pessoa ou entidade devo ligar?
   - text: Que pessoa ou entidade devo avisar?
+
   utter_contacting:
   - text: A pessoa {family_friends} já está a ser contactada.
   - text: A pessoa {family_friends} já está a ser informada.
@@ -156,10 +220,12 @@ responses:
   - text: Já avisei a entidade {family_friends} indicada.
   - text: Já avisei a pessoa {family_friends} que indicou.
   - text: Já avisei a entidade {family_friends} indicou.
+
   utter_show_features:
   - text: Ainda não consigo fazer muita coisa.
   - text: Ainda não tenho muitas funcionalidades.
   - text: Estou a aprender.
+
   utter_response_thank:
   - text: De nada.
   - text: Não tem de quê.
@@ -169,21 +235,41 @@ responses:
   - text: Foi um prazer.
   - text: Foi um prazer ajudar.
   - text: Ainda bem que consegui ser útil.
-  utter_begin_questionnaire:
+
+  utter_begin_questionnaire_yes_no:
   - text: Por favor, responda às próximas perguntas com Sim ou Não.
   - text: Responda às próximas perguntas com Sim ou Não, por favor.
+
+  utter_begin_questionnaire_likert:
+  - text: Por favor, responda às próximas perguntas com um número entre 1 a 6 (Discordo fortemente, Discordo moderadamente, Discordo levemente, Concordo levemente, Concordo moderadamente e Concordo fortemente).
+  - text: Por favor, responda às próximas perguntas com um número entre 1 a 6 (Discordo fortemente, Discordo moderadamente, Discordo levemente, Concordo levemente, Concordo moderadamente e Concordo fortemente).
+  - text: Selecione para cada bebida, um valor de resposta enre 1 a 6 (Discordo fortemente, Discordo moderadamente, Discordo levemente, Concordo levemente, Concordo moderadamente e Concordo fortemente).
+
   utter_end_questionnaire:
   - text: Obrigado por responder às perguntas.
-  - text: Obrigado pela sinceridade da resposta às perguntas.
+  - text: Obrigado pela sinceridade na resposta às perguntas.
+  - text: Muito obrigado por responder às perguntas.
+
+  utter_ask_why:
+  - text: Por favor, explique o porquê.
+  - text: Detalhe o porquê da sua resposta, por favor.
+  - text: Por favor, explique a sua resposta.
+  - text: Explique-me o motivo, por favor.
+
 session_config:
   session_expiration_time: 60
   carry_over_slots_to_new_session: true
+
 actions:
 - action_listen
 - CustomActionListen
 - action_retrieve_entities
 - action_respond_greeting
-- validate_question_form
-- action_ask_question_form_response_question
-- action_ask_why_question
-- submit_question_form
+- validate_geriatric_questionnaire_form
+- action_ask_geriatric_questionnaire_form_why_question_geriatric_questionnaire
+- action_ask_geriatric_questionnaire_form_response_question_geriatric_questionnaire
+- submit_geriatric_questionnaire_form
+- action_ask_oxford_happiness_questionnaire_response_question_oxford_happiness_questionnaire
+- action_ask_oxford_happiness_questionnaire_why_question_oxford_happiness_questionnaire
+- validate_oxford_happiness_questionnaire
+- submit_oxford_happiness_questionnaire

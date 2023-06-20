@@ -6,7 +6,7 @@ recipe: default.v1
 # https://rasa.com/docs/rasa/nlu/components/
 language: pt
 
-pipeline:
+pipeline: null
 # # No configuration for the NLU pipeline was provided. The following default pipeline was used to train your model.
 # # If you'd like to customize it, uncomment and adjust the pipeline.
 # # See https://rasa.com/docs/rasa/tuning-your-model for more information.
@@ -33,10 +33,11 @@ policies:
 # # If you'd like to customize them, uncomment and adjust the policies.
 # # See https://rasa.com/docs/rasa/policies for more information.
 #   - name: MemoizationPolicy
-  - name: RulePolicy
-    enable_fallback_prediction: False
-    
+- name: RulePolicy
+  enable_fallback_prediction: false
+
 session_config:
   session_expiration_time: 60
   carry_over_slots_to_new_session: true
-  auto_fill: false    
+  auto_fill: false
+assistant_id: 20230619-205915-mint-halibut

@@ -1,5 +1,19 @@
 version: '3.1'
 nlu:
+- intent: Start_Geriatric_Questionnaire
+  examples: '- start_geriatric_questionnaire
+
+  - start_geriatric_form
+  
+  '
+
+- intent: Start_Oxford_Happiness_Questionnaire
+  examples: '- start_oxford_happiness_questionnaire
+
+  - start_oxford_happiness_form
+  
+  '
+
 - intent: Greeting
   examples: '- Olá.
 
@@ -45,22 +59,6 @@ nlu:
 
     - Sim
 
-    '    
-- intent: Agree
-  examples: '- Sim.
-    
-    - sim.        
-    
-    - De facto.      
-    
-    - Claro.      
-    
-    - Parece-me bem.      
-    
-    - Correcto.      
-    
-    - Certo.
-    
     '
 
 - intent: Deny
@@ -81,28 +79,7 @@ nlu:
     - nao
 
     '
-
-- intent: Disagree
-  examples: '- Não.
-    - Nao.
-
-    - não.
-
-    - nao.
-  
-    - Nunca.
-
-    - Não me parece.
-
-    - Não gosto disso.
-
-    - Nem pensar.
-
-    - Não concordo.
-
-    - Na verdade não.
-
-    '
+    
 - intent: Mood_great
   examples: '- Sou incrível.
 

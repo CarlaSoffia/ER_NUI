@@ -22,8 +22,3 @@ stories:
   steps:
   - intent: Greeting
   - action: action_respond_greeting
-  - slot_was_set:
-    - finishedQuestionnaire: False
-  - action: utter_begin_questionnaire
-  - action: question_form
-  - active_loop: question_form
