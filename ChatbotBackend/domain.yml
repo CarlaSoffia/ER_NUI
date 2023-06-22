@@ -243,7 +243,7 @@ responses:
   utter_begin_questionnaire_likert:
   - text: Por favor, responda às próximas perguntas com um número entre 1 a 6 (Discordo fortemente, Discordo moderadamente, Discordo levemente, Concordo levemente, Concordo moderadamente e Concordo fortemente).
   - text: Por favor, responda às próximas perguntas com um número entre 1 a 6 (Discordo fortemente, Discordo moderadamente, Discordo levemente, Concordo levemente, Concordo moderadamente e Concordo fortemente).
-  - text: Selecione para cada bebida, um valor de resposta enre 1 a 6 (Discordo fortemente, Discordo moderadamente, Discordo levemente, Concordo levemente, Concordo moderadamente e Concordo fortemente).
+  - text: Selecione para cada pergunta, um valor de resposta enre 1 a 6 (Discordo fortemente, Discordo moderadamente, Discordo levemente, Concordo levemente, Concordo moderadamente e Concordo fortemente).
 
   utter_end_questionnaire:
   - text: Obrigado por responder às perguntas.

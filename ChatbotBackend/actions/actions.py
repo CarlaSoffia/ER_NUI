@@ -177,7 +177,7 @@ class CustomActionListen(Action):
         if text == None:
             return [ActionExecuted("action_listen")]
         sentiment = predictSentiment(text)
-        macAddress = (tracker.latest_message)["metadata"]["macAddress"]
+        #macAddress = (tracker.latest_message)["metadata"]["macAddress"]
         iterations = tracker.get_slot("iterations")
         group, idx = decideGroup(sentiment["emotion"])
         #if iterations == None: 
@@ -212,7 +212,7 @@ class ActionSubmitGeriatricQuestionnaire(Action):
             res = str(res).replace("True","true")
             res = str(res).replace("False","false")
             responses_geriatric_questionnaire.append(str(res).replace("'","\""))
-        token = (tracker.latest_message)["metadata"]["token"] 
+        #token = (tracker.latest_message)["metadata"]["token"] 
         SlotSet("responses_geriatric_questionnaire",None)
         SlotSet("geriatric_questionnaire_points",0.0)
         SlotSet("finished_geriatric_questionnaire",True)
@@ -292,8 +292,8 @@ class ValidateQuestionForm(FormValidationAction):
         questionsPointsNo = [1,5,7,11,13]
         # Create speech --------
         sentiment = predictSentiment(slot_value)
-        token = (tracker.latest_message)["metadata"]["token"]
-        macAddress = (tracker.latest_message)["metadata"]["macAddress"]
+        #token = (tracker.latest_message)["metadata"]["token"]
+        #macAddress = (tracker.latest_message)["metadata"]["macAddress"]
         iterations = tracker.get_slot("iterations")
         group, idx = decideGroup(sentiment["emotion"])
         if iterations == None: 
@@ -330,8 +330,8 @@ class ValidateQuestionForm(FormValidationAction):
         
         # Create speech --------
         sentiment = predictSentiment(slot_value)
-        token = (tracker.latest_message)["metadata"]["token"]
-        macAddress = (tracker.latest_message)["metadata"]["macAddress"]
+        #token = (tracker.latest_message)["metadata"]["token"]
+        #macAddress = (tracker.latest_message)["metadata"]["macAddress"]
         iterations = tracker.get_slot("iterations")
         group, idx = decideGroup(sentiment["emotion"])
         #if iterations == None: 
@@ -451,8 +451,8 @@ class ValidateOxfordHappinessQuestionnaire(FormValidationAction):
             points = points + (mappingLikert.index(slot_value) + 1)
         # Create speech --------
         sentiment = predictSentiment(slot_value)
-        token = (tracker.latest_message)["metadata"]["token"]
-        macAddress = (tracker.latest_message)["metadata"]["macAddress"]
+        #token = (tracker.latest_message)["metadata"]["token"]
+        #macAddress = (tracker.latest_message)["metadata"]["macAddress"]
         iterations = tracker.get_slot("iterations")
         group, idx = decideGroup(sentiment["emotion"])
         if iterations == None: 
@@ -486,8 +486,8 @@ class ValidateOxfordHappinessQuestionnaire(FormValidationAction):
         
         # Create speech --------
         sentiment = predictSentiment(slot_value)
-        token = (tracker.latest_message)["metadata"]["token"]
-        macAddress = (tracker.latest_message)["metadata"]["macAddress"]
+        #token = (tracker.latest_message)["metadata"]["token"]
+        #macAddress = (tracker.latest_message)["metadata"]["macAddress"]
         iterations = tracker.get_slot("iterations")
         group, idx = decideGroup(sentiment["emotion"])
         #if iterations == None: 
@@ -532,7 +532,7 @@ class ActionSubmitOxfordHappinessQuestionnaire(Action):
             res = str(res).replace("True","true")
             res = str(res).replace("False","false")
             responses_geriatric_questionnaire.append(str(res).replace("'","\""))
-        token = (tracker.latest_message)["metadata"]["token"] 
+        #token = (tracker.latest_message)["metadata"]["token"] 
         SlotSet("responses_geriatric_questionnaire",None)
         SlotSet("geriatric_questionnaire_points",0.0)
         SlotSet("finished_geriatric_questionnaire",True)
