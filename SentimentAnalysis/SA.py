@@ -1,5 +1,5 @@
 from keras.preprocessing.text import Tokenizer
-from keras.preprocessing.sequence import pad_sequences
+from tensorflow.keras.preprocessing.sequence import pad_sequences
 import numpy as np
 from sklearn.model_selection import train_test_split
 import pandas as pd
@@ -12,23 +12,23 @@ import glob
 import pickle
 import matplotlib.pyplot as plt
 
-def saveModelArchitecture(file):
-    start_line = 33
-    end_line = 95
+# def saveModelArchitecture(file):
+#     start_line = 33
+#     end_line = 95
 
-    # Open the source file for reading
-    with open(__file__, 'r') as f:
-        # Read all the lines of the source file
-        lines = f.readlines()
+#     # Open the source file for reading
+#     with open(__file__, 'r') as f:
+#         # Read all the lines of the source file
+#         lines = f.readlines()
 
-    # Extract the desired lines
-    new_lines = lines[start_line-1:end_line]
+#     # Extract the desired lines
+#     new_lines = lines[start_line-1:end_line]
 
-    # Open a new file for writing
-    with open(file, 'w') as f:
-        # Write the extracted lines to the new file
-        for line in new_lines:
-            f.write(line)
+#     # Open a new file for writing
+#     with open(file, 'w') as f:
+#         # Write the extracted lines to the new file
+#         for line in new_lines:
+#             f.write(line)
 
 train = True
 version = len(glob.glob(f"models/*.h5"))
@@ -55,7 +55,7 @@ if train:
     dataset = pd.read_csv(file,sep=";")
     version = version + 1
     model_name = "models/"+data+"_model_"+str(version)+"_"+str(batch)+"b_"+str(epochs)+"e_"+str(np_seed)+"nps_"+str(ts_seed)+"ts_"+str(dropout)[2:]+"d_"+str(test_size)[2:]+"ts_"+str(num_words)+"nw_"+typeData+"td.h5"
-    saveModelArchitecture("architectures/model_"+str(version)+"_architecture.py")
+    #saveModelArchitecture("architectures/model_"+str(version)+"_architecture.py")
     np.random.seed(np_seed)
     tf.random.set_seed(ts_seed)
 

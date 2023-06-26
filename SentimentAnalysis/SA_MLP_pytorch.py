@@ -8,11 +8,9 @@ from sklearn.preprocessing import LabelEncoder
 import pytorch_lightning as pl
 import torch.nn.functional as F
 import logging
-#from keras.preprocessing.text import Tokenizer
-#from keras.utils import pad_sequences
 import spacy
 from torchtext.data import get_tokenizer
-
+import string
 class EarlyStoppingCallback(pl.Callback):
     def __init__(self, monitor='val_loss', patience=3):
         super().__init__()
@@ -35,37 +33,34 @@ class EarlyStoppingCallback(pl.Callback):
             self.best_score = val_loss
             self.wait = 0
 
-class SentimentClassifier(pl.LightningModule):
-    def __init__(self):
-        super(SentimentClassifier, self).__init__()
-        self.embedding = nn.Embedding(14277, 100)
-        #self.conv1d = nn.Conv1d(100, 16, kernel_size=3)
-        #self.conv1d_2 = nn.Conv1d(16, 32, kernel_size=3)
-        #self.max_pooling_1 = nn.MaxPool1d(kernel_size=2)
-        #self.max_pooling_2 = nn.MaxPool1d(kernel_size=2)
-        #self.fc = nn.Linear(1408, 128)
-        #self.relu = nn.ReLU()
-        #self.output = nn.Linear(128, 7)
-        self.fc1 = nn.Linear(14277, 128)
-        self.relu = nn.ReLU()
-        self.fc2 = nn.Linear(128, 7)
-    def forward(self, x):
-        embedded = self.embedding(x)  # Shape: (batch_size, sequence_length, embedding_dim)
-        embedded = embedded.permute(0, 2, 1)  # Reshape for Conv1d input: (batch_size, embedding_dim, sequence_length)
-        
-        #conv1_out = self.relu(self.conv1d(embedded))  # Shape: (batch_size, num_filters, sequence_length - 2)
-        #pooling_out = self.max_pooling_1(conv1_out)
-        #conv2_out = self.relu(self.conv1d_2(pooling_out))  # Shape: (batch_size, num_filters, sequence_length - 4)
-        #pooled = self.relu(pooling_out)
-        #pooled = self.max_pooling_2(conv2_out)  # Shape: (batch_size, num_filters, (sequence_length - 4)/2)
-        #pooled = pooled.view(pooling_out.size(0), -1)  # Flatten the tensor
-        #hidden = self.relu(self.fc(pooled))  # Shape: (batch_size, hidden_dim)
-        #output = self.output(hidden)  # Shape: (batch_size, output_dim)
-        out = self.fc1(x)
-        out = self.relu(out)
-        out = self.fc2(out)
-        return out
 
+class SentimentClassifier(pl.LightningModule):
+    def __init__(self, vocab_size, embedding_dim, conv_embedding_dim, n_filters, filter_sizes, output_dim, dropout_rate):
+        super().__init__()
+        self.embedding = nn.Embedding(vocab_size, embedding_dim)
+        self.convs = nn.ModuleList([nn.Conv1d(conv_embedding, 
+                                              n_filter, 
+                                              filter_size) 
+                                    for n_filter, filter_size, conv_embedding in zip(n_filters, filter_sizes, conv_embedding_dim)])
+        self.fc = nn.Linear(len(filter_sizes) * n_filters[-1], output_dim)
+        self.dropout = nn.Dropout(dropout_rate)
+        
+    def forward(self, ids):
+        # ids = [batch size, seq len]
+        embedded = self.dropout(self.embedding(ids))
+        # embedded = [batch size, seq len, embedding dim]
+        embedded = embedded.permute(0,2,1)
+        # embedded = [batch size, embedding dim, seq len]
+        conved = [torch.relu(conv(embedded)) for conv in self.convs]
+        # conved_n = [batch size, n filters, seq len - filter_sizes[n] + 1]
+        pooled = [conv.max(dim=-1).values for conv in conved]
+        # pooled_n = [batch size, n filters]
+        cat = self.dropout(torch.cat(pooled, dim=-1))
+        # cat = [batch size, n filters * len(filter_sizes)]
+        prediction = self.fc(cat)
+        # prediction = [batch size, output dim]
+        return prediction
+        
     def training_step(self, batch, batch_idx):
         inputs, labels = batch
         outputs = self(inputs)
@@ -101,8 +96,8 @@ class SentimentClassifier(pl.LightningModule):
         logger.debug(f'[Epoch {self.current_epoch}] - Validation results: val_loss={val_loss:.4f}, val_acc={val_acc:.4f}')
         
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=0.001)
-        lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.01, patience=5, verbose=True, min_lr=0.000001)
+        optimizer = torch.optim.Adam(self.parameters())
+        lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=3)
         monitor_metric = 'val_loss'  # replace this with the name of the metric you want to monitor
         return {
             'optimizer': optimizer,
@@ -110,12 +105,28 @@ class SentimentClassifier(pl.LightningModule):
             'monitor': monitor_metric
         }
 
+def initialize_weights(m):
+    if isinstance(m, nn.Linear):
+        nn.init.xavier_normal_(m.weight)
+        nn.init.zeros_(m.bias)
+    elif isinstance(m, nn.Conv1d):
+        nn.init.kaiming_normal_(m.weight, nonlinearity='relu')
+        nn.init.zeros_(m.bias)
+
+embedding_dim = 300
+conv_embedding_dim = [300,300]#,100]
+n_filters = [10,10]#,10]
+filter_sizes = [3,5]#,3]
+batch = 128
+output_dim = 7
+dropout_rate = 0.30
+test_size=0.30
 
 # configure logging at the root level of Lightning
 logging.getLogger("lightning.pytorch").setLevel(logging.DEBUG)
 
 logger = logging.getLogger("lightning.pytorch.core")
-logger.addHandler(logging.FileHandler("logs2.log"))
+logger.addHandler(logging.FileHandler("logMLP.log"))
 np.random.seed(0)
 torch.manual_seed(42)
 dataset = pd.read_csv("ISEAR_only_text_pt_data_augmentation.csv", sep=";")
@@ -131,14 +142,30 @@ test_labels = np.array(test_labels)
 
 nlp = spacy.load("pt_core_news_sm")
 
+def preprocess_texts(texts):
+    processed_texts = []
+    for text in texts:
+        # Remove punctuation
+        text = text.translate(str.maketrans("", "", string.punctuation))
+        
+        # Convert to lowercase
+        text = text.lower()
+        
+        processed_texts.append(text)
+    
+    return processed_texts
+
+train_texts_processed  = preprocess_texts(train_texts)
+test_texts_processed = preprocess_texts(test_texts)
+
 # Create a vocabulary of tokens
 vocab = set()
-for text in train_texts:
+for text in train_texts_processed:
     doc = nlp(text)
     tokens = [token.text for token in doc]
     vocab.update(tokens)
 
-for text in test_texts:
+for text in test_texts_processed:
     doc = nlp(text)
     tokens = [token.text for token in doc]
     vocab.update(tokens)
@@ -148,13 +175,13 @@ token2index = {token: i for i, token in enumerate(vocab)}
 # Convert tokens to indices
 train_sequences = [
     torch.tensor([token2index[token.text] for token in nlp(text)], dtype=torch.long)
-    for text in train_texts
+    for text in train_texts_processed
 ]
 test_sequences = [
     torch.tensor([token2index[token.text] for token in nlp(text)], dtype=torch.long)
-    for text in test_texts
+    for text in test_texts_processed
 ]
-
+vocab_size = len(vocab)
 train_sequences = torch.nn.utils.rnn.pad_sequence(train_sequences, batch_first=True)
 test_sequences = torch.nn.utils.rnn.pad_sequence(test_sequences, batch_first=True)
 
@@ -164,20 +191,22 @@ test_sequences = torch.tensor(test_sequences, dtype=torch.long).clone().detach()
 
 train_labels = torch.tensor(train_labels, dtype=torch.long).clone().detach().to(device)
 test_labels = torch.tensor(test_labels, dtype=torch.long).clone().detach().to(device)
-model = SentimentClassifier()
+model = SentimentClassifier(vocab_size, embedding_dim, conv_embedding_dim, n_filters, filter_sizes, output_dim, dropout_rate)
+model.apply(initialize_weights)
 
 # Define the dataloaders
 train_dataset = torch.utils.data.TensorDataset(train_sequences, train_labels)
 test_dataset = torch.utils.data.TensorDataset(test_sequences, test_labels)
 
-train_loader = DataLoader(train_dataset, batch_size=batch, shuffle=False, pin_memory=True)
-test_loader = DataLoader(test_dataset, batch_size=batch, shuffle=False, pin_memory=True)
+train_loader = DataLoader(train_dataset, batch_size=batch, shuffle=True, pin_memory=True, num_workers=3)
+test_loader = DataLoader(test_dataset, batch_size=batch, shuffle=False, pin_memory=True, num_workers=3)
 
 # Train the model
 model = model.to(device)
 early_stop_callback = EarlyStoppingCallback(monitor='val_loss', patience=10)
 
-trainer = pl.Trainer(max_epochs = 100, callbacks=[early_stop_callback],log_every_n_steps=1)
+print(model)
+trainer = pl.Trainer(max_epochs = 500, callbacks=[early_stop_callback],log_every_n_steps=1)
 trainer.fit(model, train_loader, test_loader)    
 
-torch.save(model.state_dict(), ".\models_pytorch\model_0.pt")
+torch.save(model.state_dict(), ".\models_pytorch\model_MLP.pt")

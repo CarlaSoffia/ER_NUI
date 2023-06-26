@@ -1,1 +1,0 @@
-[Trial 0] Validation loss: 2.0241124629974365 | Best parameters - {'num_words': 3000, 'batches': 64, 'kernel_size': 2, 'filter_units': 64, 'learning_rate': 0.08666924900816238, 'dropout_rate': 0.5, 'test_size': 0.35}
