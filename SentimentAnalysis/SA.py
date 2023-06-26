@@ -11,7 +11,7 @@ from keras.callbacks import ModelCheckpoint
 import glob
 import pickle
 import matplotlib.pyplot as plt
-
+import string
 # def saveModelArchitecture(file):
 #     start_line = 33
 #     end_line = 95
@@ -29,6 +29,8 @@ import matplotlib.pyplot as plt
 #         # Write the extracted lines to the new file
 #         for line in new_lines:
 #             f.write(line)
+
+# modelo 2 - Test loss: 1.206/Test accuracy: 0.610
 
 train = True
 version = len(glob.glob(f"models/*.h5"))
@@ -64,11 +66,28 @@ if train:
     dataset['sentiment'] = le.fit_transform(dataset['sentiment'])
     # Split the dataset into training and testing sets
     train_texts, test_texts, train_labels, test_labels = train_test_split(dataset['text'], dataset['sentiment'], test_size=test_size, random_state=np_seed)
-# Tokenize the texts and convert them into sequences
+
+    def preprocess_texts(texts):
+        processed_texts = []
+        for text in texts:
+            # Remove punctuation
+            text = text.translate(str.maketrans("", "", string.punctuation))
+            
+            # Convert to lowercase
+            text = text.lower()
+            
+            processed_texts.append(text)
+        
+        return processed_texts
+    
+    train_texts_processed  = preprocess_texts(train_texts)
+    test_texts_processed = preprocess_texts(test_texts)
+    
+    # Tokenize the texts and convert them into sequences
     tokenizer = Tokenizer(num_words=num_words, oov_token='<OOV>')
     tokenizer.fit_on_texts(train_texts)
-    train_sequences = tokenizer.texts_to_sequences(train_texts)
-    test_sequences = tokenizer.texts_to_sequences(test_texts)
+    train_sequences = tokenizer.texts_to_sequences(train_texts_processed)
+    test_sequences = tokenizer.texts_to_sequences(test_texts_processed)
 
     with open('models/tokenizer.pickle', 'wb') as handle:
         pickle.dump(tokenizer, handle, protocol=pickle.HIGHEST_PROTOCOL)
