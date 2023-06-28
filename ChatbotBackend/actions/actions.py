@@ -26,7 +26,7 @@ API_URL = str(os.getenv('API_URL'))
 models_dir = glob.glob(os.path.join('./SA/', '*.h5'))
 models_dir = sorted(models_dir, reverse=True)
 MODEL_NAME = models_dir[0]
-num_words = 10000
+num_words = 5000
 POS = 0
 NEG = 1
 NEU = 2
@@ -443,6 +443,7 @@ class ValidateOxfordHappinessQuestionnaire(FormValidationAction):
             responses_oxford_happiness_questionnaire = [] 
             question = 1
         else:
+            print(responses_oxford_happiness_questionnaire)
             question = questionToAskOxford(len(responses_oxford_happiness_questionnaire))
         points = tracker.get_slot("oxford_happiness_questionnaire_points")
         if question in questionsReversed:
@@ -474,7 +475,7 @@ class ValidateOxfordHappinessQuestionnaire(FormValidationAction):
                         "is_why": False
                     }
         responses_oxford_happiness_questionnaire.append(newResponse)
-        return {"iterations":iterations, "oxford_happiness_questionnaire_points": points, "responses_oxford_happiness_questionnaire": slot_value,"responses_oxford_happiness_questionnaire": responses_oxford_happiness_questionnaire, "why_question_oxford_happiness_questionnaire": None}
+        return {"iterations":iterations, "oxford_happiness_questionnaire_points": points, "response_question_oxford_happiness_questionnaire": slot_value,"responses_oxford_happiness_questionnaire": responses_oxford_happiness_questionnaire, "why_question_oxford_happiness_questionnaire": None}
 
     def validate_why_question_oxford_happiness_questionnaire(
         self,
@@ -526,18 +527,18 @@ class ActionSubmitOxfordHappinessQuestionnaire(Action):
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[EventType]:
         # send to API
-        responses_geriatric_questionnaire = []
-        for res in tracker.get_slot("responses_geriatric_questionnaire"):
+        responses_oxford_happiness_questionnaire = []
+        for res in tracker.get_slot("responses_oxford_happiness_questionnaire"):
             res = str(res).replace("'","\"")
             res = str(res).replace("True","true")
             res = str(res).replace("False","false")
-            responses_geriatric_questionnaire.append(str(res).replace("'","\""))
+            responses_oxford_happiness_questionnaire.append(str(res).replace("'","\""))
         #token = (tracker.latest_message)["metadata"]["token"] 
-        SlotSet("responses_geriatric_questionnaire",None)
-        SlotSet("geriatric_questionnaire_points",0.0)
-        SlotSet("finished_geriatric_questionnaire",True)
-        SlotSet("response_question_geriatric_questionnaire",None)
-        SlotSet("why_question_geriatric_questionnaire",None)
+        SlotSet("responses_oxford_happiness_questionnaire",None)
+        SlotSet("oxford_happiness_questionnaire_points",0.0)
+        SlotSet("finished_oxford_happiness_questionnaire",True)
+        SlotSet("response_question_oxford_happiness_questionnaire",None)
+        SlotSet("why_question_oxford_happiness_questionnaire",None)
         #message = request("POST","geriatricQuestionnaires",token,json.dumps({"points":tracker.get_slot("geriatric_questionnaire_points"),"responses":responses_geriatric_questionnaire}))
         #if str(message).find("[Error]") == -1:
         #    SlotSet("responses_geriatric_questionnaire",None)
