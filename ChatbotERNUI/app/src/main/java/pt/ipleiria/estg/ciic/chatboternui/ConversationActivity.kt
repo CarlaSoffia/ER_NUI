@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.*
@@ -13,9 +14,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
+import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
@@ -39,11 +42,9 @@ private const val STATE_READY = 1
 private const val STATE_DONE = 2
 private const val PERMISSIONS_REQUEST_RECORD_AUDIO = 1
 
-private const val URL_LARAVEL = "https://aalemotion.dei.estg.ipleiria.pt/api/"
-
 class ConversationActivity : ComponentActivity(), RecognitionListener {
     private var _messages = mutableStateListOf<Message>()
-    private var _message : MutableState<String> = mutableStateOf("")
+    private var _messageWritten : MutableState<String> = mutableStateOf("")
     private var _microActive : MutableState<Boolean> = mutableStateOf(true)
     private val utils = Others()
     private val httpRequests = HTTPRequests()
@@ -52,10 +53,13 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
     private var model: Model? = null
     private var speechService: SpeechService? = null
     private var _finishedLoading: MutableState<Int> = mutableStateOf(0)
+    private lateinit var token: String
+    private var _showConnectivityError: MutableState<Boolean> = mutableStateOf(false)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         checkPermission()
         sharedPreferences = getSharedPreferences("ERNUI", Context.MODE_PRIVATE)
+        token = sharedPreferences.getString("access_token", "").toString()
         setContent {
             ChatbotERNUITheme {
                 if(_finishedLoading.value != STATE_DONE){
@@ -151,6 +155,34 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
         // got quiet after a long while
         _finishedLoading.value = STATE_DONE
     }
+
+    private fun getAllMessages() {
+        scope.launch {
+            val response = httpRequests.request("GET", "messages", token = token)
+            try {
+                val data = JSONObject(response["data"].toString())
+                val list = JSONArray(data["list"].toString())
+                for (i in 0 until list.length()){
+                    val jsonMessage: JSONObject = list.getJSONObject(i)
+                    if(jsonMessage["body"].toString() == "start_form"){
+                        continue
+                    }
+                    val message = Message(
+                        id =  (_messages.size.toLong()+1),
+                        text = jsonMessage["body"].toString(),
+                        time = utils.convertStringLocalDateTime(jsonMessage["createdAt"].toString()),
+                        isChatbot = (jsonMessage["isChatbot"].toString() == "true")
+                    )
+                    _messages.add(message)
+                }
+            } catch (ex: JSONException) {
+                if(response["status_code"].toString() == "503"){
+                    _showConnectivityError.value = true
+                }
+                Log.i("Debug", "Error: ${ex.message}")
+            }
+        }
+    }
     private fun chatbotResponse(transcription: String, accuracy: Double=-1.0){
         if (accuracy != -1.0 && accuracy < 80){
             _messages.add(Message(id = _messages.size.toLong()+1, text = "Por favor, repita o que disse.", isChatbot = true))
@@ -169,21 +201,22 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
     }
     private fun refreshAccessToken(){
         val body = JSONObject()
-        body.put("email",sharedPreferences.getString("username", ""))
+        body.put("email",sharedPreferences.getString("email", ""))
         body.put("password",sharedPreferences.getString("password", ""))
+        body.put("refresh_token",sharedPreferences.getString("refresh_token", ""))
+
         scope.launch {
-            val response = httpRequests.request("POST", URL_LARAVEL, body.toString())
+            val response = httpRequests.request("POST", "/auth/refresh", body.toString())
             val data = JSONObject(response["data"].toString())
             utils.addStringToStore(sharedPreferences,"access_token", data["access_token"].toString())
         }
     }
     private fun sendRasaServer(transcription: String): JSONObject {
         val messageRasa = JSONObject()
-        messageRasa.put("sender", sharedPreferences.getString("username", ""))
+        messageRasa.put("sender", sharedPreferences.getString("email", ""))
         messageRasa.put("message", transcription)
-        messageRasa.put("metadata", JSONObject().put("token",sharedPreferences.getString("access_token", ""))
+        messageRasa.put("metadata", JSONObject().put("token",token)
                                                       .put("macAddress", sharedPreferences.getString("macAddress", "")))
-
         var response: JSONObject
         runBlocking {
                 response = httpRequests.requestRasa(messageRasa.toString())
@@ -212,10 +245,9 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
             )
             CircularProgressIndicator(
                 modifier = Modifier.padding(vertical = 26.dp),
-                color = LightColorScheme.tertiary
+                color = colorScheme.onPrimary
             )
-            Text(text = "A Carregar...", fontSize = Typography.titleLarge.fontSize, color = LightColorScheme.surface)
-
+            Text(text = "A Carregar...", fontSize = Typography.titleLarge.fontSize, color = colorScheme.onPrimary)
         }
     }
     @Composable
@@ -258,18 +290,18 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
                     text = if(!isChatbot) "Você" else "Chatbot",
                     fontSize = Typography.bodyLarge.fontSize,
                     modifier = Modifier.padding(start = 8.dp),
-                    color = LightColorScheme.surface
+                    color = colorScheme.onSurface
                 )
 
                 Box(
                     modifier = Modifier
                         .background(
-                            if (!isChatbot) LightColorScheme.primary else LightColorScheme.secondary,
+                            if (!isChatbot) colorScheme.primary else colorScheme.secondary,
                             shape = if (!isChatbot) authorChatBubbleShape else botChatBubbleShape
                         )
                         .border(
                             1.dp,
-                            color = if (!isChatbot) LightColorScheme.onPrimary else LightColorScheme.onSecondary,
+                            color = if (!isChatbot) colorScheme.primary else colorScheme.secondary,
                             shape = if (!isChatbot) authorChatBubbleShape else botChatBubbleShape
                         )
                         .padding(
@@ -281,7 +313,7 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
                 ) {
                     Text(
                         text = messageText,
-                        color = LightColorScheme.surface,
+                        color = colorScheme.onSurface,
                         fontSize = Typography.bodyLarge.fontSize
                     )
                 }
@@ -289,73 +321,83 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
                     text = time,
                     fontSize = Typography.bodyLarge.fontSize,
                     modifier = Modifier.padding(start = 8.dp),
-                    color = LightColorScheme.surface
+                    color = colorScheme.onSurface
                 )
             }
         }
     }
-    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun MessageSection() {
-        Row(modifier = Modifier
-            .fillMaxWidth()
-            .padding(2.dp)
-            .height(60.dp))
-             {
-            TextField(
-                colors = TextFieldDefaults.outlinedTextFieldColors(
-                    focusedBorderColor = LightColorScheme.primary,
-                    unfocusedBorderColor = LightColorScheme.primary
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(60.dp),
+            shadowElevation = 15.dp,
+            shape = RoundedCornerShape(25.dp, 25.dp, 0.dp, 0.dp)
+        ){
+            Row(modifier = Modifier
+                .fillMaxWidth()
+                .height(60.dp)
+                .background(
+                    color = colorScheme.background,
+                    shape = RoundedCornerShape(25.dp, 25.dp, 0.dp, 0.dp)
                 ),
-                textStyle = TextStyle.Default.copy(fontSize = Typography.bodyLarge.fontSize),
-                placeholder = {
-                    Text("Escreva aqui", fontSize = Typography.bodyLarge.fontSize, color = LightColorScheme.surface)
-                },
-                value = _message.value,
-                onValueChange = {
-                    _message.value = it
-                },
-                modifier = Modifier
-                    .fillMaxWidth(0.88F)
-                    .background(
-                        color = LightColorScheme.primary,
-                        shape = RoundedCornerShape(40.dp, 40.dp, 40.dp, 40.dp)
+                verticalAlignment = Alignment.CenterVertically)
+            {
+                Box(
+                    modifier = Modifier.weight(1f)
+                ){
+                    TextField(
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            focusedBorderColor = Color.Transparent,
+                            unfocusedBorderColor = Color.Transparent
+                        ),
+                        textStyle = TextStyle.Default.copy(fontSize = Typography.bodyLarge.fontSize,
+                            color = colorScheme.onBackground
+                        ),
+                        placeholder = {
+                            Text("Escreva uma mensagem",
+                                fontSize = Typography.bodyLarge.fontSize,
+                                fontWeight = Typography.bodyLarge.fontWeight,
+                                color = colorScheme.onBackground)
+                        },
+                        value = _messageWritten.value,
+                        onValueChange = {
+                            _messageWritten.value = it
+                        }
                     )
-            )
-            Spacer(Modifier.weight(1f))
-            Icon(
-                painter = painterResource(id = R.drawable.send),
-                contentDescription = "Botão enviar",
-                tint = LightColorScheme.tertiary,
-                modifier = Modifier.clickable {
-                    _messages.add(
-                        Message(
-                            id = _messages.size.toLong() + 1,
-                            text = _message.value,
-                            isChatbot = false
-                        )
-                    )
-                    chatbotResponse(transcription = _message.value)
-                    _message.value = ""
-
                 }
-                .align(Alignment.CenterVertically)
-                .size(35.dp)
-            )
-            Spacer(Modifier.weight(1f))
+
+                Icon(
+                    painter = painterResource(id = R.drawable.send),
+                    contentDescription = "Send",
+                    tint = colorScheme.onPrimary,
+                    modifier = Modifier
+                        .padding(5.dp, 0.dp)
+                        .clickable {
+                            chatbotResponse(transcription = _messageWritten.value)
+                            _messageWritten.value= ""
+                        }
+                )
+
+                Spacer(modifier = Modifier.width(5.dp))
+            }
         }
     }
+
     @Composable
     fun TopBar(title: String){
         Row(modifier = Modifier
             .fillMaxWidth()
-            .padding(0.dp)
             .height(60.dp)
-            .background(LightColorScheme.secondary)) {
+            .background(colorScheme.tertiary)
+            .padding(10.dp, 0.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.End) {
             Icon(
                 painter = painterResource(id = R.drawable.back),
                 contentDescription = "Botão voltar atrás",
-                tint = LightColorScheme.tertiary,
+                tint = colorScheme.onPrimary,
                 modifier = Modifier.clickable {
                     // change view
                 }
@@ -363,12 +405,12 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
                 .size(40.dp)
             )
             Spacer(modifier = Modifier.fillMaxWidth(0.3f))
-            Text(title, fontSize = Typography.titleLarge.fontSize, color = LightColorScheme.surface, modifier = Modifier.align(Alignment.CenterVertically))
+            Text(title, fontSize = Typography.titleLarge.fontSize, color = colorScheme.onPrimary, modifier = Modifier.align(Alignment.CenterVertically))
             Spacer(modifier = Modifier.fillMaxWidth(0.75f))
             Icon(
                 painter = painterResource(id = if (_microActive.value) R.drawable.write else R.drawable.speak),
                 contentDescription = "Botão alternar entre voz e texto",
-                tint = LightColorScheme.tertiary,
+                tint = colorScheme.onPrimary,
                 modifier = Modifier.clickable {
                     _microActive.value = !_microActive.value
                 }
@@ -390,13 +432,6 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
             }else {
                 recognizeMicrophone()
             }
-        }
-    }
-    @Preview(showBackground = true)
-    @Composable
-    fun AppPreview(){
-        ChatbotERNUITheme {
-            LoadScreen()
         }
     }
 }

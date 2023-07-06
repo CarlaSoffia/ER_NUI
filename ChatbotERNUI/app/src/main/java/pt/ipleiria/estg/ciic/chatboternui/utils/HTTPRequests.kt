@@ -6,16 +6,22 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
+import java.util.concurrent.TimeUnit
 
-private const val WEBHOOK_RASA = "https://aalemotion.dei.estg.ipleiria.pt/webhooks/rest/webhook"
+private const val URL_API = "http://34.18.41.153/api"
+private const val WEBHOOK_RASA = "http://34.18.41.153/webhooks/rest/webhook"
 class HTTPRequests {
     suspend fun requestRasa(body:String): JSONObject{
         return withContext(Dispatchers.IO) {
             if (body.isEmpty()) {
                 throw IllegalArgumentException("[Error] - POST Request must have a body");
             }
+            val timeoutMillis = 10000L
             val requestBody = body.toRequestBody()
-            val okHttpClient = OkHttpClient()
+            val okHttpClient = OkHttpClient.Builder()
+                .connectTimeout(timeoutMillis, TimeUnit.MILLISECONDS)
+                .readTimeout(timeoutMillis, TimeUnit.MILLISECONDS)
+                .build()
             val request = Request.Builder()
                 .method("POST", requestBody)
                 .addHeader("Content-Type", "application/json")
@@ -46,7 +52,7 @@ class HTTPRequests {
                 val requestBody = body.toRequestBody()
                 Request.Builder()
                     .method(requestMethod, requestBody)
-                    .url(apiURL)
+                    .url(URL_API+apiURL)
                     .addHeader("Authorization", "Bearer $token")
                     .addHeader("Content-Type", "application/json")
                     .addHeader("Accept", "application/json")
@@ -57,11 +63,11 @@ class HTTPRequests {
                     .method(requestMethod, requestBody)
                     .addHeader("Content-Type", "application/json")
                     .addHeader("Accept", "application/json")
-                    .url(apiURL)
+                    .url(URL_API+apiURL)
                     .build()
             } else {
                 Request.Builder()
-                    .url(apiURL)
+                    .url(URL_API+apiURL)
                     .addHeader("Authorization", "Bearer $token")
                     .addHeader("Accept", "application/json")
                     .build()

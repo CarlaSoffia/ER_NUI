@@ -9,6 +9,7 @@ import java.time.format.DateTimeFormatter
 import kotlin.math.pow
 import kotlin.math.sqrt
 import android.provider.Settings.Secure
+import java.time.OffsetDateTime
 
 class Others {
 
@@ -28,6 +29,12 @@ class Others {
 
     fun isEmailValid(email: String): Boolean {
         return android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
+    }
+
+    fun convertStringLocalDateTime(date: String): LocalDateTime {
+        val formatter = DateTimeFormatter.ISO_OFFSET_DATE_TIME
+        val offsetDateTime = OffsetDateTime.parse(date, formatter)
+        return offsetDateTime.toLocalDateTime()
     }
 
     fun checkTime(time: LocalDateTime): DateTimeFormatter {

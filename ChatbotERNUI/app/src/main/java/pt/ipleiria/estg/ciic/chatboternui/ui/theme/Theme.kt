@@ -15,34 +15,47 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.ViewCompat
-
 val DarkColorScheme = darkColorScheme(
-    primary = darkBlue,
-    secondary = grey,
-    tertiary = lightBlue
+    primary = Color(0xFF64B5F6),
+    secondary = Color(0xFFC6E2FF),
+    tertiary = Color(0xFFa2d2ff),
+    background = Color.Black,
+    surface = Color.Black,
+    error = Color.White,
+    onPrimary = Color.White,
+    onSecondary = Color.White,
+    onTertiary = Color.White,
+    onBackground = Color.White,
+    onSurface = Color.White,
+    onError = Color.White,
+    primaryContainer = Color(0xFF252525),
+    secondaryContainer = Color(0xFF0077b6),
+    tertiaryContainer = Color(0xFF444444)
 )
 
 val LightColorScheme = lightColorScheme(
-    primary = reseneWhite,
-    secondary = reseneLightBlue,
-    tertiary = darkBlue,
-
-    //Other default colors to override
-    background = white,
-    surface = black,
-    onPrimary = reseneGrey,
-    onSecondary = reseneDarkBlue,
+    primary = Color(0xFF64B5F6),
+    secondary = Color(0xFFC6E2FF),
+    tertiary = Color(0xFFa2d2ff),
+    background = Color.White,
+    surface = Color.White,
+    error = Color.White,
+    onPrimary = Color(0xFF323232),
+    onSecondary = Color.Black,
     onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-
+    onBackground = Color.Black,
+    onSurface = Color.Black,
+    onError = Color.Black,
+    primaryContainer = Color(0xFFf4f4f4),
+    secondaryContainer = Color(0xFF64dfdf),
+    tertiaryContainer = Color(0xFFf8f8f8)
 )
 
 @Composable
 fun ChatbotERNUITheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = false,
     // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
