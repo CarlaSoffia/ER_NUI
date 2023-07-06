@@ -76,7 +76,7 @@ rules:
 - rule: Start oxford happiness questionnaire  
   condition:
   - slot_was_set:
-    - finished_oxford_happiness_questionnaire: Falsef
+    - finished_oxford_happiness_questionnaire: False
   steps:
   - intent: Start_Oxford_Happiness_Questionnaire
   - action: utter_begin_questionnaire_likert

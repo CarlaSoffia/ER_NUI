@@ -4,15 +4,12 @@
 
 # Libraries import
 from typing import Any, Text, Dict, List
-import random
 import os
 import json
-import time
 import glob
 import pickle
 import requests
 from tensorflow import keras
-from datetime import datetime
 from dotenv import load_dotenv
 from rasa_sdk import Action, Tracker
 from rasa_sdk.executor import CollectingDispatcher
@@ -22,66 +19,14 @@ from rasa_sdk.events import SlotSet, ActionExecuted, EventType
 
 # Load initial data
 load_dotenv()
-API_URL = str(os.getenv('API_URL'))
 models_dir = glob.glob(os.path.join('./SA/', '*.h5'))
 models_dir = sorted(models_dir, reverse=True)
 MODEL_NAME = models_dir[0]
 num_words = 5000
-POS = 0
-NEG = 1
-NEU = 2
 LABELS = ["angry","disgust","fear","guilt","happy","sad","shame"]
 
 ######################################################### FUNCTIONS #########################################################
-# Function: Sends request to LARAVEL API
-def request(type, url, token, data=None, ContentJson=True):
-    if token == None:
-        return "[Error] - No token"   
-    if data != None and ContentJson:
-        headers = {"Authorization": "Bearer " + str(token), "Accept": "application/json", 'Content-Type': 'application/json'}
-        r = requests.request(type, API_URL+url, headers=headers, data=data)
-    elif ContentJson==False:
-        headers = {"Authorization": "Bearer " + str(token), "Accept": "application/json"}
-        r = requests.request(type, API_URL+url, headers=headers, data=data)
-    else:
-        headers = {"Authorization": "Bearer " + str(token), "Accept": "application/json"}
-        r = requests.request(type, API_URL+url, headers=headers)   
-    if r.status_code == 403 or r.status_code == 401 or r.status_code == 422:
-        return "[Error]["+str(r.status_code)+"] - "  + str(r.json()["message"])
-    return r.json()["data"]
 
-# Function: Handles iteration    
-def requestIteration(token, macAddress, group):
-    message = request("POST","iterations",token,json.dumps({'macAddress': macAddress,'emotion':group,"type":'best'}))
-    if str(message).find("[Error]") == -1:
-         return {"id":message["id"],"usage_id":message["usage_id"]},""
-    return {},message
-
-# Function: Handles speech
-def requestSpeech(id, usage_id, accuracy, text, predictions, macAddress, group, token, iteration={}):
-    date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    payload = {'iteration_id':str(id), 'iteration_usage_id':str(usage_id), 'datesSpeeches[0]': str(date), 'accuraciesSpeeches[0]':str(accuracy), 'textsSpeeches[0]': text, 'preditionsSpeeches[0]':predictions}
-    # Send speech to LARAVEL API
-    message = request("POST","speeches",token,payload,False)  
-    iteration = {}
-    if str(message).find("[Error]") != -1:
-        # Invalid usage_id -> need to create newnteration
-        if str(message).find("iteration usage id") != -1:
-            iteration, error = requestIteration(token, macAddress, group)  
-            # Error in POST iteration
-            if iteration == {}:
-                return {}, {}, error
-            else:
-                return requestSpeech(iteration["id"], iteration["usage_id"], accuracy, text, predictions, macAddress, group, token, iteration)
-    return iteration, message, {}
-
-# Function: Verifies if a week has passed from a given epoch time
-def has_week_passed(epoch_time):
-    now = time.time()
-    if (now - epoch_time) >= 604800:
-        return True
-    else:
-        return False
 
 # Function: Predicts emotion based on text
 def predictSentiment(text):
@@ -101,16 +46,7 @@ def predictSentiment(text):
         emotion = LABELS[idx]
         sentiment["predictions"] += emotion + "#" + "{:.2f}".format(pred*100) +";"
     sentiment["predictions"] = sentiment["predictions"][:-1]    
-    return sentiment
-
-# Function: Decides the group and idx based on the detected emotion
-def decideGroup(emotion):
-    if emotion == "happy":
-        return "Positive", POS
-    elif emotion == "shame":
-        return "Neutral", NEU
-    else:
-        return "Negative", NEG
+    return json.dumps(sentiment)
 
 def questionToAskGeriatric(length):
     if length % 2 == 0 and length >= 0 and length <= 28:
@@ -119,24 +55,8 @@ def questionToAskGeriatric(length):
 def questionToAskOxford(length):
     if length % 2 == 0 and length >= 0 and length <= 56:
         return (length // 2) + 1
-        
-def hasGeriatricQuestionnaire(token):
-    # Mid questionnaire - responses speeches are  not created here  
-    lastDateQuestionnaire = request("GET","geriatricQuestionnaires",token)
-    finished_geriatric_questionnaire = True
-    if str(lastDateQuestionnaire).find("[Error]") == -1:
-        if len(lastDateQuestionnaire) == 0:
-            finished_geriatric_questionnaire = False
-    else:
-        weekPassedSinceLastQuestionnaire = has_week_passed(lastDateQuestionnaire[0]["created_at"])
-        # Repeat the questionnaire
-        if weekPassedSinceLastQuestionnaire:
-            finished_geriatric_questionnaire = False
-    return finished_geriatric_questionnaire      
+    
 
-def has_an_hour_passed(date):
-    now = datetime.now()
-    return now.hour != date.hour
 ########################################################### ACTIONS ###########################################################
 
 # Action: Responds to the user greeting
@@ -156,44 +76,17 @@ class CustomActionListen(Action):
     def run(self, dispatcher: CollectingDispatcher,
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
-        finished_geriatric_questionnaire = tracker.get_slot("finished_geriatric_questionnaire")   
-        last_check_hour_geriatric_questionnaire = False 
-        #last_check_hour_geriatric_questionnaire = tracker.get_slot("last_check_hour_geriatric_questionnaire")
-        #if last_check_hour_geriatric_questionnaire is None:
-        #    last_check_hour_geriatric_questionnaire = datetime.now()
-        #else:
-        #    last_check_hour_geriatric_questionnaire = datetime.strptime(last_check_hour_geriatric_questionnaire, "%Y-%m-%d %H:%M:%S.%f")
-        #oneHourPassed = has_an_hour_passed(last_check_hour_geriatric_questionnaire)
-        #last_check_hour_geriatric_questionnaire = str(last_check_hour_geriatric_questionnaire)
-        #token = (tracker.latest_message)["metadata"]["token"]
-        #if oneHourPassed==True:
-            #finished_geriatric_questionnaire = hasGeriatricQuestionnaire(token)
-        #else:
-        #    finished_geriatric_questionnaire = tracker.get_slot("finished_geriatric_questionnaire")        
         geriatric_questionnaire_form = tracker.active_loop.get("name") == "geriatric_questionnaire_form"
-        if geriatric_questionnaire_form:
+        oxford_happiness_questionnaire = tracker.active_loop.get("name") == "oxford_happiness_questionnaire"
+
+        if geriatric_questionnaire_form or oxford_happiness_questionnaire:
             return [ActionExecuted("action_listen")]  
         text = (tracker.latest_message)['text'] 
         if text == None:
             return [ActionExecuted("action_listen")]
         sentiment = predictSentiment(text)
-        #macAddress = (tracker.latest_message)["metadata"]["macAddress"]
-        iterations = tracker.get_slot("iterations")
-        group, idx = decideGroup(sentiment["emotion"])
-        #if iterations == None: 
-        #    iterations = [{},{},{}] 
-        #if iterations[idx] == {}: 
-        #    iteration, error = requestIteration(token, macAddress, group)
-        #    if iteration == {}:
-        #        dispatcher.utter_message(str(error))
-        #        return [ActionExecuted("action_listen"),SlotSet("finished_geriatric_questionnaire",finished_geriatric_questionnaire),SlotSet("last_check_hour_geriatric_questionnaire",last_check_hour_geriatric_questionnaire)]
-        #    else:
-        #        iterations[idx] = iteration    
-        #iteration, _, error = requestSpeech(iterations[idx]["id"], iterations[idx]["usage_id"], sentiment["accuracy"], text, sentiment["predictions"], macAddress, group, token)
-        #if iteration != {}:
-        #    iterations[idx] = iteration
-        
-        return [ActionExecuted("action_listen"),SlotSet("iterations",iterations),SlotSet("finished_geriatric_questionnaire",finished_geriatric_questionnaire),SlotSet("last_check_hour_geriatric_questionnaire",last_check_hour_geriatric_questionnaire)]   
+        dispatcher.utter_message(sentiment)
+        return [ActionExecuted("action_listen")]   
    
 
 ### Geriatric Depression Questionnaire ------------------------------------------------------------
@@ -212,20 +105,11 @@ class ActionSubmitGeriatricQuestionnaire(Action):
             res = str(res).replace("True","true")
             res = str(res).replace("False","false")
             responses_geriatric_questionnaire.append(str(res).replace("'","\""))
-        #token = (tracker.latest_message)["metadata"]["token"] 
         SlotSet("responses_geriatric_questionnaire",None)
         SlotSet("geriatric_questionnaire_points",0.0)
         SlotSet("finished_geriatric_questionnaire",True)
         SlotSet("response_question_geriatric_questionnaire",None)
         SlotSet("why_question_geriatric_questionnaire",None)
-        #message = request("POST","geriatricQuestionnaires",token,json.dumps({"points":tracker.get_slot("geriatric_questionnaire_points"),"responses":responses_geriatric_questionnaire}))
-        #if str(message).find("[Error]") == -1:
-        #    SlotSet("responses_geriatric_questionnaire",None)
-        #    SlotSet("geriatric_questionnaire_points",0.0)
-        #    SlotSet("finished_geriatric_questionnaire",True)
-        #    SlotSet("response_question_geriatric_questionnaire",None)
-        #    SlotSet("why_question_geriatric_questionnaire",None)
-        #dispatcher.utter_message(str(message))
 
 # Action: Ask Why for Question
 class ActionAskWhyQuestionGeriatricQuestionnaire(Action):
@@ -292,22 +176,7 @@ class ValidateQuestionForm(FormValidationAction):
         questionsPointsNo = [1,5,7,11,13]
         # Create speech --------
         sentiment = predictSentiment(slot_value)
-        #token = (tracker.latest_message)["metadata"]["token"]
-        #macAddress = (tracker.latest_message)["metadata"]["macAddress"]
-        iterations = tracker.get_slot("iterations")
-        group, idx = decideGroup(sentiment["emotion"])
-        if iterations == None: 
-            iterations = [{},{},{}] 
-        #if iterations[idx] == {}: 
-        #    iteration, error = requestIteration(token, macAddress, group)
-        #    if iteration == {}:
-        #        dispatcher.utter_message(error) 
-        #    else:
-        #       iterations[idx] = iteration           
-        #iteration, message, error = requestSpeech(iterations[idx]["id"], iterations[idx]["usage_id"], sentiment["accuracy"], slot_value, sentiment["predictions"], macAddress, group, token)
-        #if iteration != {}:
-        #    iterations[idx] = iteration
-        # -------------------
+        dispatcher.utter_message(sentiment)
         newResponse = {
                         "question": question,
                         "response":slot_value,
@@ -316,9 +185,9 @@ class ValidateQuestionForm(FormValidationAction):
                     }
         responses_geriatric_questionnaire.append(newResponse)
         if (slot_value == "Não" and question in questionsPointsNo) or (slot_value == "Sim" and question not in questionsPointsNo):
-            return {"iterations":iterations, "response_question_geriatric_questionnaire": slot_value,"responses_geriatric_questionnaire": responses_geriatric_questionnaire, "geriatric_questionnaire_points":tracker.get_slot("geriatric_questionnaire_points")+1.0, "why_question_geriatric_questionnaire": None}
+            return {"response_question_geriatric_questionnaire": slot_value,"responses_geriatric_questionnaire": responses_geriatric_questionnaire, "geriatric_questionnaire_points":tracker.get_slot("geriatric_questionnaire_points")+1.0, "why_question_geriatric_questionnaire": None}
         if (slot_value == "Sim" and question in questionsPointsNo) or (slot_value == "Não" and question not in questionsPointsNo):            
-            return {"iterations":iterations, "response_question_geriatric_questionnaire": slot_value,"responses_geriatric_questionnaire": responses_geriatric_questionnaire, "why_question_geriatric_questionnaire": None}
+            return {"response_question_geriatric_questionnaire": slot_value,"responses_geriatric_questionnaire": responses_geriatric_questionnaire, "why_question_geriatric_questionnaire": None}
 
     def validate_why_question_geriatric_questionnaire(
         self,
@@ -329,24 +198,8 @@ class ValidateQuestionForm(FormValidationAction):
     ) -> Dict[Text, Any]:
         
         # Create speech --------
-        sentiment = predictSentiment(slot_value)
-        #token = (tracker.latest_message)["metadata"]["token"]
-        #macAddress = (tracker.latest_message)["metadata"]["macAddress"]
-        iterations = tracker.get_slot("iterations")
-        group, idx = decideGroup(sentiment["emotion"])
-        #if iterations == None: 
-        #    iterations = [{},{},{}] 
-        #if iterations[idx] == {}: 
-        #    iteration, error = requestIteration(token, macAddress, group)
-        #    if iteration == {}:
-        #        dispatcher.utter_message(error)
-        #    else:
-        #        iterations[idx] = iteration      
-        #iteration, message, error = requestSpeech(iterations[idx]["id"], iterations[idx]["usage_id"], sentiment["accuracy"], slot_value, sentiment["predictions"], macAddress, group, token)
-        #if iteration != {}:
-        #    iterations[idx] = iteration
-        # -------------------
-        
+        sentiment = predictSentiment(slot_value) 
+        dispatcher.utter_message(sentiment)       
         responses_geriatric_questionnaire = tracker.get_slot("responses_geriatric_questionnaire")
         last = len(responses_geriatric_questionnaire)-1
         newResponse = {
@@ -357,8 +210,8 @@ class ValidateQuestionForm(FormValidationAction):
                     }
         responses_geriatric_questionnaire.append(newResponse)
         if len(responses_geriatric_questionnaire) == 30:
-            return {"iterations":iterations, "why_question_geriatric_questionnaire": slot_value, "responses_geriatric_questionnaire": responses_geriatric_questionnaire, "response_question_geriatric_questionnaire": "", "finished_geriatric_questionnaire":True}
-        return {"iterations":iterations, "why_question_geriatric_questionnaire": slot_value, "responses_geriatric_questionnaire": responses_geriatric_questionnaire, "response_question_geriatric_questionnaire": None,"finished_geriatric_questionnaire":False}
+            return {"why_question_geriatric_questionnaire": slot_value, "responses_geriatric_questionnaire": responses_geriatric_questionnaire, "response_question_geriatric_questionnaire": "", "finished_geriatric_questionnaire":True}
+        return {"why_question_geriatric_questionnaire": slot_value, "responses_geriatric_questionnaire": responses_geriatric_questionnaire, "response_question_geriatric_questionnaire": None,"finished_geriatric_questionnaire":False}
 
 ### Oxford Happiness Questionnaire ------------------------------------------------------------
 
@@ -452,22 +305,7 @@ class ValidateOxfordHappinessQuestionnaire(FormValidationAction):
             points = points + (mappingLikert.index(slot_value) + 1)
         # Create speech --------
         sentiment = predictSentiment(slot_value)
-        #token = (tracker.latest_message)["metadata"]["token"]
-        #macAddress = (tracker.latest_message)["metadata"]["macAddress"]
-        iterations = tracker.get_slot("iterations")
-        group, idx = decideGroup(sentiment["emotion"])
-        if iterations == None: 
-            iterations = [{},{},{}] 
-        #if iterations[idx] == {}: 
-        #    iteration, error = requestIteration(token, macAddress, group)
-        #    if iteration == {}:
-        #        dispatcher.utter_message(error) 
-        #    else:
-        #       iterations[idx] = iteration           
-        #iteration, message, error = requestSpeech(iterations[idx]["id"], iterations[idx]["usage_id"], sentiment["accuracy"], slot_value, sentiment["predictions"], macAddress, group, token)
-        #if iteration != {}:
-        #    iterations[idx] = iteration
-        # -------------------
+        dispatcher.utter_message(sentiment)
         newResponse = {
                         "question": question,
                         "response":slot_value,
@@ -475,7 +313,7 @@ class ValidateOxfordHappinessQuestionnaire(FormValidationAction):
                         "is_why": False
                     }
         responses_oxford_happiness_questionnaire.append(newResponse)
-        return {"iterations":iterations, "oxford_happiness_questionnaire_points": points, "response_question_oxford_happiness_questionnaire": slot_value,"responses_oxford_happiness_questionnaire": responses_oxford_happiness_questionnaire, "why_question_oxford_happiness_questionnaire": None}
+        return {"oxford_happiness_questionnaire_points": points, "response_question_oxford_happiness_questionnaire": slot_value,"responses_oxford_happiness_questionnaire": responses_oxford_happiness_questionnaire, "why_question_oxford_happiness_questionnaire": None}
 
     def validate_why_question_oxford_happiness_questionnaire(
         self,
@@ -487,23 +325,7 @@ class ValidateOxfordHappinessQuestionnaire(FormValidationAction):
         
         # Create speech --------
         sentiment = predictSentiment(slot_value)
-        #token = (tracker.latest_message)["metadata"]["token"]
-        #macAddress = (tracker.latest_message)["metadata"]["macAddress"]
-        iterations = tracker.get_slot("iterations")
-        group, idx = decideGroup(sentiment["emotion"])
-        #if iterations == None: 
-        #    iterations = [{},{},{}] 
-        #if iterations[idx] == {}: 
-        #    iteration, error = requestIteration(token, macAddress, group)
-        #    if iteration == {}:
-        #        dispatcher.utter_message(error)
-        #    else:
-        #        iterations[idx] = iteration      
-        #iteration, message, error = requestSpeech(iterations[idx]["id"], iterations[idx]["usage_id"], sentiment["accuracy"], slot_value, sentiment["predictions"], macAddress, group, token)
-        #if iteration != {}:
-        #    iterations[idx] = iteration
-        # -------------------
-        
+        dispatcher.utter_message(sentiment)
         responses_oxford_happiness_questionnaire = tracker.get_slot("responses_oxford_happiness_questionnaire")
         last = len(responses_oxford_happiness_questionnaire)-1
         newResponse = {
@@ -515,8 +337,8 @@ class ValidateOxfordHappinessQuestionnaire(FormValidationAction):
         responses_oxford_happiness_questionnaire.append(newResponse)
         if len(responses_oxford_happiness_questionnaire) == 58:
             points = tracker.get_slot("oxford_happiness_questionnaire_points") / 29
-            return {"iterations":iterations, "oxford_happiness_questionnaire_points": points, "why_question_oxford_happiness_questionnaire": slot_value, "responses_oxford_happiness_questionnaire": responses_oxford_happiness_questionnaire, "response_question_oxford_happiness_questionnaire": "", "finished_oxford_happiness_questionnaire":True}
-        return {"iterations":iterations, "why_question_oxford_happiness_questionnaire": slot_value, "responses_oxford_happiness_questionnaire": responses_oxford_happiness_questionnaire, "response_question_oxford_happiness_questionnaire": None,"finished_oxford_happiness_questionnaire":False}
+            return {"oxford_happiness_questionnaire_points": points, "why_question_oxford_happiness_questionnaire": slot_value, "responses_oxford_happiness_questionnaire": responses_oxford_happiness_questionnaire, "response_question_oxford_happiness_questionnaire": "", "finished_oxford_happiness_questionnaire":True}
+        return {"why_question_oxford_happiness_questionnaire": slot_value, "responses_oxford_happiness_questionnaire": responses_oxford_happiness_questionnaire, "response_question_oxford_happiness_questionnaire": None,"finished_oxford_happiness_questionnaire":False}
 
     
 # Action: Submit the form
@@ -533,17 +355,8 @@ class ActionSubmitOxfordHappinessQuestionnaire(Action):
             res = str(res).replace("True","true")
             res = str(res).replace("False","false")
             responses_oxford_happiness_questionnaire.append(str(res).replace("'","\""))
-        #token = (tracker.latest_message)["metadata"]["token"] 
         SlotSet("responses_oxford_happiness_questionnaire",None)
         SlotSet("oxford_happiness_questionnaire_points",0.0)
         SlotSet("finished_oxford_happiness_questionnaire",True)
         SlotSet("response_question_oxford_happiness_questionnaire",None)
         SlotSet("why_question_oxford_happiness_questionnaire",None)
-        #message = request("POST","geriatricQuestionnaires",token,json.dumps({"points":tracker.get_slot("geriatric_questionnaire_points"),"responses":responses_geriatric_questionnaire}))
-        #if str(message).find("[Error]") == -1:
-        #    SlotSet("responses_geriatric_questionnaire",None)
-        #    SlotSet("geriatric_questionnaire_points",0.0)
-        #    SlotSet("finished_geriatric_questionnaire",True)
-        #    SlotSet("response_question_geriatric_questionnaire",None)
-        #    SlotSet("why_question_geriatric_questionnaire",None)
-        #dispatcher.utter_message(str(message))
