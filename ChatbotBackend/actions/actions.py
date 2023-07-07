@@ -76,16 +76,13 @@ class CustomActionListen(Action):
     def run(self, dispatcher: CollectingDispatcher,
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
-        geriatric_questionnaire_form = tracker.active_loop.get("name") == "geriatric_questionnaire_form"
-        oxford_happiness_questionnaire = tracker.active_loop.get("name") == "oxford_happiness_questionnaire"
-
-        if geriatric_questionnaire_form or oxford_happiness_questionnaire:
-            return [ActionExecuted("action_listen")]  
+  
         text = (tracker.latest_message)['text'] 
         if text == None:
             return [ActionExecuted("action_listen")]
         sentiment = predictSentiment(text)
         dispatcher.utter_message(sentiment)
+
         return [ActionExecuted("action_listen")]   
    
 
@@ -175,12 +172,9 @@ class ValidateQuestionForm(FormValidationAction):
             question = questionToAskGeriatric(len(responses_geriatric_questionnaire))
         questionsPointsNo = [1,5,7,11,13]
         # Create speech --------
-        sentiment = predictSentiment(slot_value)
-        dispatcher.utter_message(sentiment)
         newResponse = {
                         "question": question,
                         "response":slot_value,
-                        "speech_id":1,#message["id"]
                         "is_why": False
                     }
         responses_geriatric_questionnaire.append(newResponse)
@@ -197,15 +191,12 @@ class ValidateQuestionForm(FormValidationAction):
         domain:  Dict[Text, Any],
     ) -> Dict[Text, Any]:
         
-        # Create speech --------
-        sentiment = predictSentiment(slot_value) 
-        dispatcher.utter_message(sentiment)       
+        # Create speech --------     
         responses_geriatric_questionnaire = tracker.get_slot("responses_geriatric_questionnaire")
         last = len(responses_geriatric_questionnaire)-1
         newResponse = {
                         "question": responses_geriatric_questionnaire[last]["question"],
                         "response":slot_value,
-                        "speech_id":2,#message["id"]
                         "is_why": True
                     }
         responses_geriatric_questionnaire.append(newResponse)
@@ -304,12 +295,9 @@ class ValidateOxfordHappinessQuestionnaire(FormValidationAction):
         else:
             points = points + (mappingLikert.index(slot_value) + 1)
         # Create speech --------
-        sentiment = predictSentiment(slot_value)
-        dispatcher.utter_message(sentiment)
         newResponse = {
                         "question": question,
                         "response":slot_value,
-                        "speech_id":1,#message["id"]
                         "is_why": False
                     }
         responses_oxford_happiness_questionnaire.append(newResponse)
@@ -324,14 +312,11 @@ class ValidateOxfordHappinessQuestionnaire(FormValidationAction):
     ) -> Dict[Text, Any]:
         
         # Create speech --------
-        sentiment = predictSentiment(slot_value)
-        dispatcher.utter_message(sentiment)
         responses_oxford_happiness_questionnaire = tracker.get_slot("responses_oxford_happiness_questionnaire")
         last = len(responses_oxford_happiness_questionnaire)-1
         newResponse = {
                         "question": responses_oxford_happiness_questionnaire[last]["question"],
                         "response":slot_value,
-                        "speech_id":2,#message["id"]
                         "is_why": True
                     }
         responses_oxford_happiness_questionnaire.append(newResponse)
