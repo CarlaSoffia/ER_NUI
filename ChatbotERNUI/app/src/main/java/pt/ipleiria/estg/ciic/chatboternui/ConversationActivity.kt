@@ -46,20 +46,26 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
     private var _messages = mutableStateListOf<Message>()
     private var _messageWritten : MutableState<String> = mutableStateOf("")
     private var _microActive : MutableState<Boolean> = mutableStateOf(true)
+    private var _finishedLoading: MutableState<Int> = mutableStateOf(0)
+    private var _showConnectivityError: MutableState<Boolean> = mutableStateOf(false)
+    private var iterations: MutableList<Pair<String,JSONObject>> = mutableListOf()
+    private var groupsEmotions: List<Pair<String,List<String>>> = emptyList()
     private val utils = Others()
     private val httpRequests = HTTPRequests()
     private val scope = CoroutineScope(Dispatchers.Main)
     private lateinit var sharedPreferences : SharedPreferences
+    private lateinit var token: String
     private var model: Model? = null
     private var speechService: SpeechService? = null
-    private var _finishedLoading: MutableState<Int> = mutableStateOf(0)
-    private lateinit var token: String
-    private var _showConnectivityError: MutableState<Boolean> = mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         checkPermission()
         sharedPreferences = getSharedPreferences("ERNUI", Context.MODE_PRIVATE)
         token = sharedPreferences.getString("access_token", "").toString()
+        getGroupsEmotions()
+        getAllMessages()
+
         setContent {
             ChatbotERNUITheme {
                 if(_finishedLoading.value != STATE_DONE){
@@ -155,25 +161,116 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
         // got quiet after a long while
         _finishedLoading.value = STATE_DONE
     }
-
-    private fun getAllMessages() {
+    private fun getGroupsEmotions(){
         scope.launch {
-            val response = httpRequests.request("GET", "messages", token = token)
+            var response = httpRequests.request("GET", "/emotions/groups", token = token)
+            try {
+                var data = JSONObject(response["data"].toString())
+                val groups = JSONArray(data["list"].toString())
+                for (i in 0 until groups.length()) {
+                    val group = JSONObject(groups[i].toString())
+                    val name = group["name"].toString()
+                    response = httpRequests.request("GET", "/emotions/groups/${name}", token = token)
+                    data = JSONObject(response["data"].toString())
+                    val emotions = JSONArray(data["list"].toString())
+                    val emotionsList : MutableList<String> = mutableListOf()
+                    for (j in 0 until emotions.length()) {
+                        val emotion = JSONObject(emotions[j].toString())
+                        emotionsList.add(emotion["name"].toString())
+                    }
+                    groupsEmotions = groupsEmotions.plus(name to emotionsList)
+                }
+
+            } catch (ex: JSONException) {
+                if(response["status_code"].toString() == "503"){
+                    _showConnectivityError.value = true
+                }
+                Log.i("Debug", "Error: ${ex.message}")
+            }
+        }
+    }
+    private fun handleSpeech(text:String, sentiment: JSONObject){
+        val group = groupsEmotions.find { it.second.contains(sentiment["emotion"].toString()) }?.first
+        val iterationGroup = iterations.find { it.first == group }
+        val accuracy = sentiment["predictions"].toString().split(";")
+            .map { it.split("#") }
+            .find { it.first() == sentiment["emotion"].toString() }
+            ?.get(1)
+        val speechBody = JSONObject()
+        speechBody.put("iteration_id", iterationGroup?.second?.getString("iteration_id"))
+        speechBody.put("iteration_usage_id", iterationGroup?.second?.getString("iteration_usage_id"))
+        speechBody.put("datesSpeeches[0]", utils.getTimeNow())
+        speechBody.put("accuraciesSpeeches[0]", accuracy.toString())
+        speechBody.put("textsSpeeches[0]", text)
+        speechBody.put("preditionsSpeeches[0]", sentiment["predictions"].toString())
+
+        var response: JSONObject
+        scope.launch {
+            response =
+                httpRequests.requestFormData("/speeches", speechBody, token = token)
+            try{
+
+            }catch (ex: JSONException){
+                if(response["status_code"].toString() == "503"){
+                    _showConnectivityError.value = true
+                }
+                if(response["status_code"].toString() == "200"){
+                    createIteration(group.toString())
+                    handleSpeech(text, sentiment)
+                }
+            }
+            val data = JSONObject(response["data"].toString())
+            Log.i("speeches", response["data"].toString())
+            // if we are in questionnaires, we must save these speeches ids! along with the responses in the store
+            // delete once completed
+        }
+    }
+    private fun handleIteration(sentiment: JSONObject){
+        val group = groupsEmotions.find { it.second.contains(sentiment["emotion"].toString()) }?.first
+        val iterationGroup = iterations.find { it.first == group.toString() }
+        if(iterations.isNotEmpty() && iterationGroup != null){
+            return
+        }
+        createIteration(group.toString())
+
+    }
+    private fun createIteration(group: String){
+        val iterationBody = JSONObject()
+        iterationBody.put("macAddress", "00:00:00:00:00:00")
+        iterationBody.put("emotion", group)
+        iterationBody.put("type", "best")
+        var response: JSONObject
+        runBlocking {
+            response =
+                httpRequests.request("POST", "/iterations", iterationBody.toString(), token = token)
+            val data = JSONObject(response["data"].toString())
+            val iteration = JSONObject()
+                .put("iteration_id", data["id"].toString())
+                .put("iteration_usage_id", data["usage_id"].toString())
+            val index = iterations.indexOfFirst { it.first == group }
+            if(iterations.isNotEmpty() && index != -1){
+                iterations.removeAt(index)
+            }
+            iterations.add(group to iteration)
+        }
+    }
+    private fun getAllMessages() {
+        _messages = mutableStateListOf()
+        scope.launch {
+            val response = httpRequests.request("GET", "/messages", token = token)
             try {
                 val data = JSONObject(response["data"].toString())
-                val list = JSONArray(data["list"].toString())
-                for (i in 0 until list.length()){
-                    val jsonMessage: JSONObject = list.getJSONObject(i)
-                    if(jsonMessage["body"].toString() == "start_form"){
+                val messages = JSONArray(data["list"].toString())
+
+                for (i in 0 until messages.length()) {
+                    val message = JSONObject(messages[i].toString())
+                    if(message["body"].toString().contains("{")){
                         continue
                     }
-                    val message = Message(
-                        id =  (_messages.size.toLong()+1),
-                        text = jsonMessage["body"].toString(),
-                        time = utils.convertStringLocalDateTime(jsonMessage["createdAt"].toString()),
-                        isChatbot = (jsonMessage["isChatbot"].toString() == "true")
-                    )
-                    _messages.add(message)
+                    _messages.add(Message(id = message["id"].toString().toLong(),
+                        text = message["body"] as String?,
+                        isChatbot = message["isChatbot"].toString() == "1",
+                        time = utils.convertStringLocalDateTime(message["created_at"].toString())))
                 }
             } catch (ex: JSONException) {
                 if(response["status_code"].toString() == "503"){
@@ -188,54 +285,42 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
             _messages.add(Message(id = _messages.size.toLong()+1, text = "Por favor, repita o que disse.", isChatbot = true))
             return
         }
-        val response = sendRasaServer(transcription)
-        val messages :JSONArray = response["data"] as JSONArray
-        for (i in 0 until messages.length()) {
-            val message = JSONObject(messages[i].toString())
-            // if message has a laravel result resource
-            if(message["text"].toString().contains("{")){
-                continue
-            }
-            _messages.add(Message(id = _messages.size.toLong()+1, text = message["text"] as String?, isChatbot = true))
-        }
-    }
-    private fun refreshAccessToken(){
-        val body = JSONObject()
-        body.put("email",sharedPreferences.getString("email", ""))
-        body.put("password",sharedPreferences.getString("password", ""))
-        body.put("refresh_token",sharedPreferences.getString("refresh_token", ""))
 
-        scope.launch {
-            val response = httpRequests.request("POST", "/auth/refresh", body.toString())
-            val data = JSONObject(response["data"].toString())
-            utils.addStringToStore(sharedPreferences,"access_token", data["access_token"].toString())
-        }
+        sendMessage(transcription)
     }
-    private fun sendRasaServer(transcription: String): JSONObject {
-        val messageRasa = JSONObject()
-        messageRasa.put("sender", sharedPreferences.getString("email", ""))
-        messageRasa.put("message", transcription)
-        messageRasa.put("metadata", JSONObject().put("token",token)
-                                                      .put("macAddress", sharedPreferences.getString("macAddress", "")))
+
+    private fun sendMessage(transcription: String) {
+        val messageSend = JSONObject()
+        messageSend.put("isChatbot", false)
+        messageSend.put("body", transcription)
+
         var response: JSONObject
-        runBlocking {
-                response = httpRequests.requestRasa(messageRasa.toString())
-                val messages :JSONArray = response["data"] as JSONArray
-                for (i in 0 until messages.length()){
+        scope.launch {
+                response = httpRequests.request("POST", "/messages", messageSend.toString(), token = token)
+                val data = JSONObject(response["data"].toString())
+                val messages = JSONArray(data["list"].toString())
+                for (i in 0 until messages.length()) {
                     val message = JSONObject(messages[i].toString())
-                    if (message["text"].toString().contains("[Error]")){
-                        refreshAccessToken()
-                        response = sendRasaServer(transcription)
-                        break
+                    if(message["body"].toString().contains("{")){
+                        val sentiment = JSONObject(message["body"].toString())
+                        // Creates iteration if doesn't exists
+                        handleIteration(sentiment)
+                        // Creates speech with the iteration
+                        handleSpeech(transcription,sentiment)
+                    }else{
+                        _messages.add(Message(id = message["id"].toString().toLong(),
+                            text = message["body"] as String?,
+                            isChatbot = message["isChatbot"].toString() == "true",
+                            time = utils.convertStringLocalDateTime(message["created_at"].toString())))
                     }
                 }
             }
-        return response
     }
     @Composable
     private fun LoadScreen(){
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize()
+            .background(colorScheme.background),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -276,8 +361,8 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
         time: String,
         isChatbot: Boolean
         ) {
-        val botChatBubbleShape = RoundedCornerShape(0.dp, 8.dp, 8.dp, 8.dp)
-        val authorChatBubbleShape = RoundedCornerShape(8.dp, 0.dp, 8.dp, 8.dp)
+        val botChatBubbleShape = RoundedCornerShape(0.dp, 15.dp, 15.dp, 15.dp)
+        val authorChatBubbleShape = RoundedCornerShape(15.dp, 0.dp, 15.dp, 15.dp)
         Column(
             modifier = Modifier
                 .fillMaxWidth(),
@@ -285,23 +370,10 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
         )
         {
             if (!messageText.isNullOrEmpty()) {
-
-                Text(
-                    text = if(!isChatbot) "Você" else "Chatbot",
-                    fontSize = Typography.bodyLarge.fontSize,
-                    modifier = Modifier.padding(start = 8.dp),
-                    color = colorScheme.onSurface
-                )
-
                 Box(
                     modifier = Modifier
                         .background(
-                            if (!isChatbot) colorScheme.primary else colorScheme.secondary,
-                            shape = if (!isChatbot) authorChatBubbleShape else botChatBubbleShape
-                        )
-                        .border(
-                            1.dp,
-                            color = if (!isChatbot) colorScheme.primary else colorScheme.secondary,
+                            if (!isChatbot) colorScheme.primaryContainer else colorScheme.secondary,
                             shape = if (!isChatbot) authorChatBubbleShape else botChatBubbleShape
                         )
                         .padding(
@@ -314,12 +386,14 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
                     Text(
                         text = messageText,
                         color = colorScheme.onSurface,
-                        fontSize = Typography.bodyLarge.fontSize
+                        fontSize = Typography.bodyMedium.fontSize,
+                        fontWeight = Typography.bodyMedium.fontWeight
                     )
                 }
                 Text(
                     text = time,
-                    fontSize = Typography.bodyLarge.fontSize,
+                    fontSize = Typography.bodySmall.fontSize,
+                    fontWeight = Typography.bodySmall.fontWeight,
                     modifier = Modifier.padding(start = 8.dp),
                     color = colorScheme.onSurface
                 )
@@ -423,6 +497,9 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
     fun MainScreen() {
         Column(
             modifier = Modifier.fillMaxSize()
+                .background(colorScheme.background),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
             TopBar("Chatbot")
             ChatSection(Modifier.weight(1f))

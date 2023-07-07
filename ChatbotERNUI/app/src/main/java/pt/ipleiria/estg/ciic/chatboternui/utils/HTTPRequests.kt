@@ -1,4 +1,5 @@
 package pt.ipleiria.estg.ciic.chatboternui.utils
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.*
@@ -6,35 +7,35 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
-import java.util.concurrent.TimeUnit
 
 private const val URL_API = "http://34.18.41.153/api"
-private const val WEBHOOK_RASA = "http://34.18.41.153/webhooks/rest/webhook"
 class HTTPRequests {
-    suspend fun requestRasa(body:String): JSONObject{
+    suspend fun requestFormData(apiURL:String, jsonBody:JSONObject, token:String): JSONObject{
         return withContext(Dispatchers.IO) {
-            if (body.isEmpty()) {
-                throw IllegalArgumentException("[Error] - POST Request must have a body");
+            val okHttpClient = OkHttpClient()
+            val builder = MultipartBody.Builder().setType(MultipartBody.FORM)
+            // Add form data parts based on the properties of the JSON object
+            jsonBody.keys().forEach { key ->
+                val value = jsonBody[key].toString()
+                builder.addFormDataPart(key, value)
             }
-            val timeoutMillis = 10000L
-            val requestBody = body.toRequestBody()
-            val okHttpClient = OkHttpClient.Builder()
-                .connectTimeout(timeoutMillis, TimeUnit.MILLISECONDS)
-                .readTimeout(timeoutMillis, TimeUnit.MILLISECONDS)
-                .build()
+            val body = builder.build()
             val request = Request.Builder()
-                .method("POST", requestBody)
-                .addHeader("Content-Type", "application/json")
-                .addHeader("Accept", "application/json")
-                .url(WEBHOOK_RASA)
+                .url(URL_API+apiURL)
+                .post(body)
+                .addHeader("Authorization", "Bearer $token")
                 .build()
 
+            // Use the OkHttp client to make an asynchronous request
             val response = okHttpClient.newCall(request).execute()
             val result = JSONObject()
-
             result.put("status_code", response.code)
-            val data = JSONArray(response.body?.string()!!)
-
+            var data = JSONObject(response.body?.string()!!)
+            try{
+                data = JSONObject(data.get("data").toString())
+            }catch(ex: JSONException){
+                Log.i("Debug", "Error: ${ex.message}")
+            }
             result.put("data", data)
         }
     }
@@ -80,8 +81,11 @@ class HTTPRequests {
             try{
                 data = JSONObject(data.get("data").toString())
             }catch(ex: JSONException){
-                // Do nothing, we are in the Auth Login situation
-                println(ex.message)
+                try {
+                    data.put("list", JSONArray(data.get("data").toString()))
+                } catch (ex1: JSONException) {
+                    Log.i("Debug", "Error: ${ex1.message}")
+                }
             }
             result.put("data", data)
         }

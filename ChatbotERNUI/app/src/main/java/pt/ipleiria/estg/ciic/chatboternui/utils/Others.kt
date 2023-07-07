@@ -9,7 +9,12 @@ import java.time.format.DateTimeFormatter
 import kotlin.math.pow
 import kotlin.math.sqrt
 import android.provider.Settings.Secure
+import java.text.SimpleDateFormat
+import java.time.Instant
 import java.time.OffsetDateTime
+import java.time.ZoneOffset
+import java.util.Calendar
+import java.util.Locale
 
 class Others {
 
@@ -32,9 +37,14 @@ class Others {
     }
 
     fun convertStringLocalDateTime(date: String): LocalDateTime {
-        val formatter = DateTimeFormatter.ISO_OFFSET_DATE_TIME
-        val offsetDateTime = OffsetDateTime.parse(date, formatter)
-        return offsetDateTime.toLocalDateTime()
+        val instant = Instant.ofEpochSecond(date.toLong())
+        return LocalDateTime.ofInstant(instant, ZoneOffset.UTC)
+    }
+
+    fun getTimeNow() :String{
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+        val currentTime = Calendar.getInstance().time
+        return dateFormat.format(currentTime)
     }
 
     fun checkTime(time: LocalDateTime): DateTimeFormatter {
