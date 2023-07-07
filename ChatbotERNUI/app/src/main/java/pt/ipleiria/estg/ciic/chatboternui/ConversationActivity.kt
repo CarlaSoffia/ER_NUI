@@ -209,6 +209,10 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
             response =
                 httpRequests.requestFormData("/speeches", speechBody, token = token)
             try{
+                val data = JSONObject(response["data"].toString())
+                Log.i("speeches", response["data"].toString())
+                // if we are in questionnaires, we must save these speeches ids! along with the responses in the store
+                // delete once completed
 
             }catch (ex: JSONException){
                 if(response["status_code"].toString() == "503"){
@@ -219,10 +223,7 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
                     handleSpeech(text, sentiment)
                 }
             }
-            val data = JSONObject(response["data"].toString())
-            Log.i("speeches", response["data"].toString())
-            // if we are in questionnaires, we must save these speeches ids! along with the responses in the store
-            // delete once completed
+
         }
     }
     private fun handleIteration(sentiment: JSONObject){
@@ -244,14 +245,22 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
             response =
                 httpRequests.request("POST", "/iterations", iterationBody.toString(), token = token)
             val data = JSONObject(response["data"].toString())
-            val iteration = JSONObject()
-                .put("iteration_id", data["id"].toString())
-                .put("iteration_usage_id", data["usage_id"].toString())
-            val index = iterations.indexOfFirst { it.first == group }
-            if(iterations.isNotEmpty() && index != -1){
-                iterations.removeAt(index)
+            try{
+                val iteration = JSONObject()
+                    .put("iteration_id", data["id"].toString())
+                    .put("iteration_usage_id", data["usage_id"].toString())
+                val index = iterations.indexOfFirst { it.first == group }
+                if(iterations.isNotEmpty() && index != -1){
+                    iterations.removeAt(index)
+                }
+                iterations.add(group to iteration)
             }
-            iterations.add(group to iteration)
+            catch (ex: JSONException) {
+                if(response["status_code"].toString() == "503"){
+                    _showConnectivityError.value = true
+                }
+                Log.i("Debug", "Error: ${ex.message}")
+            }
         }
     }
     private fun getAllMessages() {
@@ -297,23 +306,31 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
         var response: JSONObject
         scope.launch {
                 response = httpRequests.request("POST", "/messages", messageSend.toString(), token = token)
-                val data = JSONObject(response["data"].toString())
-                val messages = JSONArray(data["list"].toString())
-                for (i in 0 until messages.length()) {
-                    val message = JSONObject(messages[i].toString())
-                    if(message["body"].toString().contains("{")){
-                        val sentiment = JSONObject(message["body"].toString())
-                        // Creates iteration if doesn't exists
-                        handleIteration(sentiment)
-                        // Creates speech with the iteration
-                        handleSpeech(transcription,sentiment)
-                    }else{
-                        _messages.add(Message(id = message["id"].toString().toLong(),
-                            text = message["body"] as String?,
-                            isChatbot = message["isChatbot"].toString() == "true",
-                            time = utils.convertStringLocalDateTime(message["created_at"].toString())))
+                try{
+                    val data = JSONObject(response["data"].toString())
+                    val messages = JSONArray(data["list"].toString())
+                    for (i in 0 until messages.length()) {
+                        val message = JSONObject(messages[i].toString())
+                        if(message["body"].toString().contains("{")){
+                            val sentiment = JSONObject(message["body"].toString())
+                            // Creates iteration if doesn't exists
+                            handleIteration(sentiment)
+                            // Creates speech with the iteration
+                            handleSpeech(transcription,sentiment)
+                        }else{
+                            _messages.add(Message(id = message["id"].toString().toLong(),
+                                text = message["body"] as String?,
+                                isChatbot = message["isChatbot"].toString() == "true",
+                                time = utils.convertStringLocalDateTime(message["created_at"].toString())))
+                        }
                     }
                 }
+            catch (ex: JSONException) {
+                if(response["status_code"].toString() == "503"){
+                    _showConnectivityError.value = true
+                }
+                Log.i("Debug", "Error: ${ex.message}")
+            }
             }
     }
     @Composable
