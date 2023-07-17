@@ -64,6 +64,12 @@ class Others {
         editor.putString(key, value)
         editor.apply()
     }
+    fun addBooleanToStore(sharedPreferences: SharedPreferences, key: String, value: Boolean) {
+        val editor = sharedPreferences.edit()
+        editor.putBoolean(key, value)
+        editor.apply()
+    }
+
     fun setErrorState(message: String?) {
         println(message)
     }
@@ -71,6 +77,7 @@ class Others {
     fun startDetailActivity(context: Context, activityClass: Class<*>) {
         val intent = Intent(context, activityClass)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
         context.startActivity(intent)
     }
     fun getAndroidMacAddress(context: Context): String {

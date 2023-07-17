@@ -37,7 +37,8 @@ import org.vosk.android.StorageService
 import pt.ipleiria.estg.ciic.chatboternui.models.Message
 import pt.ipleiria.estg.ciic.chatboternui.ui.theme.*
 import pt.ipleiria.estg.ciic.chatboternui.utils.*
-
+import pt.ipleiria.estg.ciic.chatboternui.utils.CommonComposables
+private const val STATE_BEGIN = 0
 private const val STATE_READY = 1
 private const val STATE_DONE = 2
 private const val PERMISSIONS_REQUEST_RECORD_AUDIO = 1
@@ -46,10 +47,11 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
     private var _messages = mutableStateListOf<Message>()
     private var _messageWritten : MutableState<String> = mutableStateOf("")
     private var _microActive : MutableState<Boolean> = mutableStateOf(true)
-    private var _finishedLoading: MutableState<Int> = mutableStateOf(0)
+    private var _finishedLoading: MutableState<Int> = mutableStateOf(STATE_BEGIN)
     private var _showConnectivityError: MutableState<Boolean> = mutableStateOf(false)
     private var iterations: MutableList<Pair<String,JSONObject>> = mutableListOf()
     private var groupsEmotions: List<Pair<String,List<String>>> = emptyList()
+    private var questionnaireSpeeches: MutableList<Pair<String,Int>> = mutableListOf()
     private val utils = Others()
     private val httpRequests = HTTPRequests()
     private val scope = CoroutineScope(Dispatchers.Main)
@@ -57,24 +59,37 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
     private lateinit var token: String
     private var model: Model? = null
     private var speechService: SpeechService? = null
-
+    private var _showAlertGeriatricQuestionnaire : MutableState<Boolean> = mutableStateOf(true)
+    private var _showAlertOxfordQuestionnaire : MutableState<Boolean> = mutableStateOf(true)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        checkPermission()
         sharedPreferences = getSharedPreferences("ERNUI", Context.MODE_PRIVATE)
         token = sharedPreferences.getString("access_token", "").toString()
+
+        if(token == ""){
+            utils.startDetailActivity(applicationContext,LoginActivity::class.java)
+            return
+        }
+
+        checkPermission()
         getGroupsEmotions()
         getAllMessages()
+        _microActive.value = sharedPreferences.getBoolean("microActive", false)
 
         setContent {
             ChatbotERNUITheme {
+                if(!_microActive.value){
+                    _finishedLoading.value = STATE_DONE
+                }
                 if(_finishedLoading.value != STATE_DONE){
                     if(_finishedLoading.value != STATE_READY){
                         LoadScreen()
-                    }else if(_microActive.value){
+                    }
+                    else if(_microActive.value){
                         recognizeMicrophone()
                     }
-                }else{
+                }
+                else{
                     MainScreen()
                 }
             }
@@ -143,6 +158,7 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
         }
         val medianAccuracy = utils.calculateRootMeanSquare(confs)
         val transcription = result.getString("text")
+        //send to api
         _messages.add(Message(id = _messages.size.toLong()+1, text = transcription, isChatbot = false))
         chatbotResponse(transcription = transcription, accuracy = medianAccuracy)
     }
@@ -317,7 +333,7 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
                             handleIteration(sentiment)
                             // Creates speech with the iteration
                             handleSpeech(transcription,sentiment)
-                        }else{
+                        }else if (message["body"] != "start_geriatric_form" && message["body"] != "start_oxford_happiness_form"){
                             _messages.add(Message(id = message["id"].toString().toLong(),
                                 text = message["body"] as String?,
                                 isChatbot = message["isChatbot"].toString() == "true",
@@ -391,7 +407,7 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
                     modifier = Modifier
                         .background(
                             if (!isChatbot) colorScheme.primaryContainer else colorScheme.secondary,
-                            shape = if (!isChatbot) authorChatBubbleShape else botChatBubbleShape
+                            if (!isChatbot) authorChatBubbleShape else botChatBubbleShape
                         )
                         .padding(
                             top = 8.dp,
@@ -504,6 +520,7 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
                 tint = colorScheme.onPrimary,
                 modifier = Modifier.clickable {
                     _microActive.value = !_microActive.value
+                    utils.addBooleanToStore(sharedPreferences, "microActive", _microActive.value)
                 }
                     .align(Alignment.CenterVertically)
                     .size(30.dp)
@@ -520,12 +537,54 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
         ) {
             TopBar("Chatbot")
             ChatSection(Modifier.weight(1f))
+            if(_showAlertGeriatricQuestionnaire.value){
+                CommonComposables.StartForm("Gostaria de responder a um questionário para avaliar sintomas de depressão?",
+                    "Este questionário contém 15 perguntas, às quais poderá responder com:\n"+
+                            "- Sim\n" +
+                            "- Não\n\n" +
+                            "Além disso, será solicitado que justifique a sua resposta anterior para cada uma dessas perguntas.",
+                    onClick = {
+                        _showAlertGeriatricQuestionnaire.value = false
+                        _showAlertOxfordQuestionnaire.value = false
+                        sendMessage("start_geriatric_form")
+                    },onDismissRequest = {
+                        _showAlertGeriatricQuestionnaire.value = false
+                    })
+            }else{
+                if(_showAlertOxfordQuestionnaire.value){
+                    CommonComposables.StartForm("Gostaria de responder a um questionário para avaliar o seu nível de felicidade?",
+                        "Este questionário é composto por um total de 29 perguntas, onde poderá responder com:\n\n"+
+                                "- Discordo fortemente\n" +
+                                "- Discordo moderadamente\n" +
+                                "- Discordo levemente\n" +
+                                "- Concordo levemente\n" +
+                                "- Concordo moderadamente\n" +
+                                "- Concordo fortemente \n\n" +
+                                "Depois de responder a cada pergunta será lhe pedido para justificar a sua resposta.",
+                        onClick = {
+                            _showAlertOxfordQuestionnaire.value = false
+                            _showAlertGeriatricQuestionnaire.value = false
+                            sendMessage("start_oxford_happiness_form")
+                        },onDismissRequest = {
+                            _showAlertOxfordQuestionnaire.value = false
+                        })
+                }
+            }
             if(!_microActive.value){
                 onDestroy()
                 MessageSection()
             }else {
                 recognizeMicrophone()
             }
+            CommonComposables.DialogConnectivity(_showConnectivityError.value,
+                onClick = {
+                    _showConnectivityError.value = false
+                    finish()
+                },onDismissRequest = {
+                    _showConnectivityError.value = false
+                }
+            )
+
         }
     }
 }

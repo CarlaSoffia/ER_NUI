@@ -50,14 +50,15 @@ class LoginActivity : ComponentActivity() {
         sharedPreferences = getSharedPreferences("ERNUI", Context.MODE_PRIVATE)
         setContent {
             ChatbotERNUITheme {
-               if(sharedPreferences.getString("access_token","") != ""){
-                   utils.addStringToStore(sharedPreferences,"macAddress", utils.getAndroidMacAddress(this))
-                   utils.startDetailActivity(applicationContext,ConversationActivity::class.java)
-                }else{
-                   MainSection()
-               }
+                if (sharedPreferences.getString("macAddress", "") == "") {
+                    utils.addStringToStore(
+                        sharedPreferences,
+                        "macAddress",
+                        utils.getAndroidMacAddress(this)
+                    )
+                }
+                MainSection()
             }
-
         }
     }
     private fun togglePasswordVisibility(){
