@@ -11,7 +11,6 @@ import kotlin.math.sqrt
 import android.provider.Settings.Secure
 import java.text.SimpleDateFormat
 import java.time.Instant
-import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.Calendar
 import java.util.Locale
@@ -45,6 +44,19 @@ class Others {
         val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
         val currentTime = Calendar.getInstance().time
         return dateFormat.format(currentTime)
+    }
+
+    fun has24HoursPassed(previousTime: String): Boolean {
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+        val currentTime = Calendar.getInstance().time
+        val calendar = Calendar.getInstance()
+        calendar.time = dateFormat.parse(previousTime)
+
+        // Add 24 hours to the previous time
+        calendar.add(Calendar.HOUR_OF_DAY, 24)
+
+        // Check if the current time is after the updated previous time
+        return currentTime.after(calendar.time)
     }
 
     fun checkTime(time: LocalDateTime): DateTimeFormatter {

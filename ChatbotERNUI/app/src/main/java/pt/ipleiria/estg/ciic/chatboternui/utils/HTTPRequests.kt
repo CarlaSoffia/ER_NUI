@@ -41,9 +41,6 @@ class HTTPRequests {
     }
     suspend fun request(requestMethod:String,apiURL:String,body:String="",token:String=""): JSONObject{
         return withContext(Dispatchers.IO) {
-            if (requestMethod != "GET" && body.isEmpty()) {
-                throw IllegalArgumentException("[Error] - $requestMethod Request must have a body");
-            }
             val isAuth = apiURL.contains("login")
             if (!isAuth && token.isEmpty()) {
                 throw IllegalArgumentException("[Error] - $requestMethod Request must have a token");
