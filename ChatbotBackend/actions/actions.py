@@ -180,6 +180,7 @@ class ValidateQuestionForm(FormValidationAction):
                         "is_why": False
                     }
         responses_geriatric_questionnaire.append(newResponse)
+        dispatcher.utter_message(json.dumps(newResponse))
         if (slot_value == "Não" and question in questionsPointsNo) or (slot_value == "Sim" and question not in questionsPointsNo):
             return {"response_question_geriatric_questionnaire": slot_value,"responses_geriatric_questionnaire": responses_geriatric_questionnaire, "geriatric_questionnaire_points":tracker.get_slot("geriatric_questionnaire_points")+1.0, "why_question_geriatric_questionnaire": None}
         if (slot_value == "Sim" and question in questionsPointsNo) or (slot_value == "Não" and question not in questionsPointsNo):            
@@ -202,7 +203,22 @@ class ValidateQuestionForm(FormValidationAction):
                         "is_why": True
                     }
         responses_geriatric_questionnaire.append(newResponse)
+        dispatcher.utter_message(json.dumps(newResponse))
         if len(responses_geriatric_questionnaire) == 30:
+            points = tracker.get_slot("geriatric_questionnaire_points")
+            if points > 0 and points <= 5:
+                message = "Baseado nas suas respostas que forneceu não apresenta sinais de depressão."
+            elif points >= 6 and points <= 10: 
+                message = "Com base nas respostas que forneceu apresenta apenas leves sinais de depressão."
+            else:
+                message = "Tendo em conta as suas respostas apresenta sintomas de depressão graves. Comunique com a sua família e considere marcar uma consulta com o seu médico de família."    
+            
+            finalPoints = {
+                "points" : points, 
+                "message": message
+            }
+            dispatcher.utter_message(json.dumps(finalPoints))
+
             return {"why_question_geriatric_questionnaire": slot_value, "responses_geriatric_questionnaire": responses_geriatric_questionnaire, "response_question_geriatric_questionnaire": "", "finished_geriatric_questionnaire":True}
         return {"why_question_geriatric_questionnaire": slot_value, "responses_geriatric_questionnaire": responses_geriatric_questionnaire, "response_question_geriatric_questionnaire": None,"finished_geriatric_questionnaire":False}
 
@@ -303,6 +319,7 @@ class ValidateOxfordHappinessQuestionnaire(FormValidationAction):
                         "is_why": False
                     }
         responses_oxford_happiness_questionnaire.append(newResponse)
+        dispatcher.utter_message(json.dumps(newResponse))
         return {"oxford_happiness_questionnaire_points": points, "response_question_oxford_happiness_questionnaire": slot_value,"responses_oxford_happiness_questionnaire": responses_oxford_happiness_questionnaire, "why_question_oxford_happiness_questionnaire": None}
 
     def validate_why_question_oxford_happiness_questionnaire(
@@ -322,8 +339,25 @@ class ValidateOxfordHappinessQuestionnaire(FormValidationAction):
                         "is_why": True
                     }
         responses_oxford_happiness_questionnaire.append(newResponse)
+        dispatcher.utter_message(json.dumps(newResponse))
         if len(responses_oxford_happiness_questionnaire) == 58:
             points = tracker.get_slot("oxford_happiness_questionnaire_points") / 29
+            if points >= 1 and points < 2:
+                message = "Baseado nas suas respostas sente-se triste e provavelmente está a ver-se a si e à sua situação atual pior do que realmente é. Aconselho que comunique os seus sentimentos e medos à sua família e caso haja necessidade marque uma consulta junto do seu médico."
+            elif points >= 2 and points < 3: 
+                message = "Tendo em conta as suas respostas está um pouco triste. Tente conversar com a sua família e fazer alguma atividade que o deixe feliz."
+            elif points >= 3 and points < 4: 
+                message = "Considerando as respostas que forneceu demonstra sentimentos de neutralidade." 
+            elif points >= 4 and points < 5: 
+                message = "Baseado nas respostas fornecidas está feliz. Sorria e pensamentos positivos!" 
+            else: 
+                message = "Parabéns! Com base nas suas respostas está muito feliz!"
+
+            finalPoints = {
+                "points" : points,
+                "message": message
+            }
+            dispatcher.utter_message(json.dumps(finalPoints))
             return {"oxford_happiness_questionnaire_points": points, "why_question_oxford_happiness_questionnaire": slot_value, "responses_oxford_happiness_questionnaire": responses_oxford_happiness_questionnaire, "response_question_oxford_happiness_questionnaire": "", "finished_oxford_happiness_questionnaire":True}
         return {"why_question_oxford_happiness_questionnaire": slot_value, "responses_oxford_happiness_questionnaire": responses_oxford_happiness_questionnaire, "response_question_oxford_happiness_questionnaire": None,"finished_oxford_happiness_questionnaire":False}
 
