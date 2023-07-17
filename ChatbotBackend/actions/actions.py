@@ -76,7 +76,9 @@ class CustomActionListen(Action):
     def run(self, dispatcher: CollectingDispatcher,
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
-  
+        # Input is the code to start forms
+        if tracker.latest_message['intent']['name'] == "Start_Oxford_Happiness_Questionnaire" or tracker.latest_message['intent']['name'] == "Start_Geriatric_Questionnaire":
+            return [ActionExecuted("action_listen")]  
         text = (tracker.latest_message)['text'] 
         if text == None:
             return [ActionExecuted("action_listen")]
