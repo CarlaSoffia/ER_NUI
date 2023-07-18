@@ -1,6 +1,7 @@
 package pt.ipleiria.estg.ciic.chatboternui
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
@@ -14,6 +15,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.ScaffoldState
+import androidx.compose.material.rememberScaffoldState
 import androidx.compose.material3.*
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.runtime.*
@@ -22,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
@@ -37,6 +41,7 @@ import org.vosk.Model
 import org.vosk.Recognizer
 import org.vosk.android.RecognitionListener
 import org.vosk.android.StorageService
+import pt.ipleiria.estg.ciic.chatboternui.models.MenuItem
 import pt.ipleiria.estg.ciic.chatboternui.models.Message
 import pt.ipleiria.estg.ciic.chatboternui.ui.theme.*
 import pt.ipleiria.estg.ciic.chatboternui.utils.*
@@ -46,10 +51,11 @@ private const val STATE_READY = 1
 private const val STATE_DONE = 2
 private const val PERMISSIONS_REQUEST_RECORD_AUDIO = 1
 
-class ConversationActivity : ComponentActivity(), RecognitionListener {
+class MainActivity : ComponentActivity(), RecognitionListener {
     private var _messages = mutableStateListOf<Message>()
     private var _messageWritten : MutableState<String> = mutableStateOf("")
     private var _microActive : MutableState<Boolean> = mutableStateOf(true)
+    private var _modeLight : MutableState<Boolean> = mutableStateOf(true)
     private var _finishedLoading: MutableState<Int> = mutableStateOf(STATE_BEGIN)
     private var _showConnectivityError: MutableState<Boolean> = mutableStateOf(false)
     private var iterations: MutableList<Pair<String,JSONObject>> = mutableListOf()
@@ -67,10 +73,12 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
     private var speechService: SpeechService? = null
     private var _showAlertGeriatricQuestionnaire : MutableState<Boolean> = mutableStateOf(true)
     private var _showAlertOxfordQuestionnaire : MutableState<Boolean> = mutableStateOf(true)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         sharedPreferences = getSharedPreferences("ERNUI", Context.MODE_PRIVATE)
         token = sharedPreferences.getString("access_token", "").toString()
+        _modeLight.value = sharedPreferences.getBoolean("modeLight", true)
 
         if(token == ""){
             utils.startDetailActivity(applicationContext,LoginActivity::class.java)
@@ -81,8 +89,8 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
         getGroupsEmotions()
         getAllMessages()
         _microActive.value = sharedPreferences.getBoolean("microActive", false)
-        var geriatricQuestionnaireCompletedDate = sharedPreferences.getString("geriatricQuestionnaireCompletedDate","")
-        var oxfordHappinessQuestionnaireCompletedDate = sharedPreferences.getString("oxfordHappinessQuestionnaireCompletedDate","")
+        val geriatricQuestionnaireCompletedDate = sharedPreferences.getString("geriatricQuestionnaireCompletedDate","")
+        val oxfordHappinessQuestionnaireCompletedDate = sharedPreferences.getString("oxfordHappinessQuestionnaireCompletedDate","")
         if(geriatricQuestionnaireCompletedDate != ""){
             _showAlertGeriatricQuestionnaire.value = utils.has24HoursPassed(geriatricQuestionnaireCompletedDate!!)
         }
@@ -92,6 +100,8 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
 
         setContent {
             ChatbotERNUITheme {
+                val scaffoldState = rememberScaffoldState()
+                val scopeState = rememberCoroutineScope()
                 if(!_microActive.value){
                     _finishedLoading.value = STATE_DONE
                 }
@@ -104,7 +114,7 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
                     }
                 }
                 else{
-                    MainScreen()
+                   AppScreen(scaffoldState, scopeState)
                 }
             }
         }
@@ -172,9 +182,9 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
         }
         val medianAccuracy = utils.calculateRootMeanSquare(confs)
         val transcription = result.getString("text")
-        //send to api
-        _messages.add(Message(id = _messages.size.toLong()+1, text = transcription, isChatbot = false))
-        chatbotResponse(transcription = transcription, accuracy = medianAccuracy)
+        if(medianAccuracy >= 0.60){
+            chatbotResponse(transcription = transcription)
+        }
     }
 
     override fun onFinalResult(hypothesis: String?) {
@@ -210,7 +220,6 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
                     }
                     groupsEmotions = groupsEmotions.plus(name to emotionsList)
                 }
-
             } catch (ex: JSONException) {
                 if(response["status_code"].toString() == "503"){
                     _showConnectivityError.value = true
@@ -219,6 +228,7 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
             }
         }
     }
+
     private fun handleSpeech(text:String, sentiment: JSONObject, question:Int=-1, isWhy: Boolean=false): Int{
         val group = groupsEmotions.find { it.second.contains(sentiment["emotion"].toString()) }?.first
         val iterationGroup = iterations.find { it.first == group }
@@ -240,7 +250,6 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
                 httpRequests.requestFormData("/speeches", speechBody, token = token)
             try{
                 val data = JSONObject(response["data"].toString())
-                Log.i("speeches", data["id"].toString())
                 id = data["id"].toString().toInt()
             }catch (ex: JSONException){
                 if(response["status_code"].toString() == "503"){
@@ -302,6 +311,12 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
                 for (i in 0 until messages.length()) {
                     val message = JSONObject(messages[i].toString())
                     if(message["body"].toString().contains("{")){
+                        if(message["body"].toString().contains("points")){
+                            _messages.add(Message(id = message["id"].toString().toLong(),
+                                text = JSONObject(message["body"].toString())["message"] as String?,
+                                isChatbot = message["isChatbot"].toString() == "1",
+                                time = utils.convertStringLocalDateTime(message["created_at"].toString())))
+                        }
                         continue
                     }
                     _messages.add(Message(id = message["id"].toString().toLong(),
@@ -317,12 +332,7 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
             }
         }
     }
-    private fun chatbotResponse(transcription: String, accuracy: Double=-1.0){
-        if (accuracy != -1.0 && accuracy < 80){
-            _messages.add(Message(id = _messages.size.toLong()+1, text = "Por favor, repita o que disse.", isChatbot = true))
-            return
-        }
-
+    private fun chatbotResponse(transcription: String){
         sendMessage(transcription)
     }
 
@@ -386,7 +396,6 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
             val response = httpRequests.request("PUT", apiURL, pointsQuestionnaire.toString(), token = token)
             try{
                 val data = JSONObject(response["data"].toString())
-                Log.i("questionnaires", data.toString())
                 if(middleGeriatricQuestionnaire){
                     middleGeriatricQuestionnaire = false
                     utils.addStringToStore(sharedPreferences,"geriatricQuestionnaireCompletedDate",utils.getTimeNow())
@@ -416,8 +425,7 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
         scope.launch {
             val response = httpRequests.request("PUT", apiURL, responseQuestionnaire.toString(), token = token)
             try{
-                val data = JSONObject(response["data"].toString())
-                Log.i("questionnaires", data.toString())
+                JSONObject(response["data"].toString())
             }
             catch (ex: JSONException) {
                 if(response["status_code"].toString() == "503"){
@@ -448,11 +456,13 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
             }
         }
     }
+
     @Composable
     private fun LoadScreen(){
         Column(
-            modifier = Modifier.fillMaxSize()
-            .background(colorScheme.background),
+            modifier = Modifier
+                .fillMaxSize()
+                .background(colorScheme.background),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -464,7 +474,10 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
                 modifier = Modifier.padding(vertical = 26.dp),
                 color = colorScheme.onPrimary
             )
-            Text(text = "A Carregar...", fontSize = Typography.titleLarge.fontSize, color = colorScheme.onPrimary)
+            Text(text = "A Carregar...",
+                fontSize = Typography.titleLarge.fontSize,
+                fontWeight = Typography.titleLarge.fontWeight,
+                color = colorScheme.onPrimary)
         }
     }
     @Composable
@@ -518,8 +531,8 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
                     Text(
                         text = messageText,
                         color = colorScheme.onSurface,
-                        fontSize = Typography.bodyMedium.fontSize,
-                        fontWeight = Typography.bodyMedium.fontWeight
+                        fontSize = Typography.bodyLarge.fontSize,
+                        fontWeight = Typography.bodyLarge.fontWeight
                     )
                 }
                 Text(
@@ -554,7 +567,8 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
                         .focusRequester(focusRequester)
                 ) {
                     TextField(
@@ -597,7 +611,8 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
     }
 
     @Composable
-    fun TopBar(title: String){
+    fun TopBar(title: String, scaffoldState: ScaffoldState, scopeState: CoroutineScope){
+        val focusManager = LocalFocusManager.current
         Row(modifier = Modifier
             .fillMaxWidth()
             .height(60.dp)
@@ -606,40 +621,51 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.End) {
             Icon(
-                painter = painterResource(id = R.drawable.back),
-                contentDescription = "Botão voltar atrás",
+                painter = painterResource(id = R.drawable.menu),
+                contentDescription = "Botão Menu",
                 tint = colorScheme.onPrimary,
-                modifier = Modifier.clickable {
-                    // change view
-                }
-                .align(Alignment.CenterVertically)
-                .size(40.dp)
+                modifier = Modifier
+                    .clickable {
+                        focusManager.clearFocus()
+                        scopeState.launch { scaffoldState.drawerState.open() }
+                    }
+                    .size(30.dp)
             )
             Spacer(modifier = Modifier.fillMaxWidth(0.3f))
-            Text(title, fontSize = Typography.titleLarge.fontSize, color = colorScheme.onPrimary, modifier = Modifier.align(Alignment.CenterVertically))
+            Text(title,
+                fontSize = Typography.titleLarge.fontSize,
+                color = colorScheme.onPrimary,
+                modifier = Modifier.align(Alignment.CenterVertically))
             Spacer(modifier = Modifier.fillMaxWidth(0.75f))
             Icon(
                 painter = painterResource(id = if (_microActive.value) R.drawable.write else R.drawable.speak),
                 contentDescription = "Botão alternar entre voz e texto",
                 tint = colorScheme.onPrimary,
-                modifier = Modifier.clickable {
-                    _microActive.value = !_microActive.value
-                    utils.addBooleanToStore(sharedPreferences, "microActive", _microActive.value)
-                }
+                modifier = Modifier
+                    .clickable {
+                        _microActive.value = !_microActive.value
+                        utils.addBooleanToStore(
+                            sharedPreferences,
+                            "microActive",
+                            _microActive.value
+                        )
+                    }
                     .align(Alignment.CenterVertically)
                     .size(30.dp)
             )
         }
     }
     @Composable
-    fun MainScreen() {
+    fun MainScreen(scaffoldState: ScaffoldState,
+                   scopeState: CoroutineScope) {
         Column(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
                 .background(colorScheme.background),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            TopBar("Chatbot")
+            TopBar("EmoCare", scaffoldState, scopeState)
             ChatSection(Modifier.weight(1f))
             if(_showAlertGeriatricQuestionnaire.value){
                 CommonComposables.StartForm("Gostaria de responder a um questionário para avaliar sintomas de depressão?",
@@ -693,6 +719,123 @@ class ConversationActivity : ComponentActivity(), RecognitionListener {
                 }
             )
 
+        }
+    }
+    @Composable
+    fun Drawer() {
+        val menuItems = listOf(
+            MenuItem(
+                id = "profile",
+                title = "Perfil",
+                icon = R.drawable.profile,
+                onClick = {},
+                addDivider = false
+            ),
+            MenuItem(
+                id = "questionnaires",
+                title = "Questionários",
+                icon = R.drawable.questionnaires,
+                onClick = {},
+                addDivider = true
+            ),
+            MenuItem(
+                id = "mode",
+                title = if (_modeLight.value) "Modo escuro" else "Modo claro",
+                icon = if (_modeLight.value) R.drawable.dark else R.drawable.light,
+                onClick = {},
+                addDivider = false
+            ),
+            MenuItem(
+                id = "information",
+                title = "Tutorial",
+                icon = R.drawable.information,
+                onClick = {},
+                addDivider = true
+            ),
+            MenuItem(
+                id = "logout",
+                title = "Terminar sessão",
+                icon = R.drawable.logout,
+                onClick = {},
+                addDivider = false
+            )
+        )
+        Column(
+            Modifier
+                .fillMaxSize()
+                .background(colorScheme.background)
+                .padding(0.dp, 30.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceEvenly
+        ) {
+            Row(modifier = Modifier
+                .fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically){
+                Image(
+                    painter = painterResource(R.drawable.chatbot),
+                    contentDescription = "Chatbot",
+                    modifier = Modifier.size(75.dp)
+                )
+                Spacer(modifier = Modifier.width(25.dp))
+                Text(
+                    text = "Menu principal",
+                    color = colorScheme.onPrimary,
+                    fontSize = Typography.titleLarge.fontSize
+                )
+            }
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(35.dp)
+            ) {
+                items(menuItems)
+                { item ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp)
+                            .clickable {
+                                item.onClick()
+                            }
+                    ) {
+                        Icon(
+                            painter = painterResource(id = item.icon),
+                            contentDescription = item.title
+                        )
+                        Spacer(modifier = Modifier.width(20.dp))
+                        Text(
+                            text = item.title,
+                            color = colorScheme.onSurface,
+                            fontSize = Typography.bodyLarge.fontSize,
+                            fontWeight = Typography.bodyLarge.fontWeight,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    if(item.addDivider){
+                        Divider(color = colorScheme.onSurface, thickness = 1.dp)
+                        Spacer(modifier = Modifier.height(30.dp))
+                    }
+                }
+            }
+        }
+    }
+
+    @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
+    @Composable
+    fun AppScreen( scaffoldState: ScaffoldState,
+                   scope: CoroutineScope)
+    {
+        androidx.compose.material.Scaffold(
+            scaffoldState = scaffoldState,
+            drawerGesturesEnabled = scaffoldState.drawerState.isOpen,
+            drawerContent = {
+                Drawer()
+            },
+            //customizing the drawer. Will also share this shape below.
+            drawerElevation = 90.dp
+        ) {//Here goes the whole content of our Screen
+            MainScreen(scaffoldState, scope)
         }
     }
 }

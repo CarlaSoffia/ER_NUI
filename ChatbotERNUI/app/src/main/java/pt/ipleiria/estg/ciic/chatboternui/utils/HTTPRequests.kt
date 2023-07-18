@@ -4,6 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.*
 import okhttp3.RequestBody.Companion.toRequestBody
+import okio.IOException
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -25,18 +26,22 @@ class HTTPRequests {
                 .post(body)
                 .addHeader("Authorization", "Bearer $token")
                 .build()
-
-            // Use the OkHttp client to make an asynchronous request
-            val response = okHttpClient.newCall(request).execute()
             val result = JSONObject()
-            result.put("status_code", response.code)
-            var data = JSONObject(response.body?.string()!!)
             try{
-                data = JSONObject(data.get("data").toString())
-            }catch(ex: JSONException){
-                Log.i("Debug", "Error: ${ex.message}")
+                // Use the OkHttp client to make an asynchronous request
+                val response = okHttpClient.newCall(request).execute()
+                result.put("status_code", response.code)
+                var data = JSONObject(response.body?.string()!!)
+                try{
+                    data = JSONObject(data.get("data").toString())
+                }catch(ex: JSONException){
+                    Log.i("Debug", "Error: ${ex.message}")
+                }
+                result.put("data", data)
+            }catch (ex: IOException) {
+                result.put("status_code", "503")
+                result.put("data", "Oops! No Internet Connection")
             }
-            result.put("data", data)
         }
     }
     suspend fun request(requestMethod:String,apiURL:String,body:String="",token:String=""): JSONObject{
@@ -70,21 +75,27 @@ class HTTPRequests {
                     .addHeader("Accept", "application/json")
                     .build()
             }
-            // Use the OkHttp client to make an asynchronous request
-            val response = okHttpClient.newCall(request).execute()
             val result = JSONObject()
-            result.put("status_code", response.code)
-            var data = JSONObject(response.body?.string()!!)
             try{
-                data = JSONObject(data.get("data").toString())
-            }catch(ex: JSONException){
-                try {
-                    data.put("list", JSONArray(data.get("data").toString()))
-                } catch (ex1: JSONException) {
-                    Log.i("Debug", "Error: ${ex1.message}")
+                // Use the OkHttp client to make an asynchronous request
+                val response = okHttpClient.newCall(request).execute()
+
+                result.put("status_code", response.code)
+                var data = JSONObject(response.body?.string()!!)
+                try{
+                    data = JSONObject(data.get("data").toString())
+                }catch(ex: JSONException){
+                    try {
+                        data.put("list", JSONArray(data.get("data").toString()))
+                    } catch (ex1: JSONException) {
+                        Log.i("Debug", "Error: ${ex1.message}")
+                    }
                 }
+                result.put("data", data)
+            }catch (ex: IOException) {
+                result.put("status_code", "503")
+                result.put("data", "Oops! No Internet Connection")
             }
-            result.put("data", data)
         }
     }
 }

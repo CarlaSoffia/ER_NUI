@@ -1,18 +1,26 @@
 package pt.ipleiria.estg.ciic.chatboternui.utils
 
+import android.util.Log
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme.colorScheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -26,6 +34,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import org.json.JSONArray
+import org.json.JSONObject
 import pt.ipleiria.estg.ciic.chatboternui.R
 import pt.ipleiria.estg.ciic.chatboternui.ui.theme.Typography
 
@@ -59,9 +69,8 @@ object CommonComposables {
                             onClick()
                         },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = colorScheme.secondaryContainer
+                            containerColor = colorScheme.secondary
                         ),
-
                         ) {
                         Text("Ok")
                     }
@@ -94,7 +103,10 @@ object CommonComposables {
                     Button(
                         onClick = {
                             onClick()
-                        }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = colorScheme.secondary
+                        )
                     ) {
                         Text("Ok",
                             fontSize = Typography.titleSmall.fontSize,
@@ -145,7 +157,6 @@ object CommonComposables {
                     colors = ButtonDefaults.buttonColors(
                         containerColor = colorScheme.secondary
                     ),
-
                     ) {
                     Text(
                         "Sim",
@@ -273,4 +284,5 @@ object CommonComposables {
                 .padding(bottom = 20.dp)
         )
     }
+
 }

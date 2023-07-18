@@ -87,7 +87,7 @@ class LoginActivity : ComponentActivity() {
                 utils.addStringToStore(sharedPreferences,"password", _password.value)
                 utils.addStringToStore(sharedPreferences,"access_token", data["access_token"].toString())
                 utils.addStringToStore(sharedPreferences,"refresh_token", data["refresh_token"].toString())
-                utils.startDetailActivity(applicationContext,ConversationActivity::class.java)
+                utils.startDetailActivity(applicationContext,MainActivity::class.java)
             }catch (ex : JSONException){
                 _response.value = "Email ou password inválidos."
             }
@@ -142,7 +142,7 @@ class LoginActivity : ComponentActivity() {
                     _showSuccessDialog.value,
                     onClick = {
                         _showSuccessDialog.value = false
-                        utils.startDetailActivity(applicationContext, ConversationActivity::class.java)
+                        utils.startDetailActivity(applicationContext, MainActivity::class.java)
                     },onDismissRequest = {
                         _showSuccessDialog.value = false
                     }

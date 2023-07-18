@@ -15,7 +15,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.ChatbotERNUI"
         tools:targetApi="31">
-        <activity android:name=".ConversationActivity"
+        <activity android:name=".Menu"
+            android:exported="true"
+            android:theme="@style/Theme.ChatbotERNUI">
+        </activity>
+        <activity android:name=".MainActivity"
             android:exported="true"
             android:theme="@style/Theme.ChatbotERNUI">
             <intent-filter>
@@ -34,5 +38,4 @@
             android:theme="@style/Theme.ChatbotERNUI">
         </activity>
     </application>
-
 </manifest>
