@@ -38,12 +38,6 @@ slots:
     influence_conversation: false
     mappings:
     - type: custom
-      
-  finished_geriatric_questionnaire:
-    type: bool
-    initial_value: False
-    mappings:
-    - type: custom  
 
   last_check_hour_geriatric_questionnaire:
     type: text
@@ -90,12 +84,6 @@ slots:
       conditions:
         - active_loop: oxford_happiness_questionnaire
           requested_slot: why_question_oxford_happiness_questionnaire  
-
-  finished_oxford_happiness_questionnaire:
-    type: bool
-    initial_value: False
-    mappings:
-    - type: custom  
 
   oxford_happiness_questionnaire_points:
     type: float

@@ -50,10 +50,7 @@ rules:
 
   # Geriatric Questionnaire ----------------------------------------------------
 
-- rule: Start geriatric questionnaire  
-  condition:
-  - slot_was_set:
-    - finished_geriatric_questionnaire: False
+- rule: Start geriatric questionnaire
   steps:
   - intent: Start_Geriatric_Questionnaire
   - action: utter_begin_questionnaire_yes_no
@@ -73,10 +70,7 @@ rules:
 
   # Oxford Happiness Questionnaire ---------------------------------------------
 
-- rule: Start oxford happiness questionnaire  
-  condition:
-  - slot_was_set:
-    - finished_oxford_happiness_questionnaire: False
+- rule: Start oxford happiness questionnaire
   steps:
   - intent: Start_Oxford_Happiness_Questionnaire
   - action: utter_begin_questionnaire_likert

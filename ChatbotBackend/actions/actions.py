@@ -106,7 +106,6 @@ class ActionSubmitGeriatricQuestionnaire(Action):
             responses_geriatric_questionnaire.append(str(res).replace("'","\""))
         SlotSet("responses_geriatric_questionnaire",None)
         SlotSet("geriatric_questionnaire_points",0.0)
-        SlotSet("finished_geriatric_questionnaire",True)
         SlotSet("response_question_geriatric_questionnaire",None)
         SlotSet("why_question_geriatric_questionnaire",None)
 
@@ -219,8 +218,8 @@ class ValidateQuestionForm(FormValidationAction):
             }
             dispatcher.utter_message(json.dumps(finalPoints))
 
-            return {"why_question_geriatric_questionnaire": slot_value, "responses_geriatric_questionnaire": responses_geriatric_questionnaire, "response_question_geriatric_questionnaire": "", "finished_geriatric_questionnaire":True}
-        return {"why_question_geriatric_questionnaire": slot_value, "responses_geriatric_questionnaire": responses_geriatric_questionnaire, "response_question_geriatric_questionnaire": None,"finished_geriatric_questionnaire":False}
+            return {"why_question_geriatric_questionnaire": slot_value, "responses_geriatric_questionnaire": responses_geriatric_questionnaire, "response_question_geriatric_questionnaire": ""}
+        return {"why_question_geriatric_questionnaire": slot_value, "responses_geriatric_questionnaire": responses_geriatric_questionnaire, "response_question_geriatric_questionnaire": None}
 
 ### Oxford Happiness Questionnaire ------------------------------------------------------------
 
@@ -358,8 +357,8 @@ class ValidateOxfordHappinessQuestionnaire(FormValidationAction):
                 "message": message
             }
             dispatcher.utter_message(json.dumps(finalPoints))
-            return {"oxford_happiness_questionnaire_points": points, "why_question_oxford_happiness_questionnaire": slot_value, "responses_oxford_happiness_questionnaire": responses_oxford_happiness_questionnaire, "response_question_oxford_happiness_questionnaire": "", "finished_oxford_happiness_questionnaire":True}
-        return {"why_question_oxford_happiness_questionnaire": slot_value, "responses_oxford_happiness_questionnaire": responses_oxford_happiness_questionnaire, "response_question_oxford_happiness_questionnaire": None,"finished_oxford_happiness_questionnaire":False}
+            return {"oxford_happiness_questionnaire_points": points, "why_question_oxford_happiness_questionnaire": slot_value, "responses_oxford_happiness_questionnaire": responses_oxford_happiness_questionnaire, "response_question_oxford_happiness_questionnaire": ""}
+        return {"why_question_oxford_happiness_questionnaire": slot_value, "responses_oxford_happiness_questionnaire": responses_oxford_happiness_questionnaire, "response_question_oxford_happiness_questionnaire": None}
 
     
 # Action: Submit the form
@@ -378,6 +377,5 @@ class ActionSubmitOxfordHappinessQuestionnaire(Action):
             responses_oxford_happiness_questionnaire.append(str(res).replace("'","\""))
         SlotSet("responses_oxford_happiness_questionnaire",None)
         SlotSet("oxford_happiness_questionnaire_points",0.0)
-        SlotSet("finished_oxford_happiness_questionnaire",True)
         SlotSet("response_question_oxford_happiness_questionnaire",None)
         SlotSet("why_question_oxford_happiness_questionnaire",None)
