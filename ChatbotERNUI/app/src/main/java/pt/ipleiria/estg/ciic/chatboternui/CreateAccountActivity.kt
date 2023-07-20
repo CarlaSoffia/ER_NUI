@@ -35,6 +35,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.json.JSONException
 import org.json.JSONObject
+import pt.ipleiria.estg.ciic.chatboternui.Objects.ThemeState
 import pt.ipleiria.estg.ciic.chatboternui.ui.theme.ChatbotERNUITheme
 import pt.ipleiria.estg.ciic.chatboternui.utils.HTTPRequests
 import pt.ipleiria.estg.ciic.chatboternui.utils.Others
@@ -57,6 +58,7 @@ class CreateAccountActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         sharedPreferences = getSharedPreferences("ERNUI", Context.MODE_PRIVATE)
+        ThemeState.isDarkThemeEnabled = sharedPreferences.getBoolean("theme_mode_is_dark", false)
         setContent {
             ChatbotERNUITheme {
                 MainSection()
@@ -100,7 +102,7 @@ class CreateAccountActivity : ComponentActivity() {
                         "Já possui uma conta? Efetue o login", {
                         submitCreateAccount()
                         }, {
-                            utils.startDetailActivity(applicationContext, LoginActivity::class.java)
+                            utils.startDetailActivity(applicationContext, LoginActivity::class.java, this@CreateAccountActivity)
                         })
                 }
                 CommonComposables.DialogConnectivity(_showConnectivityError.value,
@@ -116,7 +118,7 @@ class CreateAccountActivity : ComponentActivity() {
                     _showSuccessDialog.value,
                     onClick = {
                         _showSuccessDialog.value = false
-                        utils.startDetailActivity(applicationContext, LoginActivity::class.java)
+                        utils.startDetailActivity(applicationContext, LoginActivity::class.java, this@CreateAccountActivity)
                     },onDismissRequest = {
                         _showSuccessDialog.value = false
                     }

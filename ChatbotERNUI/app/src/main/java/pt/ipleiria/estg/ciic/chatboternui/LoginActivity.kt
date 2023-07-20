@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
+import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
@@ -27,6 +28,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.json.JSONException
 import org.json.JSONObject
+import pt.ipleiria.estg.ciic.chatboternui.Objects.ThemeState
 import pt.ipleiria.estg.ciic.chatboternui.ui.theme.ChatbotERNUITheme
 import pt.ipleiria.estg.ciic.chatboternui.ui.theme.Typography
 import pt.ipleiria.estg.ciic.chatboternui.utils.CommonComposables
@@ -48,6 +50,7 @@ class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         sharedPreferences = getSharedPreferences("ERNUI", Context.MODE_PRIVATE)
+        ThemeState.isDarkThemeEnabled = sharedPreferences.getBoolean("theme_mode_is_dark", false)
         setContent {
             ChatbotERNUITheme {
                 if (sharedPreferences.getString("macAddress", "") == "") {
@@ -87,7 +90,7 @@ class LoginActivity : ComponentActivity() {
                 utils.addStringToStore(sharedPreferences,"password", _password.value)
                 utils.addStringToStore(sharedPreferences,"access_token", data["access_token"].toString())
                 utils.addStringToStore(sharedPreferences,"refresh_token", data["refresh_token"].toString())
-                utils.startDetailActivity(applicationContext,MainActivity::class.java)
+                utils.startDetailActivity(applicationContext,MainActivity::class.java, this@LoginActivity)
             }catch (ex : JSONException){
                 _response.value = "Email ou password inválidos."
             }
@@ -111,7 +114,7 @@ class LoginActivity : ComponentActivity() {
                 .clip(
                     RoundedCornerShape(15.dp)
                 )
-                .background(MaterialTheme.colorScheme.background.copy(alpha = 0.8f))
+                .background(colorScheme.background.copy(alpha = 0.8f))
             ){
                 Column(
                     Modifier
@@ -126,7 +129,7 @@ class LoginActivity : ComponentActivity() {
                         "Não possui uma conta?", {
                             submitLogin()
                         }, {
-                            utils.startDetailActivity(applicationContext, CreateAccountActivity::class.java)
+                            utils.startDetailActivity(applicationContext, CreateAccountActivity::class.java, this@LoginActivity)
                         })
                 }
                 CommonComposables.DialogConnectivity(_showConnectivityError.value,
@@ -142,7 +145,7 @@ class LoginActivity : ComponentActivity() {
                     _showSuccessDialog.value,
                     onClick = {
                         _showSuccessDialog.value = false
-                        utils.startDetailActivity(applicationContext, MainActivity::class.java)
+                        utils.startDetailActivity(applicationContext, MainActivity::class.java, this@LoginActivity)
                     },onDismissRequest = {
                         _showSuccessDialog.value = false
                     }
@@ -175,7 +178,7 @@ class LoginActivity : ComponentActivity() {
             if(_response.value.isNotEmpty()){
                 Text(
                     text = _response.value,
-                    color = MaterialTheme.colorScheme.onError,
+                    color = colorScheme.onError,
                     fontSize = Typography.bodyLarge.fontSize,
                     fontWeight = Typography.bodyLarge.fontWeight,
                     textAlign = TextAlign.Center,

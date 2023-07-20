@@ -41,6 +41,7 @@ import org.vosk.Model
 import org.vosk.Recognizer
 import org.vosk.android.RecognitionListener
 import org.vosk.android.StorageService
+import pt.ipleiria.estg.ciic.chatboternui.Objects.ThemeState
 import pt.ipleiria.estg.ciic.chatboternui.models.MenuItem
 import pt.ipleiria.estg.ciic.chatboternui.models.Message
 import pt.ipleiria.estg.ciic.chatboternui.ui.theme.*
@@ -55,7 +56,7 @@ class MainActivity : ComponentActivity(), RecognitionListener {
     private var _messages = mutableStateListOf<Message>()
     private var _messageWritten : MutableState<String> = mutableStateOf("")
     private var _microActive : MutableState<Boolean> = mutableStateOf(true)
-    private var _modeLight : MutableState<Boolean> = mutableStateOf(true)
+    private var _modeDark : MutableState<Boolean> = mutableStateOf(false)
     private var _finishedLoading: MutableState<Int> = mutableStateOf(STATE_BEGIN)
     private var _showConnectivityError: MutableState<Boolean> = mutableStateOf(false)
     private var iterations: MutableList<Pair<String,JSONObject>> = mutableListOf()
@@ -71,17 +72,17 @@ class MainActivity : ComponentActivity(), RecognitionListener {
     private lateinit var token: String
     private var model: Model? = null
     private var speechService: SpeechService? = null
-    private var _showAlertGeriatricQuestionnaire : MutableState<Boolean> = mutableStateOf(true)
-    private var _showAlertOxfordQuestionnaire : MutableState<Boolean> = mutableStateOf(true)
+    private var _showAlertGeriatricQuestionnaire : MutableState<Boolean> = mutableStateOf(false)
+    private var _showAlertOxfordQuestionnaire : MutableState<Boolean> = mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         sharedPreferences = getSharedPreferences("ERNUI", Context.MODE_PRIVATE)
         token = sharedPreferences.getString("access_token", "").toString()
-        _modeLight.value = sharedPreferences.getBoolean("modeLight", true)
-
+        _modeDark.value = sharedPreferences.getBoolean("theme_mode_is_dark", false)
+        ThemeState.isDarkThemeEnabled = _modeDark.value
         if(token == ""){
-            utils.startDetailActivity(applicationContext,LoginActivity::class.java)
+            utils.startDetailActivity(applicationContext,LoginActivity::class.java, this)
             return
         }
 
@@ -89,13 +90,22 @@ class MainActivity : ComponentActivity(), RecognitionListener {
         getGroupsEmotions()
         getAllMessages()
         _microActive.value = sharedPreferences.getBoolean("microActive", false)
-        val geriatricQuestionnaireCompletedDate = sharedPreferences.getString("geriatricQuestionnaireCompletedDate","")
-        val oxfordHappinessQuestionnaireCompletedDate = sharedPreferences.getString("oxfordHappinessQuestionnaireCompletedDate","")
-        if(geriatricQuestionnaireCompletedDate != ""){
-            _showAlertGeriatricQuestionnaire.value = utils.has24HoursPassed(geriatricQuestionnaireCompletedDate!!)
-        }
-        if(oxfordHappinessQuestionnaireCompletedDate != ""){
-            _showAlertOxfordQuestionnaire.value = utils.has24HoursPassed(oxfordHappinessQuestionnaireCompletedDate!!)
+        middleGeriatricQuestionnaire = sharedPreferences.getBoolean("middleGeriatricQuestionnaire", false)
+        middleOxfordHappinessQuestionnaire = sharedPreferences.getBoolean("middleOxfordHappinessQuestionnaire", false)
+
+        if(!middleGeriatricQuestionnaire && !middleOxfordHappinessQuestionnaire){
+            val geriatricQuestionnaireCompletedDate = sharedPreferences.getString("geriatricQuestionnaireCompletedDate","")
+            val oxfordHappinessQuestionnaireCompletedDate = sharedPreferences.getString("oxfordHappinessQuestionnaireCompletedDate","")
+            if(geriatricQuestionnaireCompletedDate != ""){
+                _showAlertGeriatricQuestionnaire.value = utils.has24HoursPassed(geriatricQuestionnaireCompletedDate!!)
+            }else{
+                _showAlertGeriatricQuestionnaire.value = true
+            }
+            if(oxfordHappinessQuestionnaireCompletedDate != ""){
+                _showAlertOxfordQuestionnaire.value = utils.has24HoursPassed(oxfordHappinessQuestionnaireCompletedDate!!)
+            }else{
+                _showAlertOxfordQuestionnaire.value = true
+            }
         }
 
         setContent {
@@ -202,6 +212,7 @@ class MainActivity : ComponentActivity(), RecognitionListener {
         _finishedLoading.value = STATE_DONE
     }
     private fun getGroupsEmotions(){
+        groupsEmotions = emptyList()
         scope.launch {
             var response = httpRequests.request("GET", "/emotions/groups", token = token)
             try {
@@ -319,6 +330,9 @@ class MainActivity : ComponentActivity(), RecognitionListener {
                         }
                         continue
                     }
+                    if (message["body"].toString() == "start_geriatric_form" || message["body"].toString() == "start_oxford_happiness_form") {
+                        continue
+                    }
                     _messages.add(Message(id = message["id"].toString().toLong(),
                         text = message["body"] as String?,
                         isChatbot = message["isChatbot"].toString() == "1",
@@ -369,7 +383,7 @@ class MainActivity : ComponentActivity(), RecognitionListener {
                                     isChatbot = message["isChatbot"].toString() == "true",
                                     time = utils.convertStringLocalDateTime(message["created_at"].toString())))
                             }
-                        }else if (message["body"] != "start_geriatric_form" && message["body"] != "start_oxford_happiness_form"){
+                        }else if (message["body"].toString() != "start_geriatric_form" && message["body"].toString() != "start_oxford_happiness_form"){
                             _messages.add(Message(id = message["id"].toString().toLong(),
                                 text = message["body"] as String?,
                                 isChatbot = message["isChatbot"].toString() == "true",
@@ -397,12 +411,13 @@ class MainActivity : ComponentActivity(), RecognitionListener {
             try{
                 val data = JSONObject(response["data"].toString())
                 if(middleGeriatricQuestionnaire){
-                    middleGeriatricQuestionnaire = false
+                    utils.addBooleanToStore(sharedPreferences, "middleGeriatricQuestionnaire", false)
                     utils.addStringToStore(sharedPreferences,"geriatricQuestionnaireCompletedDate",utils.getTimeNow())
                 }
                 if(middleOxfordHappinessQuestionnaire){
-                    middleOxfordHappinessQuestionnaire = false
+                    utils.addBooleanToStore(sharedPreferences, "middleOxfordHappinessQuestionnaire", false)
                     utils.addStringToStore(sharedPreferences,"oxfordHappinessQuestionnaireCompletedDate",utils.getTimeNow())
+
                 }
             }
             catch (ex: JSONException) {
@@ -436,7 +451,7 @@ class MainActivity : ComponentActivity(), RecognitionListener {
         }
     }
     private fun createQuestionnaire(){
-        val apiURL = if(middleGeriatricQuestionnaire) "/geriatricQuestionnaires" else if (middleOxfordHappinessQuestionnaire) "/oxfordHappinessQuestionnaires" else return
+        val apiURL = if(middleGeriatricQuestionnaire && idGeriatricQuestionnaire==-1) "/geriatricQuestionnaires" else if (middleOxfordHappinessQuestionnaire && idOxfordHappinessQuestionnaire==-1) "/oxfordHappinessQuestionnaires" else return
         var response: JSONObject
         scope.launch {
             response = httpRequests.request("POST", apiURL, token = token)
@@ -676,14 +691,13 @@ class MainActivity : ComponentActivity(), RecognitionListener {
                     onClick = {
                         _showAlertGeriatricQuestionnaire.value = false
                         _showAlertOxfordQuestionnaire.value = false
-                        middleGeriatricQuestionnaire = true
+                        utils.addBooleanToStore(sharedPreferences, "middleGeriatricQuestionnaire", true)
                         createQuestionnaire()
                         sendMessage("start_geriatric_form")
                     },onDismissRequest = {
                         _showAlertGeriatricQuestionnaire.value = false
                     })
-            }else{
-                if(_showAlertOxfordQuestionnaire.value){
+            }else if(_showAlertOxfordQuestionnaire.value){
                     CommonComposables.StartForm("Gostaria de responder a um questionário para avaliar o seu nível de felicidade?",
                         "Este questionário é composto por um total de 29 perguntas, onde poderá responder com:\n\n"+
                                 "- Discordo fortemente\n" +
@@ -696,13 +710,12 @@ class MainActivity : ComponentActivity(), RecognitionListener {
                         onClick = {
                             _showAlertOxfordQuestionnaire.value = false
                             _showAlertGeriatricQuestionnaire.value = false
-                            middleOxfordHappinessQuestionnaire = true
+                            utils.addBooleanToStore(sharedPreferences, "middleOxfordHappinessQuestionnaire", true)
                             createQuestionnaire()
                             sendMessage("start_oxford_happiness_form")
                         },onDismissRequest = {
                             _showAlertOxfordQuestionnaire.value = false
                         })
-                }
             }
             if(!_microActive.value){
                 onDestroy()
@@ -718,7 +731,6 @@ class MainActivity : ComponentActivity(), RecognitionListener {
                     _showConnectivityError.value = false
                 }
             )
-
         }
     }
     @Composable
@@ -740,9 +752,11 @@ class MainActivity : ComponentActivity(), RecognitionListener {
             ),
             MenuItem(
                 id = "mode",
-                title = if (_modeLight.value) "Modo escuro" else "Modo claro",
-                icon = if (_modeLight.value) R.drawable.dark else R.drawable.light,
-                onClick = {},
+                title = if (!_modeDark.value) "Modo escuro" else "Modo claro",
+                icon = if (!_modeDark.value) R.drawable.dark else R.drawable.light,
+                onClick = {
+                    _modeDark.value = utils.changeMode(sharedPreferences)
+                },
                 addDivider = false
             ),
             MenuItem(
@@ -756,7 +770,11 @@ class MainActivity : ComponentActivity(), RecognitionListener {
                 id = "logout",
                 title = "Terminar sessão",
                 icon = R.drawable.logout,
-                onClick = {},
+                onClick = {
+                    utils.clearSharedPreferences(sharedPreferences)
+                    ThemeState.isDarkThemeEnabled = false
+                    utils.startDetailActivity(applicationContext,LoginActivity::class.java, this)
+                },
                 addDivider = false
             )
         )
@@ -797,11 +815,13 @@ class MainActivity : ComponentActivity(), RecognitionListener {
                             .height(50.dp)
                             .clickable {
                                 item.onClick()
-                            }
+                            },
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
                             painter = painterResource(id = item.icon),
-                            contentDescription = item.title
+                            contentDescription = item.title,
+                            tint = colorScheme.onPrimary
                         )
                         Spacer(modifier = Modifier.width(20.dp))
                         Text(
@@ -813,8 +833,9 @@ class MainActivity : ComponentActivity(), RecognitionListener {
                         )
                     }
                     if(item.addDivider){
+                        Spacer(modifier = Modifier.height(15.dp))
                         Divider(color = colorScheme.onSurface, thickness = 1.dp)
-                        Spacer(modifier = Modifier.height(30.dp))
+                        Spacer(modifier = Modifier.height(15.dp))
                     }
                 }
             }

@@ -1,5 +1,6 @@
 package pt.ipleiria.estg.ciic.chatboternui.utils
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -9,11 +10,13 @@ import java.time.format.DateTimeFormatter
 import kotlin.math.pow
 import kotlin.math.sqrt
 import android.provider.Settings.Secure
+import pt.ipleiria.estg.ciic.chatboternui.Objects.ThemeState
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.ZoneOffset
 import java.util.Calendar
 import java.util.Locale
+import kotlin.reflect.KClass
 
 class Others {
 
@@ -82,16 +85,29 @@ class Others {
         editor.apply()
     }
 
+    fun clearSharedPreferences(sharedPreferences: SharedPreferences) {
+        val editor = sharedPreferences.edit()
+        editor.clear()
+        editor.apply()
+    }
+
+    fun changeMode(sharedPreferences: SharedPreferences) : Boolean {
+        ThemeState.isDarkThemeEnabled = !ThemeState.isDarkThemeEnabled
+        addBooleanToStore(sharedPreferences, "theme_mode_is_dark", ThemeState.isDarkThemeEnabled)
+        return ThemeState.isDarkThemeEnabled
+    }
+
     fun setErrorState(message: String?) {
         println(message)
     }
 
-    fun startDetailActivity(context: Context, activityClass: Class<*>) {
+    fun startDetailActivity(context: Context, activityClass: Class<*>, oldActivity: Activity) {
         val intent = Intent(context, activityClass)
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
+        intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
         context.startActivity(intent)
+        oldActivity.finish()
     }
+
     fun getAndroidMacAddress(context: Context): String {
         val identifier = Secure.getString(context.contentResolver, Secure.ANDROID_ID)
         // Convert hex string to bytes
@@ -107,5 +123,4 @@ class Others {
         // Format MAC address as string
         return macBytes.joinToString(":") { "%02X".format(it) }
     }
-
 }

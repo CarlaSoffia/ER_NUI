@@ -15,6 +15,8 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.ViewCompat
+import pt.ipleiria.estg.ciic.chatboternui.Objects.ThemeState
+
 val DarkColorScheme = darkColorScheme(
     primary = Color(0xFF64B5F6),
     secondary = Color(0xFFC6E2FF),
@@ -53,24 +55,18 @@ val LightColorScheme = lightColorScheme(
 
 @Composable
 fun ChatbotERNUITheme(
-    darkTheme: Boolean = false,
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-        darkTheme -> DarkColorScheme
+        ThemeState.isDarkThemeEnabled -> DarkColorScheme
         else -> LightColorScheme
     }
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             (view.context as Activity).window.statusBarColor = colorScheme.primary.toArgb()
-            ViewCompat.getWindowInsetsController(view)?.isAppearanceLightStatusBars = darkTheme
+            ViewCompat.getWindowInsetsController(view)?.isAppearanceLightStatusBars =
+                !ThemeState.isDarkThemeEnabled
         }
     }
 
