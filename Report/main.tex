@@ -60,6 +60,8 @@
 \newacronym{llm}{LLM}{Large Language Model}
 \newacronym{cv}{CV}{Computer Vision}
 \newacronym{ca}{CA}{Conversational Agents}
+\newacronym{cs}{CS}{Conversational Systems}
+\newacronym{sr}{SR}{Speech Recognition}
 \newacronym{nlp}{NLP}{Natural Language Processing}
 \newacronym{ml}{ML}{Machine Learning}
 \newacronym{nlu}{NLU}{Natural Language Understanding}
@@ -67,13 +69,6 @@
 \newacronym{er}{ER}{Named Entity Recognition}
 \newacronym{sa}{SA}{Sentiment Analysis}
 \newacronym{lsa}{LSA}{Latent Semantic Analysis}
-\newacronym{svm}{SVM}{Support Vector Machine}
-\newacronym{dt}{TD}{Decision Tree}
-\newacronym{rf}{RF}{Random Forest}
-\newacronym{knn}{KNN}{K-Nearest Neighbors}
-\newacronym{sebi}{SEBI}{Sun Exposure and Behaviour Inventory}
-\newacronym{samscore}{SAMScore}{Self-Assessment of Melanoma Risk Score}
-\newacronym{ddl}{DDL}{Distributed Deep Learning}
 \makeglossaries
 % -------------------------------------------------------------------
 \usepackage[utf8]{inputenc} % The default since 2018
@@ -84,7 +79,7 @@
 \def\floatpagepagefraction{1}
 \def\textpagefraction{.001}
 \shorttitle{EmoCare}
-\shortauthors{CV Radhakrishnan et~al.}
+\shortauthors{Carla Mendes et~al.}
 
 \title [mode = title]{EmoCare}                     
 
@@ -101,7 +96,7 @@
 \address[1]{Computer Science and Communications Research Centre, School of Technology and Management, Polytechnic of Leiria, 2411-901 Leiria, Portugal}
 
 \begin{abstract}
-
+Lorem ipsum .............
 
 
 \end{abstract}
@@ -137,40 +132,40 @@ This section aims to review existing literature regarding \gls{ca}, \gls{sa} and
 \subsection{Conversational agents}
 \label{conversationalAgents}
 
-Chatbots, also known as \gls{ca}, are computer programs designed to mimic interactions between humans and computers.
+Chatbots, referred to as \gls{ca} or \gls{cs}, are software applications created to imitate human-computer interactions  \cite{montenegro_survey_2019}.
 
 \subsubsection{Classification methods}
 
-\gls{ca} can be classified accordingly to multiple dimensions: goal, interaction mode, knowledge domain and response-generator \cite{hussain_survey_2019}.
+Chatbots can be categorized based on various factors, including their goal, interaction mode, knowledge domain, and response-generation method \cite{hussain_survey_2019}.
 
-Regarding the goal, chatbots can be defined as \textbf{task-oriented} and \textbf{non-task oriented} where task-oriented chatbots are specifically created to handle specific tasks and are programmed to engage in concise conversations, typically limited to a specific domain. On the other hand, non-task-oriented chatbots excel at simulating conversations with individuals and engaging in casual chitchat for entertainment purposes, therefore, operating in open domains, allowing for more open-ended and diverse conversations \cite{hussain_survey_2019}.
+\gls{cs} operate using different modes of interaction, namely based on text or speech. In the text-based mode, users communicate with the chatbot by typing their queries or statements, commonly through chat applications, messaging platforms, or web-based chat interfaces. The chatbot responds with text-based messages in return. On the other hand, speech-based chatbots enable users to interact with the chatbot using spoken language. These chatbots employ \gls{sr} technology to convert the user's voice input into text, which is then processed and analyzed to generate appropriate responses. Voice-based chatbots are typically found in voice assistants like Amazon Alexa, Google Assistant, or Apple Siri. They offer a convenient and hands-free method of interacting with the chatbot, enabling users to engage in natural conversations and perform tasks using voice commands. Additionally, chatbots can also adopt a multi-modal approach, allowing interaction through both text and speech \cite{montenegro_survey_2019}.
 
-\gls{ca} can operate in different interaction modes, including text-based or voice/speech-based interactions. In the text-based mode, users communicate with the chatbot through written messages. This mode is commonly used in chat applications, messaging platforms, and web-based chat interfaces. Users type their queries or statements, and the chatbot responds with text-based messages. On the other hand, voice/speech-based chatbots enable users to interact with the chatbot using spoken language. These chatbots utilize speech recognition technology to convert the user's voice input into text, which is then processed and analyzed to generate appropriate responses. Voice-based chatbots are commonly found in voice assistants like Amazon Alexa, Google Assistant, or Apple Siri. They offer a hands-free and convenient way of interacting with the chatbot, allowing users to engage in natural conversations and perform tasks using voice commands. Lastly, the multi-modal approach allows the chatbot to interact using both text and speech \cite{montenegro_survey_2019}.
+When considering their objective, chatbots are categorized as either task-oriented or non-task-oriented. Task-oriented chatbots are designed with a specific purpose, focusing on handling particular tasks and engaging in brief conversations, typically within a limited domain. Conversely, non-task-oriented chatbots specialize in emulating conversations with individuals and participating in casual chitchat primarily for entertainment. As a result, they operate in open domains, facilitating more diverse and unrestricted conversations \cite{hussain_survey_2019}.
 
-In the knowledge domain dimension, \gls{ca} are designed to possess knowledge regarding a specific domain or industry. They are built with specialized knowledge and capabilities tailored to serve a particular purpose or provide assistance within a limited scope. These \gls{ca} are trained and programmed to understand and respond to queries related to a specific topic or domain. For example, a domain-specific chatbot could be created to assist with customer support on an e-commerce website, provide medical advice in the healthcare industry, or offer travel recommendations in the tourism sector. Open-domain chatbots are designed to engage in conversations on a wide range of topics without being limited to a specific domain. They aim to simulate human-like conversations and provide chit-chat, entertainment, or general information across various subjects.
 
-Lastly, \gls{ca} are also categorized accordingly to response generation methods which involve using techniques and algorithms to generate appropriate and meaningful responses to user queries or inputs. Response generation methods are split into:
+In terms of response generation methods, chatbots are also classified based on the techniques and algorithms used to generate suitable and meaningful responses to user queries or inputs. These methods can be categorized as follows:
 \begin{itemize}
-	\item \textbf{Rule-based}: rely on a predefined set of rules and patterns to generate responses. These rules are typically created by human experts and programmed into the chatbot system. The chatbot matches user inputs with specific patterns or keywords and retrieves corresponding responses. Rule-based systems are effective for simple and structured conversations but may struggle with handling complex or unpredictable queries.
-	\item \textbf{Template-based}: use pre-built response templates that are filled with relevant information based on user inputs. These templates contain placeholders for dynamic content such as names, dates, or specific details. The chatbot identifies the intent of the user's query and selects an appropriate template to generate a response. Template-based systems are relatively simple to implement but may lack flexibility and creativity in generating unique responses.
-	\item \textbf{Retrieval-based}: store a large dataset of predefined responses and use \gls{ml} techniques to select the most appropriate response based on the user's input. Retrieval-based systems can provide contextually relevant responses but may struggle with generating novel or creative responses.
-	\item \textbf{Generative-based}: use advanced \gls{nlp} techniques and machine learning models, such as sequence-to-sequence models or transformers, to generate responses from scratch. These models are trained on large datasets and learn the patterns and structures of human language. Generative models are more versatile in handling diverse user inputs. However, they can be more computationally intensive and require significant computational resources for training and inference.
+	\item \textbf{Rule-based}: rely on a predefined set of rules and patterns to generate responses. Human experts typically create these rules and program them into the chatbot system. The \gls{ca} then matches user inputs with specific patterns or keywords and retrieves corresponding responses. Rule-based systems work well for simple and structured conversations but may struggle with complex or unpredictable queries.
+	\item \textbf{Retrieval-based}: use \gls{ml} techniques to select the most appropriate response based on the user's input from a large dataset of predefined responses. Retrieval-based systems may struggle with creative responses, however provide contextually relevant responses.
+	\item \textbf{Template-based}:  use pre-built response templates that are filled with relevant information based on user inputs. These templates contain placeholders for dynamic content such as names, dates, or specific details. The chatbot captures the intents of the user's input and selects an appropriate template to generate a response. Template-based systems may lack flexibility and creativity in generating unique responses but are relatively simple to implement.
+	\item \textbf{Generative-based}: rely on advanced \gls{nlp} techniques and \gls{ml} models to create responses from scratch, namely sequence-to-sequence models or transformers. These models are trained on large datasets and learn the patterns and structures of human language. Generative models are more versatile in handling diverse user inputs. However, they can be more computationally intensive and require significant computational resources for training and inference.
 	\item \textbf{Hybrid Approach} - combine multiple methods mentioned above to leverage the strengths of each approach.
 \end{itemize}
 
+Lastly, in the knowledge domain dimension, chatbots possess specialized knowledge and capabilities tailored to serve specific purposes within a limited scope. They possess knowledge and capabilities customized to fulfill specific objectives or offer assistance within a restricted topic. These chatbots undergo training and programming to comprehend and address inquiries regarding a specific domain. For instance, a chatbot tailored to a particular subject can aid in customer support for an e-commerce platform, provide medical advice in the healthcare sector, or offer travel recommendations within the tourism industry. On the other hand, open-domain chatbots engage in conversations spanning a broad spectrum of topics, free from confinement to any specific domain. They aim to emulate human-like interactions, delivering casual conversation, entertainment, or general information across various subjects \cite{mohamad_2021}.
+
 \subsubsection{General Architecture}
 
-A robust \gls{ca} system will possess several key components, represented in Figure \ref{fig:generalArchitecture}.
+A robust \gls{ca} system will possess several key components, represented in Figure.% \ref{fig:generalArchitecture}.
 
-\begin{figure}[htbp]
-	\centering
-	\includegraphics[width=\linewidth]{figs/GeneralArchitecture.png}
-	\caption{Conversational agents general architecture.}
-	\label{fig:generalArchitecture}
-\end{figure}
+%\begin{figure}[htbp]
+%	\centering
+%	\includegraphics[width=\linewidth]{figs/GeneralArchitecture.png}
+%	\caption{Conversational agents general architecture.}
+%	\label{fig:generalArchitecture}
+%\end{figure}
 
-During the \gls{nlp} phase, the user's request undergoes various techniques, including tokenization, lemmatization, and stemming. These techniques help extract structured data from the request, which is then passed on to the subsequent component, known as the \gls{nlu} module, responsible for analyzing each incoming user request using various strategies, namely, parsing the request to understand the user's intention and the associated details. The dialogue management module focuses on keeping track of the dialogue context and defining the following actions to perform by analyzing the input request that has been
-transformed into understandable structured data by the \gls{ca} system. The data sources serve as repositories for information and data utilized by the dialogue manager. These sources can be either internal or external. Internally, chatbots can access data from templates or rules to understand user requests and generate appropriate responses. Moreover, \gls{ca} can also build their databases from scratch or leverage existing databases that align with their domain and functionality. In contrast, external data sources can be accessed through third-party services like Web APIs, which provide the necessary information. The response generator module plays a crucial role in generating an appropriate response from a pool of potential options after executing an action. This component utilizes the approaches mentioned earlier to generate the most suitable response for the given context.
+During the \gls{nlp} phase, the user's request undergoes various techniques, including tokenization, lemmatization, and stemming. These techniques help extract structured data from the request, which is then passed on to the subsequent component, known as the \gls{nlu} module, responsible for analyzing each incoming user request using various strategies, namely, parsing the request to understand the user's intention and the associated details. The dialogue management module focuses on keeping track of the dialogue context and defining the following actions to perform by analyzing the input request that has been transformed into understandable structured data by the \gls{ca} system. The data sources serve as repositories for information and data utilized by the dialogue manager. These sources can be either internal or external. Internally, chatbots can access data from templates or rules to understand user requests and generate appropriate responses. Moreover, \gls{ca} can also build their databases from scratch or leverage existing databases that align with their domain and functionality. In contrast, external data sources can be accessed through third-party services like Web APIs, which provide the necessary information. The response generator module plays a crucial role in generating an appropriate response from a pool of potential options after executing an action. This component utilizes the approaches mentioned earlier to generate the most suitable response for the given context.
 
 \subsubsection{Tools}
 
@@ -194,8 +189,6 @@ ChatterBot \cite{chatterbot} is an open-source Python library that facilitates t
 
 \section{Conclusion}
 \label{conclusion}
-% created our own Chat prepared dataset 
-
 \printcredits
 
 %% Loading bibliography style file
