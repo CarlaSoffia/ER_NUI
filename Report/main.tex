@@ -57,7 +57,6 @@
 \PassOptionsToPackage{nonumberlist}{glossaries}
 \usepackage{glossaries}
 \newacronym{cnn}{CNN}{Convolutional Neural Network}
-\newacronym{llm}{LLM}{Large Language Model}
 \newacronym{cv}{CV}{Computer Vision}
 \newacronym{ca}{CA}{Conversational Agents}
 \newacronym{cs}{CS}{Conversational Systems}
@@ -69,6 +68,16 @@
 \newacronym{er}{ER}{Named Entity Recognition}
 \newacronym{sa}{SA}{Sentiment Analysis}
 \newacronym{lsa}{LSA}{Latent Semantic Analysis}
+\newacronym{svm}{SVM}{Support Vector Machine}
+\newacronym{nn}{NN}{Neural Networks}
+\newacronym{rnn}{RNN}{Recurrent Neural Network}
+\newacronym{lstm}{LSTM}{Long Short-Term Memory}
+\newacronym{bilstm}{BILSTM}{Bidirectional Long Short-Term Memory}
+\newacronym{me}{ME}{Maximum Entropy}
+\newacronym{bn}{BN}{Bayesian Network}
+\newacronym{nb}{NB}{Naive Bayes}
+\newacronym{knn}{KNN}{K-Nearest Neighbor}
+\newacronym{dt}{DT}{Decision Tree}
 \makeglossaries
 % -------------------------------------------------------------------
 \usepackage[utf8]{inputenc} % The default since 2018
@@ -96,7 +105,7 @@
 \address[1]{Computer Science and Communications Research Centre, School of Technology and Management, Polytechnic of Leiria, 2411-901 Leiria, Portugal}
 
 \begin{abstract}
-Lorem ipsum .............
+Abstract goes here.
 
 
 \end{abstract}
@@ -127,7 +136,7 @@ Lorem ipsum .............
 \section{Background and contextualization}
 \label{backgroundContextualization}
 
-This section aims to review existing literature regarding \gls{ca}, \gls{sa} and mood assessement questionnaires.
+This section aims to review existing literature regarding \gls{ca}, \gls{sa} and mood assessment questionnaires.
 
 \subsection{Conversational agents}
 \label{conversationalAgents}
@@ -142,8 +151,8 @@ Chatbots can be categorized based on various factors, including their goal, inte
 
 When considering their objective, chatbots are categorized as either task-oriented or non-task-oriented. Task-oriented chatbots are designed with a specific purpose, focusing on handling particular tasks and engaging in brief conversations, typically within a limited domain. Conversely, non-task-oriented chatbots specialize in emulating conversations with individuals and participating in casual chitchat primarily for entertainment. As a result, they operate in open domains, facilitating more diverse and unrestricted conversations \cite{hussain_survey_2019}.
 
-
 In terms of response generation methods, chatbots are also classified based on the techniques and algorithms used to generate suitable and meaningful responses to user queries or inputs. These methods can be categorized as follows:
+
 \begin{itemize}
 	\item \textbf{Rule-based}: rely on a predefined set of rules and patterns to generate responses. Human experts typically create these rules and program them into the chatbot system. The \gls{ca} then matches user inputs with specific patterns or keywords and retrieves corresponding responses. Rule-based systems work well for simple and structured conversations but may struggle with complex or unpredictable queries.
 	\item \textbf{Retrieval-based}: use \gls{ml} techniques to select the most appropriate response based on the user's input from a large dataset of predefined responses. Retrieval-based systems may struggle with creative responses, however provide contextually relevant responses.
@@ -156,16 +165,16 @@ Lastly, in the knowledge domain dimension, chatbots possess specialized knowledg
 
 \subsubsection{General Architecture}
 
-A robust \gls{ca} system will possess several key components, represented in Figure.% \ref{fig:generalArchitecture}.
+A robust \gls{ca} system will possess several key components, represented in Figure \ref{fig:ConversationalAgentGeneralArchitecture}.
 
-%\begin{figure}[htbp]
-%	\centering
-%	\includegraphics[width=\linewidth]{figs/GeneralArchitecture.png}
-%	\caption{Conversational agents general architecture.}
-%	\label{fig:generalArchitecture}
-%\end{figure}
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[width=\linewidth]{figs/ConversationalAgentGeneralArchitecture.png}
+	\caption{Conversational agents general architecture.}
+	\label{fig:ConversationalAgentGeneralArchitecture}
+\end{figure}
 
-During the \gls{nlp} phase, the user's request undergoes various techniques, including tokenization, lemmatization, and stemming. These techniques help extract structured data from the request, which is then passed on to the subsequent component, known as the \gls{nlu} module, responsible for analyzing each incoming user request using various strategies, namely, parsing the request to understand the user's intention and the associated details. The dialogue management module focuses on keeping track of the dialogue context and defining the following actions to perform by analyzing the input request that has been transformed into understandable structured data by the \gls{ca} system. The data sources serve as repositories for information and data utilized by the dialogue manager. These sources can be either internal or external. Internally, chatbots can access data from templates or rules to understand user requests and generate appropriate responses. Moreover, \gls{ca} can also build their databases from scratch or leverage existing databases that align with their domain and functionality. In contrast, external data sources can be accessed through third-party services like Web APIs, which provide the necessary information. The response generator module plays a crucial role in generating an appropriate response from a pool of potential options after executing an action. This component utilizes the approaches mentioned earlier to generate the most suitable response for the given context.
+During the \gls{nlp} phase, the user's request undergoes various techniques, including tokenization, lemmatization, and stemming. These techniques help extract structured data from the request, which is then passed on to the subsequent component, known as the \gls{nlu} module, responsible for analyzing each incoming user request using various strategies, namely, parsing the request to understand the user's intention and the associated details. The dialogue management module focuses on keeping track of the dialogue context and defining the following actions to perform by analyzing the input request that has been transformed into understandable structured data by the \gls{ca} system. The data sources serve as repositories for information and data utilized by the dialogue manager. These sources can be either internal or external. Internally, chatbots can access data from templates or rules to understand user requests and generate appropriate responses. Moreover, \gls{ca} can also build their databases from scratch or leverage existing databases that align with their domain and functionality. In contrast, external data sources can be accessed through third-party services like Web APIs, which provide the necessary information. The response generator module plays a crucial role in generating an appropriate response from a pool of potential options after executing an action. This component utilizes the approaches mentioned earlier to generate the most suitable response for the given context. \cite{rizou_multilingual_2022, mohamad_suhaili_service_2021}
 
 \subsubsection{Tools}
 
@@ -180,6 +189,66 @@ OpenDial \cite{opendial} is an open-source Java-based toolkit used for building 
 Botpress \cite{botpress} is an open-source platform that enables developers to build, deploy, and manage chatbots and virtual assistants. It provides a visual interface for designing conversational flows and supports both text-based and voice-based interactions. Botpress is written in JavaScript and can be deployed on various platforms. One of the key features of Botpress is its visual flow builder, which allows developers to create complex conversational flows using a drag-and-drop interface. This makes it easy to design the dialogue flow of the chatbot and define the interactions between the user and the bot. Botpress also offers built-in \gls{nlu} capabilities, allowing developers to train the chatbot to understand user intents and extract entities from user inputs.
 
 ChatterBot \cite{chatterbot} is an open-source Python library that facilitates the development of chatbots. The primary focus of ChatterBot is to generate responses based on pre-defined conversational patterns. It uses a machine learning algorithm called \gls{lsa} to train a language model on a given corpus of text data and  then generate appropriate responses based on the patterns it has learned. ChatterBot supports the use of multiple languages and provides various pre-trained language models that can be used out of the box. Additionally, it enables developers to customize the chatbot's behaviour by defining rules, selecting appropriate responses, and handling specific cases. One of the notable features of ChatterBot is its ability to learn and improve over time. It employs a technique called "conversational context" to maintain the history of the conversation and generate contextually relevant responses. 
+
+\subsection{Sentiment Analysis}
+
+\gls{sa}, a subfield of \gls{nlp}, aims to derive the sentiments expressed in a piece of text based on its content, which can be conducted at different levels: Document Level, Sentence Level, Phrase Level, and Aspect Level  \cite{kaur_survey_2017, wankhade_survey_2022}.
+
+Document-level \gls{sa} involves assessing the sentiment of an entire document and assigning a single polarity to it. Classification methods, both supervised and unsupervised, can be employed at this level to determine the sentiment conveyed in the document \cite{wankhade_survey_2022}.
+
+At the Sentence Level, each sentence is analyzed and classified into a polarity sentiment. This approach more valuable when a document contains a diverse range of sentiments. By independently determining the polarity of each sentence, either using methodologies similar to document-level analysis or with more extensive training data and processing resources, the overall sentiment of the document can be aggregated or analyzed sentence by sentence  \cite{wankhade_survey_2022}.
+
+The Phrase Level of \gls{sa} focuses on mining opinion words and sentiments at the phrase level. While document-level analysis broadly categorizes the entire document as either positive or negative, sentence-level analysis proves more advantageous because documents often contain both positive and negative statements. At this level, individual words become the fundamental units of language, and their polarity is intrinsically tied to the subjectivity of the sentences or documents in which they appear \cite{wankhade_survey_2022}.
+
+Lastly, Aspect Level delves even deeper, as it is performed on specific aspects within a sentence. Since a sentence may contain multiple aspects, this approach pays close attention to all aspects present and assigns polarity to each one. An aggregate sentiment is then calculated for the entire sentence, considering the sentiments of all its aspects.
+
+To conduct \gls{sa}, several main steps are followed, including data collection, feature selection, feature extraction, and the use of word embeddings. These steps aid in gathering relevant data, choosing essential features, extracting meaningful patterns, and representing words in a numerical format suitable for analysis  \cite{kaur_survey_2017}.
+
+\subsubsection{Approaches}
+
+There are three main approaches commonly used for \gls{sa}: the Lexicon Based Approach, the \gls{ml} Approach, and the Hybrid Approach \cite{wankhade_survey_2022, kaur_survey_2017}.
+
+Lexicons consist of tokens, with each token having a predefined score that indicates the neutral, positive, or negative nature of the text. The lexicon-based method is highly suitable for conducting \gls{sa} at both the sentence and feature levels. Initially, the document is divided into tokens of individual words, and then the polarity of each token is calculated and aggregated. There are primarily two approaches used in Lexicon Based Approaches: the Corpus Based Approach and the Dictionary based approach \cite{wankhade_survey_2022}.
+
+The Corpus-based approach utilizes semantic and syntactic patterns to determine the emotion of a sentence. It begins with a predefined set of sentiment terms and their orientations, then explores syntactic or similar patterns within a vast corpus to identify sentiment tokens and their orientations. This method is specific to the situation and requires a substantial amount of labeled data for training. Within the corpus-based approach, there are two types of approaches: the Statistical Approach and the Semantic Approach \cite{wankhade_survey_2022, kaur_survey_2017}.
+
+On the other hand, the Dictionary-Based Approach commences by manually collecting a set of opinion words to form a seed list. Next, dictionaries and thesauruses are consulted to find synonyms and antonyms of these words, which are then added to the seed list. This process continues until no new words are discovered. However, a drawback of this approach is the challenge of finding context or domain-oriented opinion words \cite{wankhade_survey_2022, kaur_survey_2017}.
+
+There are two primary in \gls{ml} approaches: Supervised \gls{ml} and Lexicon-based unsupervised learning \cite{wankhade_survey_2022}.
+
+In Lexicon-based unsupervised strategies, knowledge bases, ontologies, databases, and lexicons containing specific and detailed information for \gls{sa} are utilized. On the other hand, supervised learning methods are more widely used due to their high accuracy. These algorithms require training on a labeled dataset before they can be applied to real data. Features are extracted from the text data during the training process \cite{kaur_survey_2017}.
+
+The \gls{ml} technique uses syntactic or linguistic factors to classify sentiment and constitute a text classification problem. Therefore, the model associates features of the underlying record with class labels and predicts the label for unknown instances \cite{kaur_survey_2017}. Commonly used \gls{ml} algorithms include:
+
+\begin{itemize}
+	\item \textbf{\gls{dt} classifier}
+	\item \textbf{Linear classifier} - e.g. \gls{svm} and Neural Networks such as \gls{rnn}, \gls{cnn}, \gls{lstm} and \gls{bilstm}, Transformers
+	\item \textbf{Rule-based classifier} 
+	\item \textbf{Probabilistic classifiers} - e.g. Multinomial \gls{nb}, \gls{me} and \gls{bn}
+	\item \textbf{\gls{knn}}
+\end{itemize}
+
+The hybrid approach combines \gls{ml} and lexicon-based techniques. It refers to the integration of both methods to enhance the accuracy and effectiveness of the systems. By leveraging the strengths of both approaches, the hybrid method can provide more comprehensive insights into the sentiment expressed in the text  \cite{wankhade_survey_2022}.
+
+\subsubsection{Datasets}
+
+There are diverse datasets used to train \gls{sa} algorithms, some of which include: SemEval 2007 task 14 corpus, ISEAR, SentiWordNet, IMDB, SST and NRC.
+
+The SemEval 2007 task 14 corpus \cite{strapparava_learning_2008} consists of emotional newspaper headlines from reputable sources like the New York Times, CNN, BBC, or Google News. This corpus allows training models for emotions such as anger, disgust, fear, joy, sadness, and surprise.
+
+ISEAR \cite{ISEAR} is a dataset comprising psychological data from a survey conducted in 1990. In this dataset, 3,000 subjects described situations where they felt various emotions, including joy, sadness, fear, anger, disgust, shame, or guilt.
+
+The SentiWordNet dataset \cite{baccianella_sentiwordnet_2010} is a publicly available dataset that automatically labels synsets in the WordNet dataset based on their degree of positivity, negativity, and neutrality.
+
+The IMDB Movie Reviews dataset \cite{IMDB} is publicly available and contains around 50,000 movie reviews, labeled as either positive or negative.
+
+SST \cite{SST} is a sentiment analysis dataset from Stanford, containing 10,662 movie sentences from Rotten Tomatoes, labeled with corresponding emotions, ranging from "very negative" to "very positive."
+
+NRC \cite{SaifmohammadLexicons} is a comprehensive emotion Lexicon dataset, containing more than 14,000 words annotated with sentiment (positive or negative) and various emotions, such as anger, anticipation, disgust, fear, joy, sadness, surprise, and trust.
+
+\subsection{Mood Assessment Questionnaires}
+
+% tomorrow morning: https://www.notion.so/carla-mendes/ERNUI-33d6da683fae4ed494e9a928b7a16a50
 
 \section{Architecture}
 \label{architecture}
