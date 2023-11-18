@@ -18,7 +18,7 @@
 %% double column output.
 
 %\documentclass[a4paper,fleqn,longmktitle]{cas-dc}
-\documentclass[a4paper,fleqn]{cas-dc}
+\documentclass[a4paper,fleqn]{cas-sc}
 
 %\usepackage[authoryear,longnamesfirst]{natbib}
 %\usepackage[authoryear]{natbib}
@@ -57,8 +57,10 @@
 \PassOptionsToPackage{nonumberlist}{glossaries}
 \usepackage{glossaries}
 \newacronym{cnn}{CNN}{Convolutional Neural Network}
+\newacronym{gru}{GRU}{Gated Recurrent Unit}
 \newacronym{cv}{CV}{Computer Vision}
-\newacronym{ca}{CA}{Conversational Agents}
+\newacronym{ca}{CA}{Conversational Agent}
+\newacronym{cas}{CAs}{Conversational Agents}
 \newacronym{cs}{CS}{Conversational Systems}
 \newacronym{sr}{SR}{Speech Recognition}
 \newacronym{nlp}{NLP}{Natural Language Processing}
@@ -96,10 +98,10 @@
 \let\WriteBookmarks\relax
 \def\floatpagepagefraction{1}
 \def\textpagefraction{.001}
-\shorttitle{EmoCare}
+\shorttitle{Smart CA for AAL}
 \shortauthors{Carla Mendes et~al.}
 
-\title [mode = title]{EmoCare}                     
+\title [mode = title]{Smart Conversational Agent for Ambient Assisted Living}                     
 
 \credit{Conceptualization of this study, Methodology, Software}
 
@@ -145,12 +147,12 @@ Abstract goes here.
 \section{Background and contextualization}
 \label{backgroundContextualization}
 
-This section aims to review existing literature regarding \gls{ca}, \gls{sa} and mood assessment questionnaires.
+This section aims to review existing literature regarding \gls{cas}, \gls{sa} and mood assessment questionnaires.
 
 \subsection{Conversational agents}
 \label{conversationalAgents}
 
-Chatbots, referred to as \gls{ca} or \gls{cs}, are software applications created to imitate human-computer interactions  \cite{montenegro_survey_2019}.
+Chatbots, referred to as \gls{cas} or \gls{cs}, are software applications created to imitate human-computer interactions  \cite{montenegro_survey_2019}.
 
 \subsubsection{Classification methods}
 
@@ -179,7 +181,7 @@ A robust \gls{ca} system will possess several key components, represented in Fig
 \begin{figure}[htbp]
 	\centering
 	\includegraphics[width=\linewidth]{figs/ConversationalAgentGeneralArchitecture.png}
-	\caption{Conversational agents general architecture.}
+	\caption{\gls{cas} general architecture.}
 	\label{fig:ConversationalAgentGeneralArchitecture}
 \end{figure}
 
@@ -280,8 +282,40 @@ The \gls{gds} \cite{yesavage_development_1982} is a short, self-administered que
 \section{Architecture}
 \label{architecture}
 
+% TODO -  Add architecture diagram
+
+This section aims to detail the architecture and main components of the proposed system, including the goal and communication schemes between each component. The system comprises two primary modules, as detailed in Figure \ref{fig:lArchitecture}: frontend clients, further subdivided into the mobile and web application, and backend, which encompasses the API, database, and \gls{ca}.
+
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[width=\linewidth]{figs/Architecture.png}
+	\caption{Proposed architecture.}
+	\label{fig:lArchitecture}
+\end{figure}
+
+The mobile application serves as the primary interface for interacting with elderly users, collecting input data for the system, and providing output responses and data. Its key function is to engage in conversations with older adults, assisting them in understanding their emotional well-being. Given the technological challenges encountered by older adults, such as age-related health issues affecting hearing and vision, as well as their limited digital literacy and skills resulting from historical exclusion from the digitization process of society, the design of the mobile application must adhere to essential design principles to ensure a positive user experience (Blazic, 2020) \cite{blazic_overcoming_2020}. In contrast, the web application was crafted to empower caregivers to monitor the emotional well-being of elderly individuals under their care from any location and at any time. Additionally, it provides caregivers with the flexibility to customize and personalize their own experience as well as that of the elderly individuals they are responsible for. Both client applications communicate with the API to efficiently retrieve and store data, ensuring the smooth exchange of information and enhancing the overall system's functionality.
+
+The API has several key functions: capturing, validating, and processing data from client applications, offering them the necessary data, and managing data storage and retrieval from the database. Additionally, the API establishes communication with the \gls{ca}, which is responsible for guiding and maintaining user conversations to ensure a continuous input flow. Subsequently, the \gls{ca}, equipped with a sentiment analysis model, processes and analyzes each user message received via the API to determine emotional states, generates responses, and returns them to the API for delivery to the user. Lastly, the database is entrusted with the responsibility of storing and providing comprehensive information, encompassing client details, emotional analysis results, and exchanged messages.
+ 
 \section{Proposed solution and implementation}
 \label{proposedSolution}
+
+
+
+\subsection{Artificial Intelligence Models}
+
+The availability of Portuguese \gls{sa} models with a comprehensive spectrum of emotions is limited, as most existing models primarily differentiate between positive and negative emotions.
+Consequently, the need arose to develop a custom model from the ground up. In pursuit of a higher model quality, three distinct architectural approaches were meticulously studied, analyzed, and tested with different layers, parameters, and hyper-parameters as they are among the most commonly employed for sentiment analysis tasks: \gls{cnn}, \gls{gru}, and \gls{lstm}. 
+
+In response to the need for a sentiment analysis model encompassing a broad spectrum of emotions, and in line with the datasets mentioned earlier, the ISEAR dataset \cite{ISEAR} was selected. However, this dataset is originally in English, necessitating a translation to Portuguese through the use of the DeepL translator, followed by manual verification. Furthermore, a data augmentation technique to was employed toprovide a larger and more robust foundation for each model under construction.The data augmentation process involved utilizing the lemmatization capabilities of the 'pt\_core\_news\_lg' model \url{https://spacy.io/models/pt#pt_core_news_lg}, a CPU-optimized model provided by the spaCy library, specifically designed for \gls{nlp} tasks in Portuguese. This lemmatization process targeted non-stop words composed solely of alphabetic characters. Remarkably, the model's lemmatizer demonstrated an impressive accuracy rating of 97\%. 
+
+As a result of this data augmentation and translation process, a unique and wider version of the ISEAR dataset was created, expanding from its initial 7511 English entries (with the removal of 60 entries, specifically those with placeholder values indicating the absence of felt emotions or without actual responses) to a total of 15022 Portuguese entries.
+
+In response to the need for a \gls{sa} model encompassing a broad spectrum of emotions, and in line with the datasets mentioned earlier, the ISEAR dataset was selected. However, this dataset is originally in English, necessitating a translation to Portuguese through the use of the DeepL translator, followed by manual verification. Furthermore, a data augmentation technique to was employed provide a larger and more robust foundation for each model under construction. The data augmentation process involved utilizing the lemmatization capabilities of the 'pt\_core\_news\_lg' model \url{https://spacy.io/models/pt#pt_core_news_lg}, a CPU-optimized model provided by the spaCy library, specifically designed for \gls{nlp} tasks in Portuguese. After acquiring the translated dataset, each record underwent a lemmatization process. In this process, any non-stop word consisting exclusively of alphabetic characters was lemmatized, and the result was used to generate a new record with the extracted lemmatized words. Thanks to this process of data augmentation and translation, an expanded version of the ISEAR dataset was obtained, where it grew from its initial 7511 English entries (59 entries were initially removed, specifically those with placeholder values indicating the absence of emotions or without actual responses) to a total of 15022 Portuguese entries.
+
+% write about the preprocessing, with and without glove
+
+% write about the models architectures , bidirectional, parameters
 
 \section{Conclusion}
 \label{conclusion}
