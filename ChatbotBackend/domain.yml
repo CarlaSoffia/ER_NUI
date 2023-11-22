@@ -1,28 +1,6 @@
 version: '3.1'
-entities:
-- family_friends
 
 slots:
-  # Other slots ----------------------------------------------------
-
-  family_friends:
-    type: text
-    mappings:
-    - type: from_entity
-      entity: family_friends
-
-  token:
-    type: text
-    initial_value: null
-    mappings:  
-    - type: custom
-
-  iterations:
-    type: list
-    influence_conversation: false
-    mappings:
-    - type: custom 
-
   # Geriatric Questionnaire ----------------------------------------------------
 
   geriatric_questionnaire_points:
@@ -33,17 +11,14 @@ slots:
     mappings:
     - type: custom
 
-  responses_geriatric_questionnaire:
-    type: list
+  responses_geriatric_questionnaire_counter:
+    type: float
+    initial_value: 0.0
+    min_value: 0.0
+    max_value: 30.0
     influence_conversation: false
     mappings:
     - type: custom
-
-  last_check_hour_geriatric_questionnaire:
-    type: text
-    initial_value: null
-    mappings:
-    - type: custom 
 
   response_question_geriatric_questionnaire:
     type: text
@@ -60,12 +35,6 @@ slots:
       conditions:
         - active_loop: geriatric_questionnaire_form
           requested_slot: why_question_geriatric_questionnaire    
- 
-  last_check_hour_oxford_happiness_questionnaire:
-    type: text
-    initial_value: null
-    mappings:
-    - type: custom 
   
   # Oxford Happiness Questionnaire ---------------------------------------------
 
@@ -93,8 +62,11 @@ slots:
     mappings:
     - type: custom
 
-  responses_oxford_happiness_questionnaire:
-    type: list
+  responses_oxford_happiness_questionnaire_counter:
+    type: float
+    initial_value: 0.0
+    min_value: 0.0
+    max_value: 58.0
     influence_conversation: false
     mappings:
     - type: custom
