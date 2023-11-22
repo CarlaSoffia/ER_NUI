@@ -180,10 +180,12 @@ class ActionSubmitGeriatricQuestionnaire(Action):
     def run(self, dispatcher: CollectingDispatcher,
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[EventType]:
-        SlotSet("responses_geriatric_questionnaire_counter",0.0)
-        SlotSet("geriatric_questionnaire_points",0.0)
-        SlotSet("response_question_geriatric_questionnaire",None)
-        SlotSet("why_question_geriatric_questionnaire",None)
+        return [
+            SlotSet("responses_geriatric_questionnaire_counter",0.0),
+            SlotSet("geriatric_questionnaire_points",0.0),
+            SlotSet("response_question_geriatric_questionnaire",None),
+            SlotSet("why_question_geriatric_questionnaire",None)
+        ]
 
 # Action: Ask Why for Question
 class ActionAskWhyQuestionGeriatricQuestionnaire(Action):
@@ -362,7 +364,9 @@ class ActionSubmitOxfordHappinessQuestionnaire(Action):
     def run(self, dispatcher: CollectingDispatcher,
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[EventType]:
-        SlotSet("responses_oxford_happiness_questionnaire_counter",0.0)
-        SlotSet("oxford_happiness_questionnaire_points",0.0)
-        SlotSet("response_question_oxford_happiness_questionnaire",None)
-        SlotSet("why_question_oxford_happiness_questionnaire",None)
+        return [
+            SlotSet("responses_oxford_happiness_questionnaire_counter",0.0),
+            SlotSet("oxford_happiness_questionnaire_points",0.0),
+            SlotSet("response_question_oxford_happiness_questionnaire",None),
+            SlotSet("why_question_oxford_happiness_questionnaire",None)
+        ]
