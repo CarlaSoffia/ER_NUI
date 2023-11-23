@@ -34,7 +34,12 @@ OXFORD_QUEST = 'oxfordHappinessQuestionnaire'
 OXFORD_QUEST_ID = 28
 
 ######################################################### QUESTIONS #########################################################
-def fetchQuestions(endpoint):
+def fetchData(endpoint):
+    questions = request(endpoint+"/questions")
+    mappings = request(endpoint+"/mappings")
+    return questions, mappings
+
+def request(endpoint):    
     response = requests.request("GET", "http://laravel.test/api/"+endpoint, headers={}, data={})
     questions = json.loads(response.text)['data']
     return questions
@@ -43,16 +48,35 @@ def get_question_by_number(questions, number):
     for question in questions:
         if question['number'] == number:
             return question['question']
-        
-questionsGeriatricQuestionnaire = fetchQuestions(GERIATRIC_QUEST)
-questionsOxfordHappinessQuestionnaire = fetchQuestions(OXFORD_QUEST)
 
-######################################################### FUNCTIONS #########################################################
-def predictSentiment(text):
-    sentiment={}
+def get_message_by_mapping(mappings, points):
+    message = None
+    for mapping in mappings:
+        if points < mapping['points_min']:
+            continue
+        else:
+            if mapping['points_max_inclusive']:
+                if points <= mapping['points_max']:
+                    message = mapping['message']
+            else:
+                if points < mapping['points_max']:
+                    message = mapping['message']
+    return message
+        
+questionsGeriatricQuestionnaire, mappingsGeriatricQuestionnaire = fetchData(GERIATRIC_QUEST)
+questionsOxfordHappinessQuestionnaire, mappingsOxfordHappinessQuestionnaire = fetchData(OXFORD_QUEST)
+
+######################################################### SA MODEL #########################################################
+def loadModel():
     model = keras.models.load_model(MODEL_NAME)    
     with open('./SA/tokenizer.pickle', 'rb') as handle:
         tokenizer = pickle.load(handle)
+    return model, tokenizer    
+
+model, tokenizer  = loadModel()
+
+def predictSentiment(text):
+    sentiment={}
     text_sequence = tokenizer.texts_to_sequences([text])
     text_padded = pad_sequences(text_sequence, maxlen=num_words, padding='post', truncating='post')
 
@@ -67,6 +91,7 @@ def predictSentiment(text):
     sentiment["predictions"] = sentiment["predictions"][:-1]    
     return json.dumps(sentiment)
 
+######################################################### FUNCTIONS #########################################################
 def questionToAskGeriatric(counter):
     if counter % 2 == 0 and counter >= 0 and counter <= 28:
         return (counter // 2) + 1
@@ -139,6 +164,19 @@ def createQuestionnaireResponseWhy(responses_questionnaire_counter, slot_value, 
                     "is_why": True
                 }
     return json.dumps(newResponse)
+
+def createPointsMessage(points, questionnaire):
+    message = None
+    if questionnaire == GERIATRIC_QUEST:
+        message = get_message_by_mapping(mappingsGeriatricQuestionnaire, points)
+    if questionnaire == OXFORD_QUEST: 
+        message = get_message_by_mapping(mappingsOxfordHappinessQuestionnaire, points)
+    finalPoints = {
+        "points" : points, 
+        "message": message
+    }
+    return json.dumps(finalPoints)
+
 ########################################################### ACTIONS ###########################################################
 
 # Action: Responds to the user greeting
@@ -250,19 +288,8 @@ class ValidateQuestionForm(FormValidationAction):
         # add this to db and fetch
         if responses_geriatric_questionnaire_counter == counterTotal:
             points = tracker.get_slot("geriatric_questionnaire_points")
-            if points > 0 and points <= 5:
-                message = "Baseado nas suas respostas que forneceu não apresenta sinais de depressão."
-            elif points >= 6 and points <= 10: 
-                message = "Com base nas respostas que forneceu apresenta apenas leves sinais de depressão."
-            else:
-                message = "Tendo em conta as suas respostas apresenta sintomas de depressão graves. Comunique com a sua família e considere marcar uma consulta com o seu médico de família."    
-            
-            finalPoints = {
-                "points" : points, 
-                "message": message
-            }
-            dispatcher.utter_message(json.dumps(finalPoints))
-
+            message = createPointsMessage(points, GERIATRIC_QUEST)
+            dispatcher.utter_message(message)
             return {"why_question_geriatric_questionnaire": slot_value, "responses_geriatric_questionnaire_counter": responses_geriatric_questionnaire_counter, "response_question_geriatric_questionnaire": ""}
         return {"why_question_geriatric_questionnaire": slot_value, "responses_geriatric_questionnaire_counter": responses_geriatric_questionnaire_counter, "response_question_geriatric_questionnaire": None}
 
@@ -337,22 +364,8 @@ class ValidateOxfordHappinessQuestionnaire(FormValidationAction):
         counterTotal = questionsTotal + questionsTotal
         if responses_oxford_happiness_questionnaire_counter == counterTotal:
             points = tracker.get_slot("oxford_happiness_questionnaire_points") / questionsTotal
-            if points >= 1 and points < 2:
-                message = "Baseado nas suas respostas sente-se triste e provavelmente está a ver-se a si e à sua situação atual pior do que realmente é. Aconselho que comunique os seus sentimentos e medos à sua família e caso haja necessidade marque uma consulta junto do seu médico."
-            elif points >= 2 and points < 3: 
-                message = "Tendo em conta as suas respostas está um pouco triste. Tente conversar com a sua família e fazer alguma atividade que o deixe feliz."
-            elif points >= 3 and points < 4: 
-                message = "Considerando as respostas que forneceu demonstra sentimentos de neutralidade." 
-            elif points >= 4 and points < 5: 
-                message = "Baseado nas respostas fornecidas está feliz. Sorria e pensamentos positivos!" 
-            else: 
-                message = "Parabéns! Com base nas suas respostas está muito feliz!"
-
-            finalPoints = {
-                "points" : points,
-                "message": message
-            }
-            dispatcher.utter_message(json.dumps(finalPoints))
+            message = createPointsMessage(points, OXFORD_QUEST)
+            dispatcher.utter_message(message)
             return {"oxford_happiness_questionnaire_points": points, "why_question_oxford_happiness_questionnaire": slot_value, "responses_oxford_happiness_questionnaire_counter": responses_oxford_happiness_questionnaire_counter, "response_question_oxford_happiness_questionnaire": ""}
         return {"why_question_oxford_happiness_questionnaire": slot_value, "responses_oxford_happiness_questionnaire_counter": responses_oxford_happiness_questionnaire_counter, "response_question_oxford_happiness_questionnaire": None}
 
