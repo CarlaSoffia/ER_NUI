@@ -28,21 +28,18 @@ LABELS = ["angry","disgust","fear","guilt","happy","sad","shame"]
 # constants
 geriatric_questionnaires_valid_short_responses = ["Sim","Não"]
 oxford_questionnaires_valid_short_responses = ["Discordo fortemente", "Discordo moderadamente", "Discordo levemente","Concordo levemente", "Concordo moderadamente", "Concordo fortemente"]
-GERIATRIC_QUEST = 'geriatricQuestionnaire'
+GERIATRIC_QUEST = 'GeriatricQuestionnaire'
 GERIATRIC_QUEST_ID = 14
-OXFORD_QUEST = 'oxfordHappinessQuestionnaire'
+OXFORD_QUEST = 'OxfordHappinessQuestionnaire'
 OXFORD_QUEST_ID = 28
 
 ######################################################### QUESTIONS #########################################################
-def fetchData(endpoint):
-    questions = request(endpoint+"/questions")
-    mappings = request(endpoint+"/mappings")
-    return questions, mappings
-
 def request(endpoint):    
-    response = requests.request("GET", "http://laravel.test/api/"+endpoint, headers={}, data={})
-    questions = json.loads(response.text)['data']
-    return questions
+    response = requests.request("GET", "http://laravel.test/api/questionnaires/"+endpoint, headers={}, data={})
+    data = json.loads(response.text)['data']
+    mappings = data['results_mappings']
+    questions = data['questions']
+    return questions, mappings
 
 def get_question_by_number(questions, number):
     for question in questions:
@@ -63,9 +60,8 @@ def get_message_by_mapping(mappings, points):
                     message = mapping['message']
     return message
         
-questionsGeriatricQuestionnaire, mappingsGeriatricQuestionnaire = fetchData(GERIATRIC_QUEST)
-questionsOxfordHappinessQuestionnaire, mappingsOxfordHappinessQuestionnaire = fetchData(OXFORD_QUEST)
-
+questionsGeriatricQuestionnaire, mappingsGeriatricQuestionnaire = request(GERIATRIC_QUEST)
+questionsOxfordHappinessQuestionnaire, mappingsOxfordHappinessQuestionnaire = request(OXFORD_QUEST)
 ######################################################### SA MODEL #########################################################
 def loadModel():
     model = keras.models.load_model(MODEL_NAME)    
