@@ -35,3 +35,4 @@ SentimentAnalysis/lightning_logs
 *.synctex.gz
 SentimentAnalysis/glove.6B.50d.txt
 SentimentAnalysis/Kaggle/glove.6B.50d.txt
+SentimentAnalysis/KaggleTrainningResults/kaggle.json
