@@ -9,7 +9,7 @@ import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 
-private const val URL_API = "http://34.18.41.153/api"
+private const val URL_API = "https://6201-2001-8a0-f266-9800-4b95-f207-aacf-49e2.ngrok.io/api"
 class HTTPRequests {
     suspend fun requestFormData(apiURL:String, jsonBody:JSONObject, token:String): JSONObject{
         return withContext(Dispatchers.IO) {

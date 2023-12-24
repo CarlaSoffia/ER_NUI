@@ -4,21 +4,21 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
-import java.time.Duration
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
-import kotlin.math.pow
-import kotlin.math.sqrt
 import android.provider.Settings.Secure
 import pt.ipleiria.estg.ciic.chatboternui.Objects.ThemeState
 import java.text.SimpleDateFormat
+import java.time.Duration
 import java.time.Instant
+import java.time.LocalDateTime
 import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 import java.util.Calendar
 import java.util.Locale
-import kotlin.reflect.KClass
+import kotlin.math.pow
+import kotlin.math.sqrt
 
 class Others {
+    private var portugal: Locale? = Locale("pt")
 
     fun calculateRootMeanSquare(values: Array<Double>): Double {
         var square : Double = 0.0
@@ -44,13 +44,13 @@ class Others {
     }
 
     fun getTimeNow() :String{
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", portugal)
         val currentTime = Calendar.getInstance().time
         return dateFormat.format(currentTime)
     }
 
     fun has24HoursPassed(previousTime: String): Boolean {
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", portugal)
         val currentTime = Calendar.getInstance().time
         val calendar = Calendar.getInstance()
         calendar.time = dateFormat.parse(previousTime)
@@ -62,16 +62,21 @@ class Others {
         return currentTime.after(calendar.time)
     }
 
-    fun checkTime(time: LocalDateTime): DateTimeFormatter {
+    fun formatDatePortugueseLocale(time: LocalDateTime): String? {
         val now = LocalDateTime.now()
         val duration = Duration.between(time, now)
+        var pattern = ""
         if(duration.toDays() <= 1){
-            return DateTimeFormatter.ofPattern("H:mm")
+            pattern = "EEEE, H:mm"
         }
-        if(duration.toDays() in 2..7){
-            return DateTimeFormatter.ofPattern("E H:mm")
+        else if(duration.toDays() in 2..7){
+            pattern = "dd MMMM, H:mm"
+        }else{
+            pattern = "yyyy/MM/dd, H:mm"
         }
-        return DateTimeFormatter.ofPattern("dd-MM-yyyy H:mm")
+
+        val newDateFormatter = DateTimeFormatter.ofPattern(pattern, portugal)
+        return newDateFormatter.format(time)
     }
 
     fun addStringToStore(sharedPreferences:SharedPreferences, key: String, value: String){

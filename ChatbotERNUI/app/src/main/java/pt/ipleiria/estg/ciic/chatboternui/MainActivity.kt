@@ -60,7 +60,6 @@ class MainActivity : ComponentActivity(), RecognitionListener {
     private var _finishedLoading: MutableState<Int> = mutableStateOf(STATE_BEGIN)
     private var _showConnectivityError: MutableState<Boolean> = mutableStateOf(false)
     private var iterations: MutableList<Pair<String,JSONObject>> = mutableListOf()
-    private var groupsEmotions: List<Pair<String,List<String>>> = emptyList()
     private var middleGeriatricQuestionnaire: Boolean = false
     private var middleOxfordHappinessQuestionnaire: Boolean = false
     private var idGeriatricQuestionnaire: Int = -1
@@ -87,7 +86,6 @@ class MainActivity : ComponentActivity(), RecognitionListener {
         }
 
         checkPermission()
-        getGroupsEmotions()
         getAllMessages()
         _microActive.value = sharedPreferences.getBoolean("microActive", false)
         middleGeriatricQuestionnaire = sharedPreferences.getBoolean("middleGeriatricQuestionnaire", false)
@@ -211,82 +209,19 @@ class MainActivity : ComponentActivity(), RecognitionListener {
         // got quiet after a long while
         _finishedLoading.value = STATE_DONE
     }
-    private fun getGroupsEmotions(){
-        groupsEmotions = emptyList()
-        scope.launch {
-            var response = httpRequests.request("GET", "/emotions/groups", token = token)
-            try {
-                var data = JSONObject(response["data"].toString())
-                val groups = JSONArray(data["list"].toString())
-                for (i in 0 until groups.length()) {
-                    val group = JSONObject(groups[i].toString())
-                    val name = group["name"].toString()
-                    response = httpRequests.request("GET", "/emotions/groups/${name}", token = token)
-                    data = JSONObject(response["data"].toString())
-                    val emotions = JSONArray(data["list"].toString())
-                    val emotionsList : MutableList<String> = mutableListOf()
-                    for (j in 0 until emotions.length()) {
-                        val emotion = JSONObject(emotions[j].toString())
-                        emotionsList.add(emotion["name"].toString())
-                    }
-                    groupsEmotions = groupsEmotions.plus(name to emotionsList)
-                }
-            } catch (ex: JSONException) {
-                if(response["status_code"].toString() == "503"){
-                    _showConnectivityError.value = true
-                }
-                Log.i("Debug", "Error: ${ex.message}")
-            }
-        }
-    }
 
-    private fun handleSpeech(text:String, sentiment: JSONObject, question:Int=-1, isWhy: Boolean=false): Int{
-        val group = groupsEmotions.find { it.second.contains(sentiment["emotion"].toString()) }?.first
-        val iterationGroup = iterations.find { it.first == group }
-        val accuracy = sentiment["predictions"].toString().split(";")
-            .map { it.split("#") }
-            .find { it.first() == sentiment["emotion"].toString() }
-            ?.get(1)
-        val speechBody = JSONObject()
-        speechBody.put("iteration_id", iterationGroup?.second?.getString("iteration_id"))
-        speechBody.put("iteration_usage_id", iterationGroup?.second?.getString("iteration_usage_id"))
-        speechBody.put("datesSpeeches[0]", utils.getTimeNow())
-        speechBody.put("accuraciesSpeeches[0]", accuracy.toString())
-        speechBody.put("textsSpeeches[0]", text)
-        speechBody.put("preditionsSpeeches[0]", sentiment["predictions"].toString())
-        var id = -1
-        var response: JSONObject
-        runBlocking {
-            response =
-                httpRequests.requestFormData("/speeches", speechBody, token = token)
-            try{
-                val data = JSONObject(response["data"].toString())
-                id = data["id"].toString().toInt()
-            }catch (ex: JSONException){
-                if(response["status_code"].toString() == "503"){
-                    _showConnectivityError.value = true
-                }
-                if(response["status_code"].toString() == "200"){
-                    createIteration(group.toString())
-                    handleSpeech(text, sentiment, question, isWhy)
-                }
-            }
-        }
-        return id
-    }
     private fun handleIteration(sentiment: JSONObject){
-        val group = groupsEmotions.find { it.second.contains(sentiment["emotion"].toString()) }?.first
-        val iterationGroup = iterations.find { it.first == group.toString() }
-        if(iterations.isNotEmpty() && iterationGroup != null){
+        val emotion = sentiment["emotion"].toString();
+        val iteration = iterations.find { it.first == emotion }
+        if(iterations.isNotEmpty() && iteration != null){
             return
         }
-        createIteration(group.toString())
-
+        createIteration(emotion)
     }
-    private fun createIteration(group: String){
+    private fun createIteration(emotion: String){
         val iterationBody = JSONObject()
         iterationBody.put("macAddress", "00:00:00:00:00:00")
-        iterationBody.put("emotion", group)
+        iterationBody.put("emotion", emotion)
         iterationBody.put("type", "best")
         var response: JSONObject
         runBlocking {
@@ -297,11 +232,11 @@ class MainActivity : ComponentActivity(), RecognitionListener {
                 val iteration = JSONObject()
                     .put("iteration_id", data["id"].toString())
                     .put("iteration_usage_id", data["usage_id"].toString())
-                val index = iterations.indexOfFirst { it.first == group }
+                val index = iterations.indexOfFirst { it.first == emotion }
                 if(iterations.isNotEmpty() && index != -1){
                     iterations.removeAt(index)
                 }
-                iterations.add(group to iteration)
+                iterations.add(emotion to iteration)
             }
             catch (ex: JSONException) {
                 if(response["status_code"].toString() == "503"){
@@ -361,19 +296,17 @@ class MainActivity : ComponentActivity(), RecognitionListener {
                     val data = JSONObject(response["data"].toString())
                     val messages = JSONArray(data["list"].toString())
                     for (i in 0 until messages.length()) {
-                        var speechId = -1
                         val message = JSONObject(messages[i].toString())
                         if(message["body"].toString().contains("{")){
                             if(message["body"].toString().contains("accuracy")){
                                 val sentiment = JSONObject(message["body"].toString())
                                 // Creates iteration if doesn't exists
                                 handleIteration(sentiment)
-                                speechId = handleSpeech(transcription,sentiment)
                             }
-                            // Creates speech and or not the response if we are in the questionnaire
+                            // Creates response
                             if(message["body"].toString().contains("is_why")){
                                 val responseQuestion = JSONObject(message["body"].toString())
-                                handleResponseQuestionnaire(responseQuestion["question"].toString().toInt(), transcription, responseQuestion["is_why"].toString().toBoolean(), speechId)
+                                handleResponseQuestionnaire(responseQuestion["question"].toString().toInt(), transcription, responseQuestion["is_why"].toString().toBoolean())
                             }
                             if(message["body"].toString().contains("points")){
                                 val pointsResponse = JSONObject(message["body"].toString())
@@ -428,15 +361,18 @@ class MainActivity : ComponentActivity(), RecognitionListener {
             }
         }
     }
-    private fun handleResponseQuestionnaire(question: Int, response: String, isWhy: Boolean, speechId: Int){
+    private fun handleResponseQuestionnaire(question: Int, response: String, isWhy: Boolean, emotion: String=""){
         val apiURL = if(middleGeriatricQuestionnaire) "/geriatricQuestionnaires/${idGeriatricQuestionnaire}/responses" else if (middleOxfordHappinessQuestionnaire) "/oxfordHappinessQuestionnaires/${idOxfordHappinessQuestionnaire}/responses" else return
 
         val responseQuestionnaire = JSONObject()
         responseQuestionnaire.put("question", question)
         responseQuestionnaire.put("response", response)
         responseQuestionnaire.put("is_why", isWhy)
-        responseQuestionnaire.put("speech_id", speechId)
-
+        if(emotion != ""){
+            val iteration = iterations.find { it.first == emotion }
+            responseQuestionnaire.put("iteration_id", iteration?.second?.getString("iteration_id"))
+            responseQuestionnaire.put("iteration_usage_id", iteration?.second?.getString("iteration_usage_id"))
+        }
         scope.launch {
             val response = httpRequests.request("PUT", apiURL, responseQuestionnaire.toString(), token = token)
             try{
@@ -503,11 +439,10 @@ class MainActivity : ComponentActivity(), RecognitionListener {
                 .padding(16.dp),
                 reverseLayout = true
         ) {
-        items(_messages.reversed()) { chat ->
-                val simpleDateFormat = utils.checkTime(chat.time)
+        items(_messages) { chat ->
                 MessageItem(
                     messageText = chat.text,
-                    time = simpleDateFormat.format(chat.time),
+                    time = utils.formatDatePortugueseLocale(chat.time).toString(),
                     isChatbot = chat.isChatbot,
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -747,7 +682,9 @@ class MainActivity : ComponentActivity(), RecognitionListener {
                 id = "questionnaires",
                 title = "Questionários",
                 icon = R.drawable.questionnaires,
-                onClick = {},
+                onClick = {
+                    utils.startDetailActivity(applicationContext, QuestionnairesActivity::class.java, this)
+                },
                 addDivider = true
             ),
             MenuItem(
