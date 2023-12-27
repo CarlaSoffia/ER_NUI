@@ -32,80 +32,76 @@ import pt.ipleiria.estg.ciic.chatboternui.ui.theme.Typography
 object CommonComposables {
 
     @Composable
-    fun DialogConnectivity(showConnectivityError:Boolean, onClick: () -> Unit, onDismissRequest: () -> Unit ){
-        if (showConnectivityError) {
-            AlertDialog(
-                containerColor = colorScheme.background,
-                tonalElevation = 0.dp,
-                icon = {
-                    Image(
-                        painter = painterResource(id = R.drawable.error),
-                        contentDescription = "Erro",
-                        modifier = Modifier.size(80.dp))
-                },
-                onDismissRequest = { onDismissRequest() },
-                title = { Text("Sem conexão à internet",
-                    color = colorScheme.onPrimary,
-                    fontSize = Typography.titleSmall.fontSize,
-                    fontWeight = Typography.titleSmall.fontWeight) },
-                text = { Text("Parece que está atualmente offline.\n\nVerifique as suas definições de Wi-Fi ou de dados móveis e certifique-se de que tem uma ligação estável à Internet.\n\nQuando estiver ligado, reinicie a aplicação para continuar a desfrutar das suas funcionalidades.",
-                    color = colorScheme.onPrimary,
-                    fontSize = Typography.bodyMedium.fontSize,
-                    fontWeight = Typography.bodyMedium.fontWeight,
-                    textAlign = TextAlign.Justify) },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            onClick()
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = colorScheme.secondary
-                        ),
-                        ) {
-                        Text("Ok")
-                    }
-                },
-                dismissButton = null
-            )
-        }
+    fun DialogConnectivity(onClick: () -> Unit, onDismissRequest: () -> Unit ){
+        AlertDialog(
+            containerColor = colorScheme.background,
+            tonalElevation = 0.dp,
+            icon = {
+                Image(
+                    painter = painterResource(id = R.drawable.error),
+                    contentDescription = "Erro",
+                    modifier = Modifier.size(80.dp))
+            },
+            onDismissRequest = { onDismissRequest() },
+            title = { Text("Sem conexão à internet",
+                color = colorScheme.onPrimary,
+                fontSize = Typography.titleSmall.fontSize,
+                fontWeight = Typography.titleSmall.fontWeight) },
+            text = { Text("Parece que está atualmente offline.\n\nVerifique as suas definições de Wi-Fi ou de dados móveis e certifique-se de que tem uma ligação estável à Internet.\n\nQuando estiver ligado, reinicie a aplicação para continuar a desfrutar das suas funcionalidades.",
+                color = colorScheme.onPrimary,
+                fontSize = Typography.bodyMedium.fontSize,
+                fontWeight = Typography.bodyMedium.fontWeight,
+                textAlign = TextAlign.Justify) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onClick()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colorScheme.secondary
+                    ),
+                    ) {
+                    Text("Ok")
+                }
+            },
+            dismissButton = null
+        )
     }
 
     @Composable
-    fun SuccessModal(text:String, showSuccessDialog:Boolean, onClick: () -> Unit, onDismissRequest: () -> Unit){
-        if (showSuccessDialog) {
-            AlertDialog(
-                containerColor = colorScheme.background,
-                tonalElevation = 0.dp,
-                icon = {
-                    Image(
-                        painter = painterResource(id = R.drawable.check),
-                        contentDescription = "Sucesso",
-                        modifier = Modifier.size(80.dp))
-                },
-                onDismissRequest = { onDismissRequest() },
-                title = { Text("Sucesso",
-                    fontSize = Typography.titleSmall.fontSize,
-                    fontWeight = Typography.titleSmall.fontWeight) },
-                text = { Text(text,
-                    fontSize = Typography.titleSmall.fontSize,
-                    fontWeight = Typography.titleSmall.fontWeight) },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            onClick()
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = colorScheme.secondary
-                        )
-                    ) {
-                        Text("Ok",
-                            fontSize = Typography.titleSmall.fontSize,
-                            fontWeight = Typography.titleSmall.fontWeight)
-                    }
-                },
-                dismissButton = null
-            )
-        }
+    fun SuccessModal(text:String, onClick: () -> Unit, onDismissRequest: () -> Unit){
+        AlertDialog(
+            containerColor = colorScheme.background,
+            tonalElevation = 0.dp,
+            icon = {
+                Image(
+                    painter = painterResource(id = R.drawable.check),
+                    contentDescription = "Sucesso",
+                    modifier = Modifier.size(80.dp))
+            },
+            onDismissRequest = { onDismissRequest() },
+            title = { Text("Sucesso",
+                fontSize = Typography.titleSmall.fontSize,
+                fontWeight = Typography.titleSmall.fontWeight) },
+            text = { Text(text,
+                fontSize = Typography.titleSmall.fontSize,
+                fontWeight = Typography.titleSmall.fontWeight) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onClick()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colorScheme.secondary
+                    )
+                ) {
+                    Text("Ok",
+                        fontSize = Typography.titleSmall.fontSize,
+                        fontWeight = Typography.titleSmall.fontWeight)
+                }
+            },
+            dismissButton = null
+        )
     }
 
     @Composable
@@ -199,7 +195,7 @@ object CommonComposables {
     }
 
     @Composable
-    fun AccountFooter(text:String, textbutton: String, onClick: () -> Unit, textButtonOnClick: () -> Unit){
+    fun AccountFooter(text:String, textButton: String, onClick: () -> Unit, textButtonOnClick: () -> Unit){
         Column(horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(0.dp, 0.dp, 0.dp, 10.dp)){
             // Submit button
@@ -219,7 +215,7 @@ object CommonComposables {
             TextButton(onClick = {
                 textButtonOnClick()
             }, modifier = Modifier.fillMaxWidth()) {
-                Text(textbutton,
+                Text(textButton,
                     fontSize = Typography.bodyLarge.fontSize,
                     fontWeight = Typography.bodyLarge.fontWeight,
                     color = colorScheme.onPrimary,

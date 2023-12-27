@@ -79,9 +79,8 @@ class HTTPRequests {
             try{
                 // Use the OkHttp client to make an asynchronous request
                 val response = okHttpClient.newCall(request).execute()
-
                 result.put("status_code", response.code)
-                var data = JSONObject(response.body?.string()!!)
+                var data = JSONObject(response.body.toString())
                 try{
                     data = JSONObject(data.get("data").toString())
                 }catch(ex: JSONException){
@@ -92,9 +91,8 @@ class HTTPRequests {
                     }
                 }
                 result.put("data", data)
-            }catch (ex: IOException) {
-                result.put("status_code", "503")
-                result.put("data", "Oops! No Internet Connection")
+            }catch (ex: Exception) {
+                result.put("status_code", "ECONNREFUSED")
             }
         }
     }

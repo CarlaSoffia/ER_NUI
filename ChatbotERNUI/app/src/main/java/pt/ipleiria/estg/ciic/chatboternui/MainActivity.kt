@@ -52,22 +52,19 @@ private const val STATE_READY = 1
 private const val STATE_DONE = 2
 private const val PERMISSIONS_REQUEST_RECORD_AUDIO = 1
 
-class MainActivity : ComponentActivity(), RecognitionListener {
+class MainActivity : BaseActivity(), RecognitionListener {
     private var _messages = mutableStateListOf<Message>()
     private var _messageWritten : MutableState<String> = mutableStateOf("")
     private var _microActive : MutableState<Boolean> = mutableStateOf(true)
     private var _modeDark : MutableState<Boolean> = mutableStateOf(false)
     private var _finishedLoading: MutableState<Int> = mutableStateOf(STATE_BEGIN)
-    private var _showConnectivityError: MutableState<Boolean> = mutableStateOf(false)
     private var iterations: MutableList<Pair<String,JSONObject>> = mutableListOf()
     private var middleGeriatricQuestionnaire: Boolean = false
     private var middleOxfordHappinessQuestionnaire: Boolean = false
     private var idGeriatricQuestionnaire: Int = -1
     private var idOxfordHappinessQuestionnaire: Int = -1
-    private val utils = Others()
     private val httpRequests = HTTPRequests()
     private val scope = CoroutineScope(Dispatchers.Main)
-    private lateinit var sharedPreferences : SharedPreferences
     private lateinit var token: String
     private var model: Model? = null
     private var speechService: SpeechService? = null
@@ -76,7 +73,7 @@ class MainActivity : ComponentActivity(), RecognitionListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        sharedPreferences = getSharedPreferences("ERNUI", Context.MODE_PRIVATE)
+        super.onCreateBaseActivity()
         token = sharedPreferences.getString("access_token", "").toString()
         _modeDark.value = sharedPreferences.getBoolean("theme_mode_is_dark", false)
         ThemeState.isDarkThemeEnabled = _modeDark.value
@@ -84,7 +81,6 @@ class MainActivity : ComponentActivity(), RecognitionListener {
             utils.startDetailActivity(applicationContext,LoginActivity::class.java, this)
             return
         }
-
         checkPermission()
         getAllMessages()
         _microActive.value = sharedPreferences.getBoolean("microActive", false)
@@ -658,7 +654,7 @@ class MainActivity : ComponentActivity(), RecognitionListener {
             }else {
                 recognizeMicrophone()
             }
-            CommonComposables.DialogConnectivity(_showConnectivityError.value,
+            CommonComposables.DialogConnectivity(
                 onClick = {
                     _showConnectivityError.value = false
                     finish()
