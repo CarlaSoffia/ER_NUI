@@ -9,7 +9,7 @@ import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 
-private const val URL_API = "https://6201-2001-8a0-f266-9800-4b95-f207-aacf-49e2.ngrok.io/api"
+private const val URL_API = "https://c945-2001-8a0-f24c-c400-612f-bea-d7f2-746f.ngrok-free.app/api"
 class HTTPRequests {
     suspend fun requestFormData(apiURL:String, jsonBody:JSONObject, token:String): JSONObject{
         return withContext(Dispatchers.IO) {
@@ -80,7 +80,7 @@ class HTTPRequests {
                 // Use the OkHttp client to make an asynchronous request
                 val response = okHttpClient.newCall(request).execute()
                 result.put("status_code", response.code)
-                var data = JSONObject(response.body.toString())
+                var data = JSONObject(response.body?.string()!!)
                 try{
                     data = JSONObject(data.get("data").toString())
                 }catch(ex: JSONException){
@@ -91,7 +91,7 @@ class HTTPRequests {
                     }
                 }
                 result.put("data", data)
-            }catch (ex: Exception) {
+            }catch (ex: IOException) {
                 result.put("status_code", "ECONNREFUSED")
             }
         }

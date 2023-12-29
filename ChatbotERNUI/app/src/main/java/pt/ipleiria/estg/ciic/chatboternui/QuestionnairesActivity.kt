@@ -1,13 +1,9 @@
 package pt.ipleiria.estg.ciic.chatboternui
 
-import android.annotation.SuppressLint
-import android.content.Context
-import android.content.SharedPreferences
+import android.app.Activity
 import android.os.Bundle
 import android.util.Log
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,10 +16,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.DropdownMenu
 import androidx.compose.material.DropdownMenuItem
@@ -31,8 +23,6 @@ import androidx.compose.material.IconButton
 import androidx.compose.material.ScaffoldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.rememberScaffoldState
-import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -41,180 +31,40 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
-import pt.ipleiria.estg.ciic.chatboternui.Objects.ThemeState
-import pt.ipleiria.estg.ciic.chatboternui.models.MenuItem
 import pt.ipleiria.estg.ciic.chatboternui.models.QuestionnaireType
 import pt.ipleiria.estg.ciic.chatboternui.ui.theme.ChatbotERNUITheme
 import pt.ipleiria.estg.ciic.chatboternui.ui.theme.Typography
-import pt.ipleiria.estg.ciic.chatboternui.utils.HTTPRequests
-import pt.ipleiria.estg.ciic.chatboternui.utils.Others
+import pt.ipleiria.estg.ciic.chatboternui.utils.IBaseActivity
 
-class QuestionnairesActivity : ComponentActivity() {
+class QuestionnairesActivity : IBaseActivity, BaseActivity() {
 
-    private lateinit var sharedPreferences : SharedPreferences
-    private val httpRequests = HTTPRequests()
-    private val scope = CoroutineScope(Dispatchers.Main)
-    private lateinit var token: String
-    private var _modeDark : MutableState<Boolean> = mutableStateOf(false)
     private var _questionnaireSelected : MutableState<String> = mutableStateOf("")
-    private val utils = Others()
     private var _questionnaireTypes = mutableStateListOf<QuestionnaireType>()
     private var _showConnectivityError: MutableState<Boolean> = mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?){
         super.onCreate(savedInstanceState)
-        sharedPreferences = getSharedPreferences("ERNUI", Context.MODE_PRIVATE)
-        token = sharedPreferences.getString("access_token", "").toString()
+        super.onCreateBaseActivityWithMenu(this)
         getQuestionnairesTypes()
 
         setContent {
             ChatbotERNUITheme {
-                val scaffoldState = rememberScaffoldState()
-                val scopeState = rememberCoroutineScope()
-                AppScreen(scaffoldState, scopeState)
-            }
-        }
-    }
-
-    @Composable
-    fun Drawer() {
-        val menuItems = listOf(
-            MenuItem(
-                id = "profile",
-                title = "Perfil",
-                icon = R.drawable.profile,
-                onClick = {},
-                addDivider = false
-            ),
-            MenuItem(
-                id = "questionnaires",
-                title = "Questionários",
-                icon = R.drawable.questionnaires,
-                onClick = {},
-                addDivider = true
-            ),
-            MenuItem(
-                id = "mode",
-                title = if (!_modeDark.value) "Modo escuro" else "Modo claro",
-                icon = if (!_modeDark.value) R.drawable.dark else R.drawable.light,
-                onClick = {
-                    _modeDark.value = utils.changeMode(sharedPreferences)
-                },
-                addDivider = false
-            ),
-            MenuItem(
-                id = "information",
-                title = "Tutorial",
-                icon = R.drawable.information,
-                onClick = {},
-                addDivider = true
-            ),
-            MenuItem(
-                id = "logout",
-                title = "Terminar sessão",
-                icon = R.drawable.logout,
-                onClick = {
-                    utils.clearSharedPreferences(sharedPreferences)
-                    ThemeState.isDarkThemeEnabled = false
-                    utils.startDetailActivity(applicationContext,LoginActivity::class.java, this)
-                },
-                addDivider = false
-            )
-        )
-        Column(
-            Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .padding(0.dp, 30.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceEvenly
-        ) {
-            Row(modifier = Modifier
-                .fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically){
-                Image(
-                    painter = painterResource(R.drawable.chatbot),
-                    contentDescription = "Chatbot",
-                    modifier = Modifier.size(75.dp)
-                )
-                Spacer(modifier = Modifier.width(25.dp))
-                Text(
-                    text = "Menu principal",
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    fontSize = Typography.titleLarge.fontSize
-                )
-            }
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(35.dp)
-            ) {
-                items(menuItems)
-                { item ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp)
-                            .clickable {
-                                item.onClick()
-                            },
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            painter = painterResource(id = item.icon),
-                            contentDescription = item.title,
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
-                        Spacer(modifier = Modifier.width(20.dp))
-                        Text(
-                            text = item.title,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontSize = Typography.bodyLarge.fontSize,
-                            fontWeight = Typography.bodyLarge.fontWeight,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    if(item.addDivider){
-                        Spacer(modifier = Modifier.height(15.dp))
-                        Divider(color = MaterialTheme.colorScheme.onSurface, thickness = 1.dp)
-                        Spacer(modifier = Modifier.height(15.dp))
-                    }
-                }
+                AppScreen()
             }
         }
     }
 
 
-    @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
-    @Composable
-    fun AppScreen(scaffoldState: ScaffoldState,
-                  scope: CoroutineScope)
-    {
-        androidx.compose.material.Scaffold(
-            scaffoldState = scaffoldState,
-            drawerGesturesEnabled = scaffoldState.drawerState.isOpen,
-            drawerContent = {
-                Drawer()
-            },
-            //customizing the drawer. Will also share this shape below.
-            drawerElevation = 90.dp
-        ) {//Here goes the whole content of our Screen
-            MainScreen(scaffoldState, scope)
-        }
-    }
 
     @Composable
     fun TopBar(title: String, scaffoldState: ScaffoldState, scopeState: CoroutineScope){
@@ -331,8 +181,8 @@ class QuestionnairesActivity : ComponentActivity() {
         }
     }
     @Composable
-    fun MainScreen(scaffoldState: ScaffoldState,
-                   scopeState: CoroutineScope) {
+    override fun MainScreen(scaffoldState: ScaffoldState,
+                            scopeState: CoroutineScope) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -349,6 +199,7 @@ class QuestionnairesActivity : ComponentActivity() {
 
         }
     }
+
     private fun getQuestionnairesTypes() {
         _questionnaireTypes = mutableStateListOf()
         scope.launch {
@@ -374,4 +225,6 @@ class QuestionnairesActivity : ComponentActivity() {
             }
         }
     }
+    override val activity: Activity
+        get() = this
 }

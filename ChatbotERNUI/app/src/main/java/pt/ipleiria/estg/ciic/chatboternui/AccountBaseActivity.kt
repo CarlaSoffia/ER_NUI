@@ -1,7 +1,6 @@
 package pt.ipleiria.estg.ciic.chatboternui
 
 import android.app.Activity
-import android.content.Context
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -14,8 +13,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
@@ -25,40 +28,34 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import pt.ipleiria.estg.ciic.chatboternui.Objects.ThemeState
+import kotlinx.coroutines.launch
 import pt.ipleiria.estg.ciic.chatboternui.ui.theme.ChatbotERNUITheme
 import pt.ipleiria.estg.ciic.chatboternui.ui.theme.Typography
 import pt.ipleiria.estg.ciic.chatboternui.utils.CommonComposables
-import pt.ipleiria.estg.ciic.chatboternui.utils.HTTPRequests
+import pt.ipleiria.estg.ciic.chatboternui.utils.IAccountActivity
 
 open class AccountBaseActivity : BaseActivity() {
     private var _passwordHidden: MutableState<Boolean> = mutableStateOf(true)
-    private var _confirmPassword: MutableState<String> = mutableStateOf("")
-    private var isCreateAccountActivity: Boolean = false
     protected var email: MutableState<String> = mutableStateOf("")
     protected var password: MutableState<String> = mutableStateOf("")
-    protected var response: MutableState<String> = mutableStateOf("")
-    protected val httpRequests = HTTPRequests()
-    protected val scope = CoroutineScope(Dispatchers.Main)
-
+    private lateinit var currentAccountActivity : IAccountActivity
     @Override
-    fun onCreateActivity(title: String, text: String, createAccount: Boolean, footerBehaviour: () -> Unit, oldActivity: Activity) {
-        sharedPreferences = getSharedPreferences("ERNUI", Context.MODE_PRIVATE)
-        ThemeState.isDarkThemeEnabled = sharedPreferences.getBoolean("theme_mode_is_dark", false)
-        isCreateAccountActivity = createAccount
+    fun onCreateActivity(title: String, accountActivity: IAccountActivity) {
+        super.onCreateBaseActivity(accountActivity)
+        currentAccountActivity = accountActivity
         setContent {
             ChatbotERNUITheme {
-                MainSection(title, text, footerBehaviour, oldActivity)
+                MainScreen(title, accountActivity.activity)
             }
         }
     }
 
     @Composable
-    fun MainSection(title: String, text: String, footerBehaviour:  () -> Unit, oldActivity: Activity){
+    fun MainScreen(title: String, oldActivity: Activity){
         Box (modifier = Modifier.fillMaxSize()) {
             Image(painter = painterResource (id = R.drawable.background),
                 contentDescription = "Imagem de fundo",
@@ -84,19 +81,8 @@ open class AccountBaseActivity : BaseActivity() {
                 ) {
                     CommonComposables.AccountHeader(title)
                     AccountScreen()
-                    CommonComposables.AccountFooter(title,
-                        text, {
-                            footerBehaviour.invoke()
-                        }, {
-
-                            if(isCreateAccountActivity) {
-                                utils.startDetailActivity(applicationContext, LoginActivity::class.java, oldActivity)
-                            }else{
-                                utils.startDetailActivity(applicationContext, CreateAccountActivity::class.java, oldActivity)
-                            }
-                        })
+                    CommonComposables.AccountFooter(title,{ accountRequest() })
                 }
-                HandleDialogs()
             }
         }
     }
@@ -105,37 +91,22 @@ open class AccountBaseActivity : BaseActivity() {
     fun AccountScreen() {
         Column(horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween){
-            CommonComposables.TextFieldAccount(email,"Email",
+            TextFieldAccount(email,"Email",
                 "Insira o seu email",
                 R.drawable.email,
-                "Email",
-                _passwordHidden.value,
-                togglePasswordVisibility = { togglePasswordVisibility() }
+                "Email"
             )
             Spacer(modifier = Modifier.height(15.dp))
-            CommonComposables.TextFieldAccount(password,
+            TextFieldAccount(password,
                 "Palavra-passe",
                 "Insira a palavra-passe",
                 R.drawable.password,
-                "Palavra-passe",
-                _passwordHidden.value,
-                togglePasswordVisibility = { togglePasswordVisibility() }
+                "Palavra-passe"
             )
-            if(isCreateAccountActivity){
-                Spacer(modifier = Modifier.height(15.dp))
-                CommonComposables.TextFieldAccount(_confirmPassword,
-                    "Confirme a palavra-passe",
-                    "Repita a palavra-passe",
-                    R.drawable.password,
-                    "Palavra-passe",
-                    _passwordHidden.value,
-                    togglePasswordVisibility = { togglePasswordVisibility() }
-                )
-            }
             // Error message
-            if(response.value.isNotEmpty()){
+            if(alertMessage.value.isNotEmpty()){
                 Text(
-                    text = response.value,
+                    text = alertMessage.value,
                     color = MaterialTheme.colorScheme.onError,
                     fontSize = Typography.bodyLarge.fontSize,
                     fontWeight = Typography.bodyLarge.fontWeight,
@@ -145,41 +116,70 @@ open class AccountBaseActivity : BaseActivity() {
             }
         }
     }
-
-    @Override
-    open fun submitAccountRequest(){
+    @Composable
+    fun TextFieldAccount(value: MutableState<String>, label: String, description: String, icon: Int, iconDescription: String){
+        val isPassword = label=="Palavra-passe" || label=="Confirme a palavra-passe"
+        TextField(
+            colors = TextFieldDefaults.outlinedTextFieldColors(
+                focusedBorderColor = MaterialTheme.colorScheme.secondary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.secondary,
+                textColor = MaterialTheme.colorScheme.onPrimary
+            ),
+            visualTransformation = if(isPassword && _passwordHidden.value) PasswordVisualTransformation() else VisualTransformation.None,
+            value = value.value,
+            onValueChange = { value.value = it },
+            label = {
+                Text(
+                    text = label,
+                    fontSize = Typography.bodyLarge.fontSize,
+                    fontWeight = Typography.bodyLarge.fontWeight,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+            },
+            placeholder = {
+                Text(description,
+                    fontSize = Typography.bodyLarge.fontSize,
+                    fontWeight = Typography.bodyLarge.fontWeight,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+            },
+            leadingIcon = {
+                Icon(
+                    painter = painterResource(id = icon),
+                    contentDescription = iconDescription,
+                    tint = MaterialTheme.colorScheme.onPrimary)
+            },
+            trailingIcon = {if (isPassword)
+                IconButton(onClick = { togglePasswordVisibility() }) {
+                    Icon(
+                        painter = painterResource(id = if(_passwordHidden.value) R.drawable.show else R.drawable.hide),
+                        contentDescription = "Esconder/mostrar a palavra-pass",
+                        tint = MaterialTheme.colorScheme.onPrimary)
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 20.dp)
+        )
+    }
+    private fun accountRequest(){
         if (!areFieldsValid()) return
-        response.value = ""
+        alertMessage.value = ""
+        scope.launch {
+            val statusCode = currentAccountActivity.accountRequestSubmit()
+            handleRequestStatusCode(statusCode, currentAccountActivity.activity)
+        }
     }
     private fun togglePasswordVisibility(){
         _passwordHidden.value = !_passwordHidden.value
     }
 
     private fun areFieldsValid(): Boolean {
-        if(email.value.isEmpty() || password.value.isEmpty() || _confirmPassword.value.isEmpty()){
-            response.value = "Por favor indique tanto o seu email como uma palavra-passe"
-            return false
-        }
         if(!utils.isEmailValid(email.value)){
-            response.value = "O seu endereço de email é inválido"
-            return false
-        }
-        if(isCreateAccountActivity && password.value != _confirmPassword.value){
-            response.value = "As palavras-passe não correspondem"
+            alertMessage.value = "O seu endereço de email é inválido"
             return false
         }
         return true
     }
-    public fun handleRequestStatusCode(statusCode: String){
-        when(statusCode){
-            "409" -> {
-                _showConnectivityError.value = true
-                response.value = "Este email já está associado a uma conta"
-            }
-            "ECONNREFUSED" -> {
-                _showConnectivityError.value = true
-                response.value = "Oops! Conecte-se à internet por favor."
-            }
-        }
-    }
+
 }

@@ -1,25 +1,41 @@
 package pt.ipleiria.estg.ciic.chatboternui
 
 import android.Manifest
-import android.annotation.SuppressLint
-import android.content.Context
-import android.content.SharedPreferences
+import android.app.Activity
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.util.Log
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.*
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.ScaffoldState
-import androidx.compose.material.rememberScaffoldState
-import androidx.compose.material3.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme.colorScheme
-import androidx.compose.runtime.*
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -32,7 +48,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import okio.IOException
 import org.json.JSONArray
 import org.json.JSONException
@@ -41,31 +59,28 @@ import org.vosk.Model
 import org.vosk.Recognizer
 import org.vosk.android.RecognitionListener
 import org.vosk.android.StorageService
-import pt.ipleiria.estg.ciic.chatboternui.Objects.ThemeState
-import pt.ipleiria.estg.ciic.chatboternui.models.MenuItem
 import pt.ipleiria.estg.ciic.chatboternui.models.Message
-import pt.ipleiria.estg.ciic.chatboternui.ui.theme.*
-import pt.ipleiria.estg.ciic.chatboternui.utils.*
+import pt.ipleiria.estg.ciic.chatboternui.ui.theme.ChatbotERNUITheme
+import pt.ipleiria.estg.ciic.chatboternui.ui.theme.Typography
 import pt.ipleiria.estg.ciic.chatboternui.utils.CommonComposables
+import pt.ipleiria.estg.ciic.chatboternui.utils.IBaseActivity
+import pt.ipleiria.estg.ciic.chatboternui.utils.SpeechService
+
 private const val STATE_BEGIN = 0
 private const val STATE_READY = 1
 private const val STATE_DONE = 2
 private const val PERMISSIONS_REQUEST_RECORD_AUDIO = 1
 
-class MainActivity : BaseActivity(), RecognitionListener {
+class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener {
     private var _messages = mutableStateListOf<Message>()
     private var _messageWritten : MutableState<String> = mutableStateOf("")
     private var _microActive : MutableState<Boolean> = mutableStateOf(true)
-    private var _modeDark : MutableState<Boolean> = mutableStateOf(false)
     private var _finishedLoading: MutableState<Int> = mutableStateOf(STATE_BEGIN)
     private var iterations: MutableList<Pair<String,JSONObject>> = mutableListOf()
     private var middleGeriatricQuestionnaire: Boolean = false
     private var middleOxfordHappinessQuestionnaire: Boolean = false
     private var idGeriatricQuestionnaire: Int = -1
     private var idOxfordHappinessQuestionnaire: Int = -1
-    private val httpRequests = HTTPRequests()
-    private val scope = CoroutineScope(Dispatchers.Main)
-    private lateinit var token: String
     private var model: Model? = null
     private var speechService: SpeechService? = null
     private var _showAlertGeriatricQuestionnaire : MutableState<Boolean> = mutableStateOf(false)
@@ -73,20 +88,37 @@ class MainActivity : BaseActivity(), RecognitionListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        super.onCreateBaseActivity()
-        token = sharedPreferences.getString("access_token", "").toString()
-        _modeDark.value = sharedPreferences.getBoolean("theme_mode_is_dark", false)
-        ThemeState.isDarkThemeEnabled = _modeDark.value
-        if(token == ""){
+        super.onCreateBaseActivityWithMenu(this)
+        if(sharedPreferences.getString("access_token", "").toString() == ""){
             utils.startDetailActivity(applicationContext,LoginActivity::class.java, this)
             return
         }
         checkPermission()
         getAllMessages()
-        _microActive.value = sharedPreferences.getBoolean("microActive", false)
+        handleQuestionnaires()
+
+        setContent {
+            ChatbotERNUITheme {
+                if(!_microActive.value){
+                    _finishedLoading.value = STATE_DONE
+                }
+                if(_finishedLoading.value != STATE_DONE){
+                    if(_finishedLoading.value != STATE_READY){
+                        LoadScreen()
+                    }
+                    else if(_microActive.value){
+                        recognizeMicrophone()
+                    }
+                }
+                else{
+                   AppScreen()
+                }
+            }
+        }
+   }
+    private fun handleQuestionnaires(){
         middleGeriatricQuestionnaire = sharedPreferences.getBoolean("middleGeriatricQuestionnaire", false)
         middleOxfordHappinessQuestionnaire = sharedPreferences.getBoolean("middleOxfordHappinessQuestionnaire", false)
-
         if(!middleGeriatricQuestionnaire && !middleOxfordHappinessQuestionnaire){
             val geriatricQuestionnaireCompletedDate = sharedPreferences.getString("geriatricQuestionnaireCompletedDate","")
             val oxfordHappinessQuestionnaireCompletedDate = sharedPreferences.getString("oxfordHappinessQuestionnaireCompletedDate","")
@@ -101,28 +133,7 @@ class MainActivity : BaseActivity(), RecognitionListener {
                 _showAlertOxfordQuestionnaire.value = true
             }
         }
-
-        setContent {
-            ChatbotERNUITheme {
-                val scaffoldState = rememberScaffoldState()
-                val scopeState = rememberCoroutineScope()
-                if(!_microActive.value){
-                    _finishedLoading.value = STATE_DONE
-                }
-                if(_finishedLoading.value != STATE_DONE){
-                    if(_finishedLoading.value != STATE_READY){
-                        LoadScreen()
-                    }
-                    else if(_microActive.value){
-                        recognizeMicrophone()
-                    }
-                }
-                else{
-                   AppScreen(scaffoldState, scopeState)
-                }
-            }
-        }
-   }
+    }
     private fun recognizeMicrophone() {
         if (speechService == null) {
             try {
@@ -149,6 +160,7 @@ class MainActivity : BaseActivity(), RecognitionListener {
         } else {
             initModel()
         }
+        _microActive.value = sharedPreferences.getBoolean("microActive", false)
     }
     private fun initModel() {
         StorageService.unpack(applicationContext, "model-pt", "model",
@@ -224,57 +236,43 @@ class MainActivity : BaseActivity(), RecognitionListener {
             response =
                 httpRequests.request("POST", "/iterations", iterationBody.toString(), token = token)
             val data = JSONObject(response["data"].toString())
-            try{
-                val iteration = JSONObject()
-                    .put("iteration_id", data["id"].toString())
-                    .put("iteration_usage_id", data["usage_id"].toString())
-                val index = iterations.indexOfFirst { it.first == emotion }
-                if(iterations.isNotEmpty() && index != -1){
-                    iterations.removeAt(index)
-                }
-                iterations.add(emotion to iteration)
+            val iteration = JSONObject()
+                .put("iteration_id", data["id"].toString())
+                .put("iteration_usage_id", data["usage_id"].toString())
+            val index = iterations.indexOfFirst { it.first == emotion }
+            if(iterations.isNotEmpty() && index != -1){
+                iterations.removeAt(index)
             }
-            catch (ex: JSONException) {
-                if(response["status_code"].toString() == "503"){
-                    _showConnectivityError.value = true
-                }
-                Log.i("Debug", "Error: ${ex.message}")
-            }
+            iterations.add(emotion to iteration)
+            handleRequestStatusCode(response["status_code"].toString())
         }
     }
     private fun getAllMessages() {
         _messages = mutableStateListOf()
         scope.launch {
             val response = httpRequests.request("GET", "/messages", token = token)
-            try {
-                val data = JSONObject(response["data"].toString())
-                val messages = JSONArray(data["list"].toString())
-
-                for (i in 0 until messages.length()) {
-                    val message = JSONObject(messages[i].toString())
-                    if(message["body"].toString().contains("{")){
-                        if(message["body"].toString().contains("points")){
-                            _messages.add(Message(id = message["id"].toString().toLong(),
-                                text = JSONObject(message["body"].toString())["message"] as String?,
-                                isChatbot = message["isChatbot"].toString() == "1",
-                                time = utils.convertStringLocalDateTime(message["created_at"].toString())))
-                        }
-                        continue
+            val data = JSONObject(response["data"].toString())
+            val messages = JSONArray(data["list"].toString())
+            for (i in 0 until messages.length()) {
+                val message = JSONObject(messages[i].toString())
+                if(message["body"].toString().contains("{")){
+                    if(message["body"].toString().contains("points")){
+                        _messages.add(Message(id = message["id"].toString().toLong(),
+                            text = JSONObject(message["body"].toString())["message"] as String?,
+                            isChatbot = message["isChatbot"].toString() == "1",
+                            time = utils.convertStringLocalDateTime(message["created_at"].toString())))
                     }
-                    if (message["body"].toString() == "start_geriatric_form" || message["body"].toString() == "start_oxford_happiness_form") {
-                        continue
-                    }
-                    _messages.add(Message(id = message["id"].toString().toLong(),
-                        text = message["body"] as String?,
-                        isChatbot = message["isChatbot"].toString() == "1",
-                        time = utils.convertStringLocalDateTime(message["created_at"].toString())))
+                    continue
                 }
-            } catch (ex: JSONException) {
-                if(response["status_code"].toString() == "503"){
-                    _showConnectivityError.value = true
+                if (message["body"].toString() == "start_geriatric_form" || message["body"].toString() == "start_oxford_happiness_form") {
+                    continue
                 }
-                Log.i("Debug", "Error: ${ex.message}")
+                _messages.add(Message(id = message["id"].toString().toLong(),
+                    text = message["body"] as String?,
+                    isChatbot = message["isChatbot"].toString() == "1",
+                    time = utils.convertStringLocalDateTime(message["created_at"].toString())))
             }
+            handleRequestStatusCode(response["status_code"].toString())
         }
     }
     private fun chatbotResponse(transcription: String){
@@ -287,46 +285,39 @@ class MainActivity : BaseActivity(), RecognitionListener {
         messageSend.put("body", transcription)
         var response: JSONObject
         scope.launch {
-                response = httpRequests.request("POST", "/messages", messageSend.toString(), token = token)
-                try{
-                    val data = JSONObject(response["data"].toString())
-                    val messages = JSONArray(data["list"].toString())
-                    for (i in 0 until messages.length()) {
-                        val message = JSONObject(messages[i].toString())
-                        if(message["body"].toString().contains("{")){
-                            if(message["body"].toString().contains("accuracy")){
-                                val sentiment = JSONObject(message["body"].toString())
-                                // Creates iteration if doesn't exists
-                                handleIteration(sentiment)
-                            }
-                            // Creates response
-                            if(message["body"].toString().contains("is_why")){
-                                val responseQuestion = JSONObject(message["body"].toString())
-                                handleResponseQuestionnaire(responseQuestion["question"].toString().toInt(), transcription, responseQuestion["is_why"].toString().toBoolean())
-                            }
-                            if(message["body"].toString().contains("points")){
-                                val pointsResponse = JSONObject(message["body"].toString())
-                                handlePointsQuestionnaire(pointsResponse["points"].toString().toDouble())
-                                _messages.add(Message(id = message["id"].toString().toLong(),
-                                    text = pointsResponse["message"] as String?,
-                                    isChatbot = message["isChatbot"].toString() == "true",
-                                    time = utils.convertStringLocalDateTime(message["created_at"].toString())))
-                            }
-                        }else if (message["body"].toString() != "start_geriatric_form" && message["body"].toString() != "start_oxford_happiness_form"){
-                            _messages.add(Message(id = message["id"].toString().toLong(),
-                                text = message["body"] as String?,
-                                isChatbot = message["isChatbot"].toString() == "true",
-                                time = utils.convertStringLocalDateTime(message["created_at"].toString())))
-                        }
+            response = httpRequests.request("POST", "/messages", messageSend.toString(), token = token)
+            val data = JSONObject(response["data"].toString())
+            val messages = JSONArray(data["list"].toString())
+            for (i in 0 until messages.length()) {
+                val message = JSONObject(messages[i].toString())
+                if(message["body"].toString().contains("{")){
+                    if(message["body"].toString().contains("accuracy")){
+                        val sentiment = JSONObject(message["body"].toString())
+                        // Creates iteration if doesn't exists
+                        handleIteration(sentiment)
                     }
+                    // Creates response
+                    if(message["body"].toString().contains("is_why")){
+                        val responseQuestion = JSONObject(message["body"].toString())
+                        handleResponseQuestionnaire(responseQuestion["question"].toString().toInt(), transcription, responseQuestion["is_why"].toString().toBoolean())
+                    }
+                    if(message["body"].toString().contains("points")){
+                        val pointsResponse = JSONObject(message["body"].toString())
+                        handlePointsQuestionnaire(pointsResponse["points"].toString().toDouble())
+                        _messages.add(Message(id = message["id"].toString().toLong(),
+                            text = pointsResponse["message"] as String?,
+                            isChatbot = message["isChatbot"].toString() == "true",
+                            time = utils.convertStringLocalDateTime(message["created_at"].toString())))
+                    }
+                }else if (message["body"].toString() != "start_geriatric_form" && message["body"].toString() != "start_oxford_happiness_form"){
+                    _messages.add(Message(id = message["id"].toString().toLong(),
+                        text = message["body"] as String?,
+                        isChatbot = message["isChatbot"].toString() == "true",
+                        time = utils.convertStringLocalDateTime(message["created_at"].toString())))
                 }
-            catch (ex: JSONException) {
-                if(response["status_code"].toString() == "503"){
-                    _showConnectivityError.value = true
-                }
-                Log.i("Debug", "Error: ${ex.message}")
             }
-            }
+            handleRequestStatusCode(response["status_code"].toString())
+        }
 
     }
 
@@ -334,27 +325,19 @@ class MainActivity : BaseActivity(), RecognitionListener {
         val apiURL = if(middleGeriatricQuestionnaire) "/geriatricQuestionnaires/${idGeriatricQuestionnaire}/points" else if (middleOxfordHappinessQuestionnaire) "/oxfordHappinessQuestionnaires/${idOxfordHappinessQuestionnaire}/points" else return
         val pointsQuestionnaire = JSONObject()
         pointsQuestionnaire.put("points", points)
-
         scope.launch {
             val response = httpRequests.request("PUT", apiURL, pointsQuestionnaire.toString(), token = token)
-            try{
-                val data = JSONObject(response["data"].toString())
-                if(middleGeriatricQuestionnaire){
-                    utils.addBooleanToStore(sharedPreferences, "middleGeriatricQuestionnaire", false)
-                    utils.addStringToStore(sharedPreferences,"geriatricQuestionnaireCompletedDate",utils.getTimeNow())
-                }
-                if(middleOxfordHappinessQuestionnaire){
-                    utils.addBooleanToStore(sharedPreferences, "middleOxfordHappinessQuestionnaire", false)
-                    utils.addStringToStore(sharedPreferences,"oxfordHappinessQuestionnaireCompletedDate",utils.getTimeNow())
+            JSONObject(response["data"].toString())
+            if(middleGeriatricQuestionnaire){
+                utils.addBooleanToStore(sharedPreferences, "middleGeriatricQuestionnaire", false)
+                utils.addStringToStore(sharedPreferences,"geriatricQuestionnaireCompletedDate",utils.getTimeNow())
+            }
+            if(middleOxfordHappinessQuestionnaire){
+                utils.addBooleanToStore(sharedPreferences, "middleOxfordHappinessQuestionnaire", false)
+                utils.addStringToStore(sharedPreferences,"oxfordHappinessQuestionnaireCompletedDate",utils.getTimeNow())
 
-                }
             }
-            catch (ex: JSONException) {
-                if(response["status_code"].toString() == "503"){
-                    _showConnectivityError.value = true
-                }
-                Log.i("Debug", "Error: ${ex.message}")
-            }
+            handleRequestStatusCode(response["status_code"].toString())
         }
     }
     private fun handleResponseQuestionnaire(question: Int, response: String, isWhy: Boolean, emotion: String=""){
@@ -370,16 +353,9 @@ class MainActivity : BaseActivity(), RecognitionListener {
             responseQuestionnaire.put("iteration_usage_id", iteration?.second?.getString("iteration_usage_id"))
         }
         scope.launch {
-            val response = httpRequests.request("PUT", apiURL, responseQuestionnaire.toString(), token = token)
-            try{
-                JSONObject(response["data"].toString())
-            }
-            catch (ex: JSONException) {
-                if(response["status_code"].toString() == "503"){
-                    _showConnectivityError.value = true
-                }
-                Log.i("Debug", "Error: ${ex.message}")
-            }
+            val responseRequest = httpRequests.request("PUT", apiURL, responseQuestionnaire.toString(), token = token)
+            JSONObject(responseRequest["data"].toString())
+            handleRequestStatusCode(responseRequest["status_code"].toString())
         }
     }
     private fun createQuestionnaire(){
@@ -387,20 +363,13 @@ class MainActivity : BaseActivity(), RecognitionListener {
         var response: JSONObject
         scope.launch {
             response = httpRequests.request("POST", apiURL, token = token)
-            try{
-                val data = JSONObject(response["data"].toString())
-                if(middleGeriatricQuestionnaire){
-                    idGeriatricQuestionnaire = data["id"].toString().toInt()
-                }else{
-                   idOxfordHappinessQuestionnaire = data["id"].toString().toInt()
-                }
+            val data = JSONObject(response["data"].toString())
+            if(middleGeriatricQuestionnaire){
+                idGeriatricQuestionnaire = data["id"].toString().toInt()
+            }else{
+               idOxfordHappinessQuestionnaire = data["id"].toString().toInt()
             }
-            catch (ex: JSONException) {
-                if(response["status_code"].toString() == "503"){
-                    _showConnectivityError.value = true
-                }
-                Log.i("Debug", "Error: ${ex.message}")
-            }
+            handleRequestStatusCode(response["status_code"].toString())
         }
     }
 
@@ -602,8 +571,8 @@ class MainActivity : BaseActivity(), RecognitionListener {
         }
     }
     @Composable
-    fun MainScreen(scaffoldState: ScaffoldState,
-                   scopeState: CoroutineScope) {
+    override fun MainScreen(scaffoldState: ScaffoldState,
+                            scopeState: CoroutineScope) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -654,143 +623,9 @@ class MainActivity : BaseActivity(), RecognitionListener {
             }else {
                 recognizeMicrophone()
             }
-            CommonComposables.DialogConnectivity(
-                onClick = {
-                    _showConnectivityError.value = false
-                    finish()
-                },onDismissRequest = {
-                    _showConnectivityError.value = false
-                }
-            )
         }
     }
-    @Composable
-    fun Drawer() {
-        val menuItems = listOf(
-            MenuItem(
-                id = "profile",
-                title = "Perfil",
-                icon = R.drawable.profile,
-                onClick = {},
-                addDivider = false
-            ),
-            MenuItem(
-                id = "questionnaires",
-                title = "Questionários",
-                icon = R.drawable.questionnaires,
-                onClick = {
-                    utils.startDetailActivity(applicationContext, QuestionnairesActivity::class.java, this)
-                },
-                addDivider = true
-            ),
-            MenuItem(
-                id = "mode",
-                title = if (!_modeDark.value) "Modo escuro" else "Modo claro",
-                icon = if (!_modeDark.value) R.drawable.dark else R.drawable.light,
-                onClick = {
-                    _modeDark.value = utils.changeMode(sharedPreferences)
-                },
-                addDivider = false
-            ),
-            MenuItem(
-                id = "information",
-                title = "Tutorial",
-                icon = R.drawable.information,
-                onClick = {},
-                addDivider = true
-            ),
-            MenuItem(
-                id = "logout",
-                title = "Terminar sessão",
-                icon = R.drawable.logout,
-                onClick = {
-                    utils.clearSharedPreferences(sharedPreferences)
-                    ThemeState.isDarkThemeEnabled = false
-                    utils.startDetailActivity(applicationContext,LoginActivity::class.java, this)
-                },
-                addDivider = false
-            )
-        )
-        Column(
-            Modifier
-                .fillMaxSize()
-                .background(colorScheme.background)
-                .padding(0.dp, 30.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceEvenly
-        ) {
-            Row(modifier = Modifier
-                .fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically){
-                Image(
-                    painter = painterResource(R.drawable.chatbot),
-                    contentDescription = "Chatbot",
-                    modifier = Modifier.size(75.dp)
-                )
-                Spacer(modifier = Modifier.width(25.dp))
-                Text(
-                    text = "Menu principal",
-                    color = colorScheme.onPrimary,
-                    fontSize = Typography.titleLarge.fontSize
-                )
-            }
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(35.dp)
-            ) {
-                items(menuItems)
-                { item ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp)
-                            .clickable {
-                                item.onClick()
-                            },
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            painter = painterResource(id = item.icon),
-                            contentDescription = item.title,
-                            tint = colorScheme.onPrimary
-                        )
-                        Spacer(modifier = Modifier.width(20.dp))
-                        Text(
-                            text = item.title,
-                            color = colorScheme.onSurface,
-                            fontSize = Typography.bodyLarge.fontSize,
-                            fontWeight = Typography.bodyLarge.fontWeight,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    if(item.addDivider){
-                        Spacer(modifier = Modifier.height(15.dp))
-                        Divider(color = colorScheme.onSurface, thickness = 1.dp)
-                        Spacer(modifier = Modifier.height(15.dp))
-                    }
-                }
-            }
-        }
-    }
-
-    @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
-    @Composable
-    fun AppScreen( scaffoldState: ScaffoldState,
-                   scope: CoroutineScope)
-    {
-        androidx.compose.material.Scaffold(
-            scaffoldState = scaffoldState,
-            drawerGesturesEnabled = scaffoldState.drawerState.isOpen,
-            drawerContent = {
-                Drawer()
-            },
-            //customizing the drawer. Will also share this shape below.
-            drawerElevation = 90.dp
-        ) {//Here goes the whole content of our Screen
-            MainScreen(scaffoldState, scope)
-        }
-    }
+    override val activity: Activity
+        get() = this
 }
 

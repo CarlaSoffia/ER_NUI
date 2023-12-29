@@ -10,20 +10,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import pt.ipleiria.estg.ciic.chatboternui.R
@@ -67,43 +59,6 @@ object CommonComposables {
             dismissButton = null
         )
     }
-
-    @Composable
-    fun SuccessModal(text:String, onClick: () -> Unit, onDismissRequest: () -> Unit){
-        AlertDialog(
-            containerColor = colorScheme.background,
-            tonalElevation = 0.dp,
-            icon = {
-                Image(
-                    painter = painterResource(id = R.drawable.check),
-                    contentDescription = "Sucesso",
-                    modifier = Modifier.size(80.dp))
-            },
-            onDismissRequest = { onDismissRequest() },
-            title = { Text("Sucesso",
-                fontSize = Typography.titleSmall.fontSize,
-                fontWeight = Typography.titleSmall.fontWeight) },
-            text = { Text(text,
-                fontSize = Typography.titleSmall.fontSize,
-                fontWeight = Typography.titleSmall.fontWeight) },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        onClick()
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = colorScheme.secondary
-                    )
-                ) {
-                    Text("Ok",
-                        fontSize = Typography.titleSmall.fontSize,
-                        fontWeight = Typography.titleSmall.fontWeight)
-                }
-            },
-            dismissButton = null
-        )
-    }
-
     @Composable
     fun StartForm(title:String, description: String, onClick: () -> Unit, onDismissRequest: () -> Unit){
         AlertDialog(
@@ -195,7 +150,7 @@ object CommonComposables {
     }
 
     @Composable
-    fun AccountFooter(text:String, textButton: String, onClick: () -> Unit, textButtonOnClick: () -> Unit){
+    fun AccountFooter(text:String, onClick: () -> Unit){
         Column(horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(0.dp, 0.dp, 0.dp, 10.dp)){
             // Submit button
@@ -211,64 +166,6 @@ object CommonComposables {
                     fontWeight = Typography.bodyLarge.fontWeight,
                     color = colorScheme.onSurface)
             }
-            Spacer(modifier = Modifier.height(15.dp))
-            TextButton(onClick = {
-                textButtonOnClick()
-            }, modifier = Modifier.fillMaxWidth()) {
-                Text(textButton,
-                    fontSize = Typography.bodyLarge.fontSize,
-                    fontWeight = Typography.bodyLarge.fontWeight,
-                    color = colorScheme.onPrimary,
-                    textAlign = TextAlign.Center)
-            }
         }
     }
-
-    @Composable
-    fun TextFieldAccount(value: MutableState<String>, label: String, description: String, icon: Int, iconDescription: String, passwordHidden:Boolean, togglePasswordVisibility:  () -> Unit){
-        val isPassword = label=="Palavra-passe" || label=="Confirme a palavra-passe"
-        TextField(
-            colors = TextFieldDefaults.outlinedTextFieldColors(
-                focusedBorderColor = colorScheme.secondary,
-                unfocusedBorderColor = colorScheme.secondary,
-                textColor = colorScheme.onPrimary
-            ),
-            visualTransformation = if(isPassword && passwordHidden) PasswordVisualTransformation() else VisualTransformation.None,
-            value = value.value,
-            onValueChange = { value.value = it },
-            label = {
-                Text(
-                    text = label,
-                    fontSize = Typography.bodyLarge.fontSize,
-                    fontWeight = Typography.bodyLarge.fontWeight,
-                    color = colorScheme.onPrimary
-                )
-            },
-            placeholder = {
-                Text(description,
-                    fontSize = Typography.bodyLarge.fontSize,
-                    fontWeight = Typography.bodyLarge.fontWeight,
-                    color = colorScheme.onPrimary
-                )
-            },
-            leadingIcon = {
-                Icon(
-                    painter = painterResource(id = icon),
-                    contentDescription = iconDescription,
-                    tint = colorScheme.onPrimary)
-            },
-            trailingIcon = {if (isPassword)
-                IconButton(onClick = { togglePasswordVisibility() }) {
-                    Icon(
-                        painter = painterResource(id = if(passwordHidden) R.drawable.show else R.drawable.hide),
-                        contentDescription = "Esconder/mostrar a palavra-pass",
-                        tint = colorScheme.onPrimary)
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 20.dp)
-        )
-    }
-
 }
