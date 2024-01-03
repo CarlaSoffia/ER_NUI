@@ -4,7 +4,6 @@ import android.Manifest
 import android.app.Activity
 import android.content.pm.PackageManager
 import android.os.Bundle
-import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -50,7 +49,6 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import okio.IOException
 import org.json.JSONArray
 import org.json.JSONException
@@ -60,7 +58,6 @@ import org.vosk.Recognizer
 import org.vosk.android.RecognitionListener
 import org.vosk.android.StorageService
 import pt.ipleiria.estg.ciic.chatboternui.models.Message
-import pt.ipleiria.estg.ciic.chatboternui.ui.theme.ChatbotERNUITheme
 import pt.ipleiria.estg.ciic.chatboternui.ui.theme.Typography
 import pt.ipleiria.estg.ciic.chatboternui.utils.CommonComposables
 import pt.ipleiria.estg.ciic.chatboternui.utils.IBaseActivity
@@ -88,7 +85,7 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        super.onCreateBaseActivityWithMenu(this)
+        super.instantiateInitialData()
         if(sharedPreferences.getString("access_token", "").toString() == ""){
             utils.startDetailActivity(applicationContext,LoginActivity::class.java, this)
             return
@@ -96,25 +93,7 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener {
         checkPermission()
         getAllMessages()
         handleQuestionnaires()
-
-        setContent {
-            ChatbotERNUITheme {
-                if(!_microActive.value){
-                    _finishedLoading.value = STATE_DONE
-                }
-                if(_finishedLoading.value != STATE_DONE){
-                    if(_finishedLoading.value != STATE_READY){
-                        LoadScreen()
-                    }
-                    else if(_microActive.value){
-                        recognizeMicrophone()
-                    }
-                }
-                else{
-                   AppScreen()
-                }
-            }
-        }
+        super.onCreateBaseActivityWithMenu(this)
    }
     private fun handleQuestionnaires(){
         middleGeriatricQuestionnaire = sharedPreferences.getBoolean("middleGeriatricQuestionnaire", false)
@@ -232,9 +211,9 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener {
         iterationBody.put("emotion", emotion)
         iterationBody.put("type", "best")
         var response: JSONObject
-        runBlocking {
-            response =
-                httpRequests.request("POST", "/iterations", iterationBody.toString(), token = token)
+        scope.launch {
+            response = httpRequests.request("POST", "/iterations", iterationBody.toString(), token = token)
+            if(handleConnectivityError(response["status_code"].toString(), activity)) return@launch
             val data = JSONObject(response["data"].toString())
             val iteration = JSONObject()
                 .put("iteration_id", data["id"].toString())
@@ -244,13 +223,13 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener {
                 iterations.removeAt(index)
             }
             iterations.add(emotion to iteration)
-            handleRequestStatusCode(response["status_code"].toString())
         }
     }
     private fun getAllMessages() {
         _messages = mutableStateListOf()
         scope.launch {
             val response = httpRequests.request("GET", "/messages", token = token)
+            if(handleConnectivityError(response["status_code"].toString(), activity)) return@launch
             val data = JSONObject(response["data"].toString())
             val messages = JSONArray(data["list"].toString())
             for (i in 0 until messages.length()) {
@@ -272,7 +251,6 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener {
                     isChatbot = message["isChatbot"].toString() == "1",
                     time = utils.convertStringLocalDateTime(message["created_at"].toString())))
             }
-            handleRequestStatusCode(response["status_code"].toString())
         }
     }
     private fun chatbotResponse(transcription: String){
@@ -286,6 +264,7 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener {
         var response: JSONObject
         scope.launch {
             response = httpRequests.request("POST", "/messages", messageSend.toString(), token = token)
+            if(handleConnectivityError(response["status_code"].toString(), activity)) return@launch
             val data = JSONObject(response["data"].toString())
             val messages = JSONArray(data["list"].toString())
             for (i in 0 until messages.length()) {
@@ -316,7 +295,6 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener {
                         time = utils.convertStringLocalDateTime(message["created_at"].toString())))
                 }
             }
-            handleRequestStatusCode(response["status_code"].toString())
         }
 
     }
@@ -327,6 +305,7 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener {
         pointsQuestionnaire.put("points", points)
         scope.launch {
             val response = httpRequests.request("PUT", apiURL, pointsQuestionnaire.toString(), token = token)
+            if(handleConnectivityError(response["status_code"].toString(), activity)) return@launch
             JSONObject(response["data"].toString())
             if(middleGeriatricQuestionnaire){
                 utils.addBooleanToStore(sharedPreferences, "middleGeriatricQuestionnaire", false)
@@ -335,9 +314,7 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener {
             if(middleOxfordHappinessQuestionnaire){
                 utils.addBooleanToStore(sharedPreferences, "middleOxfordHappinessQuestionnaire", false)
                 utils.addStringToStore(sharedPreferences,"oxfordHappinessQuestionnaireCompletedDate",utils.getTimeNow())
-
             }
-            handleRequestStatusCode(response["status_code"].toString())
         }
     }
     private fun handleResponseQuestionnaire(question: Int, response: String, isWhy: Boolean, emotion: String=""){
@@ -354,8 +331,8 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener {
         }
         scope.launch {
             val responseRequest = httpRequests.request("PUT", apiURL, responseQuestionnaire.toString(), token = token)
+            if(handleConnectivityError(responseRequest["status_code"].toString(), activity)) return@launch
             JSONObject(responseRequest["data"].toString())
-            handleRequestStatusCode(responseRequest["status_code"].toString())
         }
     }
     private fun createQuestionnaire(){
@@ -363,13 +340,13 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener {
         var response: JSONObject
         scope.launch {
             response = httpRequests.request("POST", apiURL, token = token)
+            if(handleConnectivityError(response["status_code"].toString(), activity)) return@launch
             val data = JSONObject(response["data"].toString())
             if(middleGeriatricQuestionnaire){
                 idGeriatricQuestionnaire = data["id"].toString().toInt()
             }else{
                idOxfordHappinessQuestionnaire = data["id"].toString().toInt()
             }
-            handleRequestStatusCode(response["status_code"].toString())
         }
     }
 
@@ -571,8 +548,18 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener {
         }
     }
     @Composable
-    override fun MainScreen(scaffoldState: ScaffoldState,
-                            scopeState: CoroutineScope) {
+    override fun MainScreen(title: String?, scaffoldState: ScaffoldState?, scope: CoroutineScope?) {
+        if(!_microActive.value){
+            _finishedLoading.value = STATE_DONE
+        }
+        if(_finishedLoading.value != STATE_DONE){
+            if(_finishedLoading.value != STATE_READY){
+                LoadScreen()
+            }
+            else if(_microActive.value){
+                recognizeMicrophone()
+            }
+        }
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -580,7 +567,7 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            TopBar("EmoCare", scaffoldState, scopeState)
+            TopBar("EmoCare", scaffoldState!!, scope!!)
             ChatSection(Modifier.weight(1f))
             if(_showAlertGeriatricQuestionnaire.value){
                 CommonComposables.StartForm("Gostaria de responder a um questionário para avaliar sintomas de depressão?",

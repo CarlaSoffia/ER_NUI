@@ -112,20 +112,4 @@ class Others {
         context.startActivity(intent)
         oldActivity.finish()
     }
-
-    fun getAndroidMacAddress(context: Context): String {
-        val identifier = Secure.getString(context.contentResolver, Secure.ANDROID_ID)
-        // Convert hex string to bytes
-        val hexBytes = identifier.chunked(2) // Split into pairs of characters
-            .map { it.toInt(16).toByte() } // Convert each pair to a byte
-
-        // Set MAC address format with hex bytes
-        val macBytes = byteArrayOf(0x00, 0x00, 0x00, 0x00, 0x00, 0x00)
-        for (i in 0 until minOf(hexBytes.size, 6)) {
-            macBytes[i] = hexBytes[i]
-        }
-
-        // Format MAC address as string
-        return macBytes.joinToString(":") { "%02X".format(it) }
-    }
 }

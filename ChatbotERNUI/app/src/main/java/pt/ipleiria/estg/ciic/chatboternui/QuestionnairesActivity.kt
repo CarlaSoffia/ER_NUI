@@ -3,7 +3,6 @@ package pt.ipleiria.estg.ciic.chatboternui
 import android.app.Activity
 import android.os.Bundle
 import android.util.Log
-import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -42,7 +41,6 @@ import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 import pt.ipleiria.estg.ciic.chatboternui.models.QuestionnaireType
-import pt.ipleiria.estg.ciic.chatboternui.ui.theme.ChatbotERNUITheme
 import pt.ipleiria.estg.ciic.chatboternui.ui.theme.Typography
 import pt.ipleiria.estg.ciic.chatboternui.utils.IBaseActivity
 
@@ -54,14 +52,9 @@ class QuestionnairesActivity : IBaseActivity, BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?){
         super.onCreate(savedInstanceState)
-        super.onCreateBaseActivityWithMenu(this)
+        super.instantiateInitialData()
         getQuestionnairesTypes()
-
-        setContent {
-            ChatbotERNUITheme {
-                AppScreen()
-            }
-        }
+        super.onCreateBaseActivityWithMenu(this)
     }
 
 
@@ -181,8 +174,7 @@ class QuestionnairesActivity : IBaseActivity, BaseActivity() {
         }
     }
     @Composable
-    override fun MainScreen(scaffoldState: ScaffoldState,
-                            scopeState: CoroutineScope) {
+    override fun MainScreen(title: String?, scaffoldState: ScaffoldState?, scope: CoroutineScope?) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -190,13 +182,12 @@ class QuestionnairesActivity : IBaseActivity, BaseActivity() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceEvenly
         ) {
-            TopBar("EmoCare", scaffoldState, scopeState)
+            TopBar("EmoCare", scaffoldState!!, scope!!)
             DropDownMenu(Modifier.weight(1f))
             if(_questionnaireSelected.value != ""){
                 val questionnaire = _questionnaireTypes.first { q -> q.name == _questionnaireSelected.value }
                 QuestionnaireTypeItem(questionnaire, Modifier.weight(1f));
             }
-
         }
     }
 

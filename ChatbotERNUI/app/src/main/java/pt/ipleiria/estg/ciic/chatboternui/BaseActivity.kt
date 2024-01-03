@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.ScaffoldState
 import androidx.compose.material.rememberScaffoldState
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
@@ -43,7 +42,6 @@ import pt.ipleiria.estg.ciic.chatboternui.ui.theme.ChatbotERNUITheme
 import pt.ipleiria.estg.ciic.chatboternui.ui.theme.Typography
 import pt.ipleiria.estg.ciic.chatboternui.utils.CommonComposables
 import pt.ipleiria.estg.ciic.chatboternui.utils.HTTPRequests
-import pt.ipleiria.estg.ciic.chatboternui.utils.IAccountActivity
 import pt.ipleiria.estg.ciic.chatboternui.utils.IBaseActivity
 import pt.ipleiria.estg.ciic.chatboternui.utils.Others
 open class BaseActivity: ComponentActivity() {
@@ -56,30 +54,22 @@ open class BaseActivity: ComponentActivity() {
     protected var alertMessage: MutableState<String> = mutableStateOf("")
     protected val httpRequests = HTTPRequests()
     protected val scope = CoroutineScope(Dispatchers.Main)
-
-    private fun onCreate(activity: Activity){
+    fun instantiateInitialData(){
         sharedPreferences = getSharedPreferences("ERNUI", Context.MODE_PRIVATE)
         ThemeState.isDarkThemeEnabled = sharedPreferences.getBoolean("theme_mode_is_dark", false)
-        if (sharedPreferences.getString("macAddress", "") == "") {
-            utils.addStringToStore(
-                sharedPreferences, "macAddress", utils.getAndroidMacAddress(activity)
-            )
-        }
         token = sharedPreferences.getString("access_token", "").toString()
     }
 
-    @Override
-    fun onCreateBaseActivity(oldActivity: IAccountActivity) {
-        onCreate(oldActivity.activity)
+    fun onCreateBaseActivity(title: String) {
         setContent {
             ChatbotERNUITheme {
                 HandleDialogs()
+                currentActivity.MainScreen(title, null, null)
             }
         }
     }
-    @Override
+
     fun onCreateBaseActivityWithMenu(oldActivity: IBaseActivity) {
-        onCreate(oldActivity.activity)
         currentActivity = oldActivity
         setContent {
             ChatbotERNUITheme {
@@ -90,7 +80,7 @@ open class BaseActivity: ComponentActivity() {
     }
     @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
     @Composable
-    fun AppScreen()
+    private fun AppScreen()
     {
         val scaffoldState = rememberScaffoldState()
         val scopeState = rememberCoroutineScope()
@@ -103,12 +93,12 @@ open class BaseActivity: ComponentActivity() {
             //customizing the drawer. Will also share this shape below.
             drawerElevation = 90.dp
         ) {//Here goes the whole content of our Screen
-            currentActivity.MainScreen(scaffoldState, scopeState)
+            currentActivity.MainScreen("", scaffoldState, scopeState)
         }
     }
 
     @Composable
-    fun HandleDialogs(){
+    private fun HandleDialogs(){
         if(showConnectivityError.value){
             CommonComposables.DialogConnectivity(
                 onClick = {
@@ -120,7 +110,8 @@ open class BaseActivity: ComponentActivity() {
             )
         }
     }
-    fun handleRequestStatusCode(statusCode: String, activity: Activity? = null){
+
+    fun handleConnectivityError(statusCode: String, activity: Activity? = null): Boolean{
         when(statusCode){
             "409" -> {
                 showConnectivityError.value = true
@@ -135,9 +126,10 @@ open class BaseActivity: ComponentActivity() {
                 if(activity != null) utils.startDetailActivity(applicationContext,MainActivity::class.java, activity)
             }
         }
+        return showConnectivityError.value
     }
     @Composable
-    fun Drawer() {
+    private fun Drawer() {
         val menuItems = listOf(
             MenuItem(
                 id = "profile",

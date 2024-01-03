@@ -2,25 +2,19 @@ package pt.ipleiria.estg.ciic.chatboternui
 
 import android.app.Activity
 import android.os.Bundle
-import androidx.activity.compose.setContent
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.launch
 import org.json.JSONException
 import org.json.JSONObject
-import pt.ipleiria.estg.ciic.chatboternui.ui.theme.ChatbotERNUITheme
-import pt.ipleiria.estg.ciic.chatboternui.utils.IAccountActivity
+import pt.ipleiria.estg.ciic.chatboternui.utils.IRequestActivity
 
-class LoginActivity : IAccountActivity, AccountBaseActivity(){
+class LoginActivity : IRequestActivity, AccountBaseActivity(){
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent {
-            ChatbotERNUITheme {
-                super.onCreateActivity("Login", this)
-            }
-        }
+        super.onCreateActivity("Login", this)
     }
-    override suspend fun accountRequestSubmit(): String {
+    override suspend fun apiRequest(): String {
         val bodyLogin = JSONObject()
         bodyLogin.put("email",email.value)
         bodyLogin.put("password",password.value)
@@ -29,6 +23,7 @@ class LoginActivity : IAccountActivity, AccountBaseActivity(){
             val job = scope.launch {
                 try {
                     val response = httpRequests.request("POST", "/auth/login", bodyLogin.toString())
+                    if(handleConnectivityError(response["status_code"].toString(), activity)) return@launch
                     val data = JSONObject(response["data"].toString())
                     utils.addStringToStore(sharedPreferences,"email", email.value)
                     utils.addStringToStore(sharedPreferences,"password", password.value)

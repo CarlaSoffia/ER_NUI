@@ -1,7 +1,7 @@
 package pt.ipleiria.estg.ciic.chatboternui
 
+import android.annotation.SuppressLint
 import android.app.Activity
-import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.ScaffoldState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -32,30 +33,28 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import pt.ipleiria.estg.ciic.chatboternui.ui.theme.ChatbotERNUITheme
 import pt.ipleiria.estg.ciic.chatboternui.ui.theme.Typography
 import pt.ipleiria.estg.ciic.chatboternui.utils.CommonComposables
-import pt.ipleiria.estg.ciic.chatboternui.utils.IAccountActivity
+import pt.ipleiria.estg.ciic.chatboternui.utils.IBaseActivity
+import pt.ipleiria.estg.ciic.chatboternui.utils.IRequestActivity
 
-open class AccountBaseActivity : BaseActivity() {
+open class AccountBaseActivity : IBaseActivity, BaseActivity() {
     private var _passwordHidden: MutableState<Boolean> = mutableStateOf(true)
     protected var email: MutableState<String> = mutableStateOf("")
     protected var password: MutableState<String> = mutableStateOf("")
-    private lateinit var currentAccountActivity : IAccountActivity
+    private lateinit var currentAccountActivity : IRequestActivity
     @Override
-    fun onCreateActivity(title: String, accountActivity: IAccountActivity) {
-        super.onCreateBaseActivity(accountActivity)
+    fun onCreateActivity(title: String, accountActivity: IRequestActivity) {
+        super.instantiateInitialData()
+        super.onCreateBaseActivity(title)
         currentAccountActivity = accountActivity
-        setContent {
-            ChatbotERNUITheme {
-                MainScreen(title, accountActivity.activity)
-            }
-        }
     }
 
+    @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
     @Composable
-    fun MainScreen(title: String, oldActivity: Activity){
+    override fun MainScreen(title: String?, scaffoldState: ScaffoldState?, scope: CoroutineScope?) {
         Box (modifier = Modifier.fillMaxSize()) {
             Image(painter = painterResource (id = R.drawable.background),
                 contentDescription = "Imagem de fundo",
@@ -79,7 +78,7 @@ open class AccountBaseActivity : BaseActivity() {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
-                    CommonComposables.AccountHeader(title)
+                    CommonComposables.AccountHeader(title!!)
                     AccountScreen()
                     CommonComposables.AccountFooter(title,{ accountRequest() })
                 }
@@ -166,10 +165,10 @@ open class AccountBaseActivity : BaseActivity() {
         if (!areFieldsValid()) return
         alertMessage.value = ""
         scope.launch {
-            val statusCode = currentAccountActivity.accountRequestSubmit()
-            handleRequestStatusCode(statusCode, currentAccountActivity.activity)
+            currentAccountActivity.apiRequest()
         }
     }
+
     private fun togglePasswordVisibility(){
         _passwordHidden.value = !_passwordHidden.value
     }
@@ -181,5 +180,6 @@ open class AccountBaseActivity : BaseActivity() {
         }
         return true
     }
-
+    override val activity: Activity
+        get() = this
 }

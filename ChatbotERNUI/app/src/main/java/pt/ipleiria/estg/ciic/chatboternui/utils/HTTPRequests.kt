@@ -87,11 +87,12 @@ class HTTPRequests {
                     try {
                         data.put("list", JSONArray(data.get("data").toString()))
                     } catch (ex1: JSONException) {
-                        Log.i("Debug", "Error: ${ex1.message}")
+                        Log.i("Debug456", "Error: ${ex1.message}")
                     }
                 }
                 result.put("data", data)
-            }catch (ex: IOException) {
+            }catch (ex: Exception) {
+                Log.i("Debug456", "Error: ${ex.message}")
                 result.put("status_code", "ECONNREFUSED")
             }
         }
