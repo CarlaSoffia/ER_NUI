@@ -148,15 +148,6 @@ open class BaseActivity: ComponentActivity() {
                 addDivider = true
             ),
             MenuItem(
-                id = "questionnaires",
-                title = "Questionários",
-                icon = R.drawable.questionnaires,
-                onClick = {
-                    utils.startDetailActivity(applicationContext, QuestionnairesActivity::class.java, this)
-                },
-                addDivider = true
-            ),
-            MenuItem(
                 id = "mode",
                 title = if (!_modeDark.value) "Modo escuro" else "Modo claro",
                 icon = if (!_modeDark.value) R.drawable.dark else R.drawable.light,

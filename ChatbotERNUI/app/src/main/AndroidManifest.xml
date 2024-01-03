@@ -29,17 +29,7 @@
             android:theme="@style/Theme.ChatbotERNUI">
         </activity>
         <activity
-            android:name=".CreateAccountActivity"
-            android:exported="true"
-            android:theme="@style/Theme.ChatbotERNUI">
-        </activity>
-        <activity
             android:name=".LoginActivity"
-            android:exported="true"
-            android:theme="@style/Theme.ChatbotERNUI">
-        </activity>
-        <activity
-            android:name=".QuestionnairesActivity"
             android:exported="true"
             android:theme="@style/Theme.ChatbotERNUI">
         </activity>
