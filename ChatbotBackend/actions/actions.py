@@ -14,15 +14,19 @@ from dotenv import load_dotenv
 from rasa_sdk import Action, Tracker
 from rasa_sdk.executor import CollectingDispatcher
 from rasa_sdk import Tracker, FormValidationAction
-from keras.utils import pad_sequences
+from tensorflow.keras.preprocessing.sequence import pad_sequences
 from rasa_sdk.events import SlotSet, ActionExecuted, EventType
+import numpy as np
 
 # Load initial data
 load_dotenv()
 models_dir = glob.glob(os.path.join('./SA/', '*.h5'))
-models_dir = sorted(models_dir, reverse=True)
+models_dir = sorted(models_dir)
 MODEL_NAME = models_dir[0]
-num_words = 5000
+num_words = 2500
+# NOTE: 
+# These are the original model labels ['anger' 'disgust' 'fear' 'guilt' 'joy' 'sadness' 'shame']
+# Are mapped by index to the emotions defined in SmartEmotion DB
 LABELS = ["angry","disgust","fear","guilt","happy","sad","shame"]
 
 # constants
@@ -67,9 +71,9 @@ def loadModel():
     model = keras.models.load_model(MODEL_NAME)    
     with open('./SA/tokenizer.pickle', 'rb') as handle:
         tokenizer = pickle.load(handle)
-    return model, tokenizer    
+    return model, tokenizer
 
-model, tokenizer  = loadModel()
+model, tokenizer = loadModel()
 
 def predictSentiment(text):
     sentiment={}
