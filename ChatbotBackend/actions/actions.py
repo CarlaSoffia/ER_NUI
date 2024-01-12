@@ -16,8 +16,8 @@ from rasa_sdk.executor import CollectingDispatcher
 from rasa_sdk import Tracker, FormValidationAction
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from rasa_sdk.events import SlotSet, ActionExecuted, EventType
-import numpy as np
-
+from nltk.tokenize import word_tokenize
+from nltk.stem.snowball import SnowballStemmer
 # Load initial data
 load_dotenv()
 models_dir = glob.glob(os.path.join('./SA/', '*.h5'))
@@ -69,18 +69,32 @@ questionsOxfordHappinessQuestionnaire, mappingsOxfordHappinessQuestionnaire = re
 ######################################################### SA MODEL #########################################################
 def loadModel():
     model = keras.models.load_model(MODEL_NAME)    
-    with open('./SA/tokenizer.pickle', 'rb') as handle:
-        tokenizer = pickle.load(handle)
-    return model, tokenizer
+    with open('./SA/tokenizerPT.pickle', 'rb') as handle:
+        unpickler = pickle.Unpickler(handle)
+        tokenizerPT = unpickler.load()
+        handle.close()
+    with open('./SA/stopwords/portuguese', 'rb') as handle:
+        stopwords_pt = set(handle.read().splitlines())    
+    stemmer = SnowballStemmer("portuguese")
+    return model, tokenizerPT, stopwords_pt, stemmer
 
-model, tokenizer = loadModel()
+model, tokenizerPT, stopwords_pt, stemmer = loadModel()
+
+def preprocess_texts(text_list):
+    preprocessed_texts = []
+    for text in text_list:
+        tokens = word_tokenize(text, language='portuguese')
+        filtered_tokens = [word.lower() for word in tokens if word.isalpha() and word.lower() not in stopwords_pt]
+        stemmed_tokens = [stemmer.stem(word) for word in filtered_tokens]
+        preprocessed_texts.append(stemmed_tokens)
+    return preprocessed_texts
 
 def predictSentiment(text):
     sentiment={}
-    text_sequence = tokenizer.texts_to_sequences([text])
-    text_padded = pad_sequences(text_sequence, maxlen=num_words, padding='post', truncating='post')
-
-    predictions = model.predict(text_padded)[0]
+    preprocessed_quote = preprocess_texts([text])
+    tokenized_quote = tokenizerPT.texts_to_sequences(preprocessed_quote)
+    padded_quote = pad_sequences(tokenized_quote, maxlen=num_words, padding='post', truncating='post')
+    predictions = model.predict(padded_quote)[0]
     maxVal = predictions.argmax()
     sentiment["accuracy"] =  float("{:.2f}".format(predictions[maxVal]*100))
     sentiment["emotion"] = LABELS[maxVal]
