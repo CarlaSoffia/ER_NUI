@@ -13,6 +13,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+COPY ./SA/portuguese.pickle /usr/local/lib/nltk_data/tokenizers/punkt/PY3/
 COPY start.sh /
 RUN chmod +x /start.sh
 ENTRYPOINT ["/start.sh"]

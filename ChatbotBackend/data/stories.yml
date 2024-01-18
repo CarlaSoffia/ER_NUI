@@ -1,23 +1,9 @@
 version: '3.1'
 stories:
-- story: Chatbot contact someone
-  steps:
-  - intent: Ask_help
-  - action: utter_ask_who_call
-  - intent: Collect_person_help
-  - action: utter_contacting
-- story: Show the avaliable features when user asks
-  steps:
-  - intent: Features
-  - action: utter_show_features
 - story: Say you're welcome each time user says thanks
   steps:
   - intent: Thanks
   - action: utter_response_thank
-- story: Say I am good each time user asks how are you
-  steps:
-  - intent: How_are_you
-  - action: utter_great
 - story: Say greeting anytime the user says greeting
   steps:
   - intent: Greeting
