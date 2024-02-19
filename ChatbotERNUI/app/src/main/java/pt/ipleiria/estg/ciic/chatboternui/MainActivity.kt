@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.Activity
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.speech.tts.TextToSpeech
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -63,12 +64,13 @@ import pt.ipleiria.estg.ciic.chatboternui.utils.CommonComposables
 import pt.ipleiria.estg.ciic.chatboternui.utils.IBaseActivity
 import pt.ipleiria.estg.ciic.chatboternui.utils.SpeechService
 
+
 private const val STATE_BEGIN = 0
 private const val STATE_READY = 1
 private const val STATE_DONE = 2
 private const val PERMISSIONS_REQUEST_RECORD_AUDIO = 1
 
-class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener {
+class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener , TextToSpeech.OnInitListener{
     private var _messages = mutableStateListOf<Message>()
     private var _messageWritten : MutableState<String> = mutableStateOf("")
     private var _microActive : MutableState<Boolean> = mutableStateOf(true)
@@ -82,19 +84,30 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener {
     private var speechService: SpeechService? = null
     private var _showAlertGeriatricQuestionnaire : MutableState<Boolean> = mutableStateOf(false)
     private var _showAlertOxfordQuestionnaire : MutableState<Boolean> = mutableStateOf(false)
-
+    private var tts: TextToSpeech? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        tts = TextToSpeech(this, this)
         super.instantiateInitialData()
-        if(sharedPreferences.getString("access_token", "").toString() == ""){
-            utils.startDetailActivity(applicationContext,LoginActivity::class.java, this)
-            return
-        }
+         if(sharedPreferences.getString("access_token", "").toString() == ""){
+             utils.startDetailActivity(applicationContext,LoginActivity::class.java, this)
+             return
+         }
         checkPermission()
         getAllMessages()
         handleQuestionnaires()
         super.onCreateBaseActivityWithMenu(this)
    }
+    override fun onInit(status: Int) {
+        if (status == TextToSpeech.SUCCESS) {
+            for (locale in tts!!.availableLanguages) {
+                if(locale.displayCountry.equals("Portugal")) {
+                    tts!!.language = locale
+                    break
+                }
+            }
+        }
+    }
     private fun handleQuestionnaires(){
         middleGeriatricQuestionnaire = sharedPreferences.getBoolean("middleGeriatricQuestionnaire", false)
         middleOxfordHappinessQuestionnaire = sharedPreferences.getBoolean("middleOxfordHappinessQuestionnaire", false)
@@ -227,19 +240,20 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener {
     }
     private fun getAllMessages() {
         _messages = mutableStateListOf()
+
         scope.launch {
-            val response = httpRequests.request("GET", "/messages", token = token)
+            val response = httpRequests.request("GET", "/messages?order=asc", token = token)
             if(handleConnectivityError(response["status_code"].toString(), activity)) return@launch
-            val data = JSONObject(response["data"].toString())
-            val messages = JSONArray(data["list"].toString())
+            val messages = JSONArray(response["data"].toString())
             for (i in 0 until messages.length()) {
                 val message = JSONObject(messages[i].toString())
                 if(message["body"].toString().contains("{")){
                     if(message["body"].toString().contains("points")){
-                        _messages.add(Message(id = message["id"].toString().toLong(),
+                        val message = Message(id = message["id"].toString().toLong(),
                             text = JSONObject(message["body"].toString())["message"] as String?,
                             isChatbot = message["isChatbot"].toString() == "1",
-                            time = utils.convertStringLocalDateTime(message["created_at"].toString())))
+                            time = utils.convertStringLocalDateTime(message["created_at"].toString()))
+                        _messages.add(message)
                     }
                     continue
                 }
@@ -265,8 +279,7 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener {
         scope.launch {
             response = httpRequests.request("POST", "/messages", messageSend.toString(), token = token)
             if(handleConnectivityError(response["status_code"].toString(), activity)) return@launch
-            val data = JSONObject(response["data"].toString())
-            val messages = JSONArray(data["list"].toString())
+            val messages = JSONArray(response["data"].toString())
             for (i in 0 until messages.length()) {
                 val message = JSONObject(messages[i].toString())
                 if(message["body"].toString().contains("{")){
@@ -283,16 +296,16 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener {
                     if(message["body"].toString().contains("points")){
                         val pointsResponse = JSONObject(message["body"].toString())
                         handlePointsQuestionnaire(pointsResponse["points"].toString().toDouble())
-                        _messages.add(Message(id = message["id"].toString().toLong(),
-                            text = pointsResponse["message"] as String?,
-                            isChatbot = message["isChatbot"].toString() == "true",
-                            time = utils.convertStringLocalDateTime(message["created_at"].toString())))
                     }
                 }else if (message["body"].toString() != "start_geriatric_form" && message["body"].toString() != "start_oxford_happiness_form"){
-                    _messages.add(Message(id = message["id"].toString().toLong(),
+                    val output = message["body"] as String?
+                    val isChatbot = message["isChatbot"].toString() == "true"
+                    val id = message["id"].toString()
+                    _messages.add(Message(id = id.toLong(),
                         text = message["body"] as String?,
-                        isChatbot = message["isChatbot"].toString() == "true",
+                        isChatbot = isChatbot,
                         time = utils.convertStringLocalDateTime(message["created_at"].toString())))
+                    if(isChatbot) tts!!.speak(output, TextToSpeech.QUEUE_ADD, null,message["id"].toString())
                 }
             }
         }
@@ -375,13 +388,19 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener {
     }
     @Composable
     fun ChatSection(modifier: Modifier = Modifier) {
+
+
+
+
+
+
         LazyColumn(
             modifier = modifier
                 .fillMaxSize()
                 .padding(16.dp),
                 reverseLayout = true
         ) {
-        items(_messages) { chat ->
+        items(_messages.reversed()) { chat ->
                 MessageItem(
                     messageText = chat.text,
                     time = utils.formatDatePortugueseLocale(chat.time).toString(),

@@ -8,8 +8,9 @@ import okio.IOException
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
+import java.util.Objects
 
-private const val URL_API = "https://c945-2001-8a0-f24c-c400-612f-bea-d7f2-746f.ngrok-free.app/api"
+private const val URL_API = "https://8d5c-2001-8a0-f266-9800-4b95-f207-aacf-49e2.ngrok-free.app/api"
 class HTTPRequests {
     suspend fun requestFormData(apiURL:String, jsonBody:JSONObject, token:String): JSONObject{
         return withContext(Dispatchers.IO) {
@@ -79,20 +80,10 @@ class HTTPRequests {
             try{
                 // Use the OkHttp client to make an asynchronous request
                 val response = okHttpClient.newCall(request).execute()
+                val data = JSONObject(response.body?.string()!!)
                 result.put("status_code", response.code)
-                var data = JSONObject(response.body?.string()!!)
-                try{
-                    data = JSONObject(data.get("data").toString())
-                }catch(ex: JSONException){
-                    try {
-                        data.put("list", JSONArray(data.get("data").toString()))
-                    } catch (ex1: JSONException) {
-                        Log.i("Debug456", "Error: ${ex1.message}")
-                    }
-                }
-                result.put("data", data)
+                result.put("data", data.get("data").toString())
             }catch (ex: Exception) {
-                Log.i("Debug456", "Error: ${ex.message}")
                 result.put("status_code", "ECONNREFUSED")
             }
         }

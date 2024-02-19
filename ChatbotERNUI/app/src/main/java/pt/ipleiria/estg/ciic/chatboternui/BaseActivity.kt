@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
@@ -123,7 +124,6 @@ open class BaseActivity: ComponentActivity() {
             // TODO - handle navigation for good codes
             else -> {
                 showConnectivityError.value = false
-                if(activity != null) utils.startDetailActivity(applicationContext,MainActivity::class.java, activity)
             }
         }
         return showConnectivityError.value
