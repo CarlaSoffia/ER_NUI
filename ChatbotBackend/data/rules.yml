@@ -10,13 +10,6 @@ rules:
   - intent: Goodbye
   - action: utter_goodbye
 
-- rule: Say mood unhappy anytime the user says mood unhappy and ask to cheer up
-  steps:
-  - intent: Mood_unhappy
-  - action: utter_mood_unhappy
-  - action: utter_cheer_up
-  - action: utter_did_that_help
-
 - rule: Say you're welcome each time user says thanks
   steps:
   - intent: Thanks

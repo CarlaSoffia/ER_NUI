@@ -99,34 +99,6 @@ responses:
   - text: Tenha um bom dia.
   - text: Resto de um bom dia.
 
-  utter_mood_great:
-  - text: Ainda bem!
-  - text: Muito bem!
-  - text: Fico feliz.
-  - text: Fico contente.
-
-  utter_mood_unhappy:
-  - text: Lamento...
-  - text: Irei animá-lo!
-  - text: Precisa de ajuda?
-  - text: Quer ligar a alguém?
-  - text: Quer que avise alguém?
-  - text: Há alguma coisa na sua mente que gostaria de falar?
-  - text: Alguma coisa que gostaria de falar?
-  - text: Pode desabafar comigo!
-  - text: Tem sentido alguma dor ou desconforto ultimamente?
-  - text: Sente alguma dor?
-  - text: Sente algum desconforto?
-
-  utter_cheer_up:
-  - text: 'Algo para animar:'
-    image: https://lexnau.com/wp-content/uploads/2023/02/Baby-Foxes-show-up-at-Grandmas-House-and-Decide-to-Make-her-Porch-their-Personal-Playground.jpg
-
-  utter_did_that_help:
-  - text: Consegui ajudar?
-  - text: Como se sente?
-  - text: Está melhor?
-  - text: Sente-se melhor?
 
   utter_response_thank:
   - text: De nada.
