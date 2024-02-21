@@ -10,7 +10,7 @@ import org.json.JSONException
 import org.json.JSONObject
 import java.util.Objects
 
-private const val URL_API = "https://8d5c-2001-8a0-f266-9800-4b95-f207-aacf-49e2.ngrok-free.app/api"
+private const val URL_API = "https://70e9-2001-8a0-f266-9800-4b95-f207-aacf-49e2.ngrok-free.app/api"
 class HTTPRequests {
     suspend fun requestFormData(apiURL:String, jsonBody:JSONObject, token:String): JSONObject{
         return withContext(Dispatchers.IO) {

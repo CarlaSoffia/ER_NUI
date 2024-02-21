@@ -282,30 +282,32 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener , TextTo
             val messages = JSONArray(response["data"].toString())
             for (i in 0 until messages.length()) {
                 val message = JSONObject(messages[i].toString())
-                if(message["body"].toString().contains("{")){
-                    if(message["body"].toString().contains("accuracy")){
-                        val sentiment = JSONObject(message["body"].toString())
-                        // Creates iteration if doesn't exists
-                        handleIteration(sentiment)
-                    }
-                    // Creates response
-                    if(message["body"].toString().contains("is_why")){
-                        val responseQuestion = JSONObject(message["body"].toString())
-                        handleResponseQuestionnaire(responseQuestion["question"].toString().toInt(), transcription, responseQuestion["is_why"].toString().toBoolean())
-                    }
-                    if(message["body"].toString().contains("points")){
-                        val pointsResponse = JSONObject(message["body"].toString())
-                        handlePointsQuestionnaire(pointsResponse["points"].toString().toDouble())
-                    }
-                }else if (message["body"].toString() != "start_geriatric_form" && message["body"].toString() != "start_oxford_happiness_form"){
-                    val output = message["body"] as String?
-                    val isChatbot = message["isChatbot"].toString() == "true"
-                    val id = message["id"].toString()
+                val body = message["body"].toString()
+                if(body == "start_geriatric_form" || body == "start_oxford_happiness_form"){
+                    continue;
+                }
+                val isChatbot = message["isChatbot"].toString() == "true"
+                val id = message["id"].toString()
+
+                if(body.contains("accuracy")){
+                    val sentiment = JSONObject(body)
+                    // Creates iteration if doesn't exists
+                    handleIteration(sentiment)
+                }
+                else if(body.contains("is_why")){
+                    val responseQuestion = JSONObject(body)
+                    handleResponseQuestionnaire(responseQuestion["question"].toString().toInt(), transcription, responseQuestion["is_why"].toString().toBoolean())
+                }
+                else if(body.contains("points")){
+                    val pointsResponse = JSONObject(body)
+                    handlePointsQuestionnaire(pointsResponse["points"].toString().toDouble())
+                }
+                else{
                     _messages.add(Message(id = id.toLong(),
-                        text = message["body"] as String?,
+                        text = body,
                         isChatbot = isChatbot,
                         time = utils.convertStringLocalDateTime(message["created_at"].toString())))
-                    if(isChatbot) tts!!.speak(output, TextToSpeech.QUEUE_ADD, null,message["id"].toString())
+                    if(isChatbot) tts!!.speak(body, TextToSpeech.QUEUE_ADD, null, id)
                 }
             }
         }
