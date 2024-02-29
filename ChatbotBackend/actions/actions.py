@@ -36,7 +36,7 @@ GERIATRIC_QUEST = 'GeriatricQuestionnaire'
 GERIATRIC_QUEST_ID = 14
 OXFORD_QUEST = 'OxfordHappinessQuestionnaire'
 OXFORD_QUEST_ID = 28
-
+NO_ERM = {"ERM": "false"}
 ######################################################### QUESTIONS #########################################################
 def request(endpoint):    
     response = requests.request("GET", "http://laravel.test/api/questionnaires/"+endpoint, headers={}, data={})
@@ -120,18 +120,19 @@ def canPerformSAAnalysis(tracker: Tracker):
         return False
     
     # If the user sent the questionnaires short/predefined answers, then the input is not analyzed with the SA model
-    last_bot_event = next(e for e in reversed(tracker.events) if e["event"] == "bot")
+    events = reversed(tracker.events)
+    last_bot_event = next(e for e in events if e["event"] == "bot")
     if "utter_action" in last_bot_event["metadata"] and last_bot_event["metadata"]["utter_action"] == "utter_ask_why":
         return False
     
     # If the user is in loop in the same question (because the short answer is wrong), then the input is not analyzed with the SA model
     prev_last_bot_event_text = None
-    for e in reversed(tracker.events):
+    for e in events:
         if prev_last_bot_event_text != None and "text" in e and prev_last_bot_event_text == e["text"]:
             return False
         if prev_last_bot_event_text == None and e["event"] == "bot" and "text" in e:
-            prev_last_bot_event_text = e["text"] 
-    return True  
+            prev_last_bot_event_text = e["text"]
+    return True
 
 def handleQuestion(tracker: Tracker, counter_slot, questionnaire, idxMax):
     responses_questionnaire_counter = int(tracker.get_slot(counter_slot))
@@ -210,7 +211,6 @@ class CustomActionListen(Action):
     def run(self, dispatcher: CollectingDispatcher,
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
-        
         if canPerformSAAnalysis(tracker) == False:
             return [ActionExecuted("action_listen")]
 
@@ -246,7 +246,7 @@ class ActionAskWhyQuestionGeriatricQuestionnaire(Action):
     def run(self, dispatcher: CollectingDispatcher,
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[EventType]:
-         dispatcher.utter_message(response="utter_ask_why")
+         dispatcher.utter_message(response="utter_ask_why", json_message=NO_ERM)
          return []
 
 # Action: Dynamically show questions 
@@ -259,7 +259,7 @@ class ActionAskResponseQuestionGeriatricQuestionnaire(Action):
         idx = handleQuestion(tracker, "responses_geriatric_questionnaire_counter", GERIATRIC_QUEST, GERIATRIC_QUEST_ID)
         if idx == []:
             return []
-        dispatcher.utter_message(get_question_by_number(questionsGeriatricQuestionnaire,idx+1))
+        dispatcher.utter_message(get_question_by_number(questionsGeriatricQuestionnaire,idx+1), json_message=NO_ERM)
 
 # Action: Collects the user's response to a questionnaire's question
 class ValidateQuestionForm(FormValidationAction):
@@ -316,7 +316,7 @@ class ActionAskWhyQuestionOxfordQuestionnaire(Action):
     def run(self, dispatcher: CollectingDispatcher,
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[EventType]:
-         dispatcher.utter_message(response="utter_ask_why")
+         dispatcher.utter_message(response="utter_ask_why", json_message=NO_ERM)
          return []
 
 # Action: Dynamically show questions 
@@ -329,7 +329,7 @@ class ActionAskResponseQuestionOxfordQuestionnaire(Action):
         idx = handleQuestion(tracker, "responses_oxford_happiness_questionnaire_counter", OXFORD_QUEST, OXFORD_QUEST_ID)
         if idx == []:
             return []
-        dispatcher.utter_message(get_question_by_number(questionsOxfordHappinessQuestionnaire,idx+1))
+        dispatcher.utter_message(get_question_by_number(questionsOxfordHappinessQuestionnaire,idx+1), json_message=NO_ERM)
       
 
 # Action: Collects the user's response to a questionnaire's question
