@@ -38,7 +38,7 @@ OXFORD_QUEST = 'OxfordHappinessQuestionnaire'
 OXFORD_QUEST_ID = 28
 NO_ERM = {"ERM": "false"}
 ######################################################### QUESTIONS #########################################################
-def request(endpoint)
+def request(endpoint): 
     response = requests.request("GET", "http://laravel.test/api/questionnaires/"+endpoint, headers={}, data={})
     data = json.loads(response.text)['data']
     mappings = data['results_mappings']
