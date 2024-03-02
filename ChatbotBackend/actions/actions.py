@@ -38,7 +38,7 @@ OXFORD_QUEST = 'OxfordHappinessQuestionnaire'
 OXFORD_QUEST_ID = 28
 NO_ERM = {"ERM": "false"}
 ######################################################### QUESTIONS #########################################################
-def request(endpoint):    
+def request(endpoint)
     response = requests.request("GET", "http://laravel.test/api/questionnaires/"+endpoint, headers={}, data={})
     data = json.loads(response.text)['data']
     mappings = data['results_mappings']
@@ -90,20 +90,21 @@ def preprocess_texts(text_list):
     return preprocessed_texts
 
 def predictSentiment(text):
-    sentiment={}
     preprocessed_quote = preprocess_texts([text])
     tokenized_quote = tokenizerPT.texts_to_sequences(preprocessed_quote)
     padded_quote = pad_sequences(tokenized_quote, maxlen=num_words, padding='post', truncating='post')
     predictions = model.predict(padded_quote)[0]
     maxVal = predictions.argmax()
-    sentiment["accuracy"] =  float("{:.2f}".format(predictions[maxVal]*100))
-    sentiment["emotion"] = LABELS[maxVal]
-    sentiment["predictions"] = ""
+    sentiment = {
+        "accuracy"      :   float("{:.2f}".format(predictions[maxVal]*100)),
+        "emotion"       :   LABELS[maxVal],
+        "predictions"   :   ""
+    }
     for idx,pred in enumerate(predictions):
         emotion = LABELS[idx]
         sentiment["predictions"] += emotion + "#" + "{:.2f}".format(pred*100) +";"
     sentiment["predictions"] = sentiment["predictions"][:-1]    
-    return json.dumps(sentiment)
+    return sentiment
 
 ######################################################### FUNCTIONS #########################################################
 def questionToAskGeriatric(counter):
@@ -166,7 +167,7 @@ def createQuestionnaireResponse(responses_questionnaire_counter, slot_value, que
                     "is_why": False
                 }
     responses_questionnaire_counter = responses_questionnaire_counter + 1
-    return json.dumps(newResponse), question
+    return newResponse, question
 
 def createQuestionnaireResponseWhy(responses_questionnaire_counter, slot_value, questionnaire):
     if questionnaire == GERIATRIC_QUEST:
@@ -178,7 +179,7 @@ def createQuestionnaireResponseWhy(responses_questionnaire_counter, slot_value, 
                     "response":slot_value,
                     "is_why": True
                 }
-    return json.dumps(newResponse)
+    return newResponse
 
 def createPointsMessage(points, questionnaire):
     message = None
@@ -190,7 +191,7 @@ def createPointsMessage(points, questionnaire):
         "points" : points, 
         "message": message
     }
-    return json.dumps(finalPoints)
+    return finalPoints
 
 ########################################################### ACTIONS ###########################################################
 
@@ -217,8 +218,7 @@ class CustomActionListen(Action):
         text = (tracker.latest_message)['text']
         if text == None:
             return [ActionExecuted("action_listen")]
-        sentiment = predictSentiment(text)
-        dispatcher.utter_message(sentiment)
+        dispatcher.utter_message(json_message=predictSentiment(text))
 
         return [ActionExecuted("action_listen")]   
    
@@ -279,7 +279,7 @@ class ValidateQuestionForm(FormValidationAction):
         if newResponse == None:
             return {"response_question_geriatric_questionnaire": None}
         else:
-            dispatcher.utter_message(newResponse)
+            dispatcher.utter_message(json_message=newResponse)
         responses_geriatric_questionnaire_counter = responses_geriatric_questionnaire_counter + 1
         if (slot_value == "Não" and question in questionsPointsNo) or (slot_value == "Sim" and question not in questionsPointsNo):
             return {"response_question_geriatric_questionnaire": slot_value,"responses_geriatric_questionnaire_counter": responses_geriatric_questionnaire_counter, "geriatric_questionnaire_points":tracker.get_slot("geriatric_questionnaire_points")+1.0, "why_question_geriatric_questionnaire": None}
@@ -295,7 +295,7 @@ class ValidateQuestionForm(FormValidationAction):
     ) -> Dict[Text, Any]:
         responses_geriatric_questionnaire_counter = int(tracker.get_slot("responses_geriatric_questionnaire_counter"))
         newResponse = createQuestionnaireResponseWhy(responses_geriatric_questionnaire_counter, slot_value, GERIATRIC_QUEST)
-        dispatcher.utter_message(newResponse)
+        dispatcher.utter_message(json_message=newResponse)
         responses_geriatric_questionnaire_counter = responses_geriatric_questionnaire_counter + 1
         questionsTotal = GERIATRIC_QUEST_ID+1
         counterTotal = questionsTotal + questionsTotal
@@ -303,7 +303,7 @@ class ValidateQuestionForm(FormValidationAction):
         if responses_geriatric_questionnaire_counter == counterTotal:
             points = tracker.get_slot("geriatric_questionnaire_points")
             message = createPointsMessage(points, GERIATRIC_QUEST)
-            dispatcher.utter_message(message)
+            dispatcher.utter_message(json_message=message)
             return {"why_question_geriatric_questionnaire": slot_value, "responses_geriatric_questionnaire_counter": responses_geriatric_questionnaire_counter, "response_question_geriatric_questionnaire": ""}
         return {"why_question_geriatric_questionnaire": slot_value, "responses_geriatric_questionnaire_counter": responses_geriatric_questionnaire_counter, "response_question_geriatric_questionnaire": None}
 
@@ -350,7 +350,7 @@ class ValidateOxfordHappinessQuestionnaire(FormValidationAction):
         if newResponse == None:
             return {"response_question_oxford_happiness_questionnaire": None}
         else:
-            dispatcher.utter_message(newResponse)
+            dispatcher.utter_message(json_message=newResponse)
     
         questionsReversed = [1, 5, 6, 10, 13, 14, 19, 23, 24, 27, 28, 29]
         replacement = [6, 5, 4, 3, 2, 1]
@@ -372,14 +372,14 @@ class ValidateOxfordHappinessQuestionnaire(FormValidationAction):
     ) -> Dict[Text, Any]:
         responses_oxford_happiness_questionnaire_counter = int(tracker.get_slot("responses_oxford_happiness_questionnaire_counter"))
         newResponse = createQuestionnaireResponseWhy(responses_oxford_happiness_questionnaire_counter, slot_value, OXFORD_QUEST)
-        dispatcher.utter_message(newResponse)        
+        dispatcher.utter_message(json_message=newResponse)        
         responses_oxford_happiness_questionnaire_counter = responses_oxford_happiness_questionnaire_counter + 1
         questionsTotal = OXFORD_QUEST_ID+1
         counterTotal = questionsTotal + questionsTotal
         if responses_oxford_happiness_questionnaire_counter == counterTotal:
             points = tracker.get_slot("oxford_happiness_questionnaire_points") / questionsTotal
             message = createPointsMessage(points, OXFORD_QUEST)
-            dispatcher.utter_message(message)
+            dispatcher.utter_message(json_message=message)
             return {"oxford_happiness_questionnaire_points": points, "why_question_oxford_happiness_questionnaire": slot_value, "responses_oxford_happiness_questionnaire_counter": responses_oxford_happiness_questionnaire_counter, "response_question_oxford_happiness_questionnaire": ""}
         return {"why_question_oxford_happiness_questionnaire": slot_value, "responses_oxford_happiness_questionnaire_counter": responses_oxford_happiness_questionnaire_counter, "response_question_oxford_happiness_questionnaire": None}
 
