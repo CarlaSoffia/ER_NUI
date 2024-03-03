@@ -162,6 +162,7 @@ def createQuestionnaireResponse(responses_questionnaire_counter, slot_value, que
         if questionnaire == OXFORD_QUEST: 
             question = questionToAskOxford(responses_questionnaire_counter)
     newResponse = {
+                    "questionnaire": questionnaire,
                     "question": question,
                     "response": slot_value,
                     "is_why": False
@@ -175,6 +176,7 @@ def createQuestionnaireResponseWhy(responses_questionnaire_counter, slot_value, 
     if questionnaire == OXFORD_QUEST: 
         question = questionToAskOxford(responses_questionnaire_counter-1)
     newResponse = {
+                    "questionnaire": questionnaire,
                     "question": question,
                     "response":slot_value,
                     "is_why": True
@@ -188,10 +190,10 @@ def createPointsMessage(points, questionnaire):
     if questionnaire == OXFORD_QUEST: 
         message = get_message_by_mapping(mappingsOxfordHappinessQuestionnaire, points)
     finalPoints = {
-        "points" : points, 
-        "message": message
+        "questionnaire": questionnaire,
+        "points" : points
     }
-    return finalPoints
+    return finalPoints, message
 
 ########################################################### ACTIONS ###########################################################
 
@@ -302,8 +304,8 @@ class ValidateQuestionForm(FormValidationAction):
         # add this to db and fetch
         if responses_geriatric_questionnaire_counter == counterTotal:
             points = tracker.get_slot("geriatric_questionnaire_points")
-            message = createPointsMessage(points, GERIATRIC_QUEST)
-            dispatcher.utter_message(json_message=message)
+            json_points, message = createPointsMessage(points, GERIATRIC_QUEST)
+            dispatcher.utter_message(message, json_message=json_points)
             return {"why_question_geriatric_questionnaire": slot_value, "responses_geriatric_questionnaire_counter": responses_geriatric_questionnaire_counter, "response_question_geriatric_questionnaire": ""}
         return {"why_question_geriatric_questionnaire": slot_value, "responses_geriatric_questionnaire_counter": responses_geriatric_questionnaire_counter, "response_question_geriatric_questionnaire": None}
 
@@ -378,8 +380,8 @@ class ValidateOxfordHappinessQuestionnaire(FormValidationAction):
         counterTotal = questionsTotal + questionsTotal
         if responses_oxford_happiness_questionnaire_counter == counterTotal:
             points = tracker.get_slot("oxford_happiness_questionnaire_points") / questionsTotal
-            message = createPointsMessage(points, OXFORD_QUEST)
-            dispatcher.utter_message(json_message=message)
+            json_points, message = createPointsMessage(points, OXFORD_QUEST)
+            dispatcher.utter_message(message, json_message=json_points)
             return {"oxford_happiness_questionnaire_points": points, "why_question_oxford_happiness_questionnaire": slot_value, "responses_oxford_happiness_questionnaire_counter": responses_oxford_happiness_questionnaire_counter, "response_question_oxford_happiness_questionnaire": ""}
         return {"why_question_oxford_happiness_questionnaire": slot_value, "responses_oxford_happiness_questionnaire_counter": responses_oxford_happiness_questionnaire_counter, "response_question_oxford_happiness_questionnaire": None}
 
