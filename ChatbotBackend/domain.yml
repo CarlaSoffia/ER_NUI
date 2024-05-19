@@ -83,32 +83,9 @@ forms:
       - why_question_oxford_happiness_questionnaire   
 
 intents:
-- Greeting
-- Goodbye
-- Thanks
-- How_are_you
 - Start_Geriatric_Questionnaire
 - Start_Oxford_Happiness_Questionnaire
 responses:
-
-  utter_goodbye:
-  - text: Vemo-nos por aí.
-  - text: Adeus.
-  - text: Até logo.
-  - text: Até mais logo.
-  - text: Tenha um bom dia.
-  - text: Resto de um bom dia.
-
-
-  utter_response_thank:
-  - text: De nada.
-  - text: Não tem de quê.
-  - text: Não tens de quê.
-  - text: Sempre às ordens.
-  - text: Sempre às suas ordens.
-  - text: Foi um prazer.
-  - text: Foi um prazer ajudar.
-  - text: Ainda bem que consegui ser útil.
 
   utter_begin_questionnaire_yes_no:
   - text: Por favor, responda às próximas perguntas com Sim ou Não.
@@ -136,9 +113,6 @@ session_config:
 
 actions:
 - action_listen
-- CustomActionListen
-- action_retrieve_entities
-- action_respond_greeting
 - validate_geriatric_questionnaire_form
 - action_ask_geriatric_questionnaire_form_why_question_geriatric_questionnaire
 - action_ask_geriatric_questionnaire_form_response_question_geriatric_questionnaire

@@ -7,19 +7,25 @@ from typing import Any, Text, Dict, List
 import os
 import json
 import glob
+import deepl
 import pickle
 import requests
 from tensorflow import keras
 from dotenv import load_dotenv
 from rasa_sdk import Action, Tracker
+from rasa_sdk.events import UserUtteranceReverted
 from rasa_sdk.executor import CollectingDispatcher
 from rasa_sdk import Tracker, FormValidationAction
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from rasa_sdk.events import SlotSet, ActionExecuted, EventType
 from nltk.tokenize import word_tokenize
 from nltk.stem.snowball import SnowballStemmer
+from transformers import AutoTokenizer, AutoModelForCausalLM
+
 # Load initial data
 load_dotenv()
+DEEPL_KEY = os.getenv("DEEPL_KEY")
+API_URL = os.getenv("API_URL")
 models_dir = glob.glob(os.path.join('./SA/', '*.h5'))
 models_dir = sorted(models_dir)
 MODEL_NAME = models_dir[0]
@@ -39,7 +45,7 @@ OXFORD_QUEST_ID = 28
 NO_ERM = {"ERM": "false"}
 ######################################################### QUESTIONS #########################################################
 def request(endpoint): 
-    response = requests.request("GET", "http://laravel.test/api/questionnaires/"+endpoint, headers={}, data={})
+    response = requests.request("GET", API_URL+"/api/questionnaires/"+endpoint, headers={}, data={})
     data = json.loads(response.text)['data']
     mappings = data['results_mappings']
     questions = data['questions']
@@ -66,6 +72,51 @@ def get_message_by_mapping(mappings, points):
         
 questionsGeriatricQuestionnaire, mappingsGeriatricQuestionnaire = request(GERIATRIC_QUEST)
 questionsOxfordHappinessQuestionnaire, mappingsOxfordHappinessQuestionnaire = request(OXFORD_QUEST)
+
+##################################################### DEEPL TRANSLATOR #####################################################
+
+def loadDeepLTranslator():
+    return deepl.Translator(DEEPL_KEY)
+
+translator = loadDeepLTranslator()
+
+def translateTextDeepL(text):
+    result = translator.translate_text(text, target_lang="PT-PT")
+    return result.text
+
+######################################################### LLM MODEL #########################################################
+# Load tokenizer and model
+def loadLLMModel():
+    tokenizer = AutoTokenizer.from_pretrained('microsoft/DialoGPT-small', padding_side='left')
+    model = AutoModelForCausalLM.from_pretrained('./LLM')
+    return model, tokenizer
+
+llmModel, llmTokenizer = loadLLMModel()
+
+# Function to generate response
+def generateLLMResponse(user_input, translate = True):
+    if translate:
+        user_input = translateTextDeepL(user_input)
+    # Encode user input
+    bot_input_ids = llmTokenizer.encode(user_input + llmTokenizer.eos_token, return_tensors='pt')
+
+    # Generate response
+    chat_history_ids = llmModel.generate(
+        bot_input_ids, max_length=500,
+        pad_token_id=llmTokenizer.eos_token_id,
+        no_repeat_ngram_size=3,
+        do_sample=True,
+        top_k=10,
+        top_p=0.7,
+        temperature=0.8
+    )
+
+    # Decode and return response
+    response = llmTokenizer.decode(chat_history_ids[:, bot_input_ids.shape[-1]:][0], skip_special_tokens=True)
+    if translate:
+            response = translateTextDeepL(response)
+    return response
+
 ######################################################### SA MODEL #########################################################
 def loadModel():
     model = keras.models.load_model(MODEL_NAME)    
@@ -114,26 +165,27 @@ def questionToAskGeriatric(counter):
 def questionToAskOxford(counter):
     if counter % 2 == 0 and counter >= 0 and counter <= 56:
         return (counter // 2) + 1
-
-def canPerformSAAnalysis(tracker: Tracker):
+    
+def userInMiddleOfQuestionnaires(tracker: Tracker):
     # If the user sent the codes to start the questionnaires, then the input is not analyzed with the SA model  
+    print(tracker.latest_message['intent']['name'])
     if tracker.latest_message['intent']['name'] == "Start_Oxford_Happiness_Questionnaire" or tracker.latest_message['intent']['name'] == "Start_Geriatric_Questionnaire":
-        return False
+        return True
     
     # If the user sent the questionnaires short/predefined answers, then the input is not analyzed with the SA model
     events = reversed(tracker.events)
-    last_bot_event = next(e for e in events if e["event"] == "bot")
-    if "utter_action" in last_bot_event["metadata"] and last_bot_event["metadata"]["utter_action"] == "utter_ask_why":
-        return False
+    last_bot_event = next((e for e in events if e["event"] == "bot"), None)
+    if last_bot_event == None or "utter_action" in last_bot_event["metadata"] and last_bot_event["metadata"]["utter_action"] == "utter_ask_why":
+        return True
     
     # If the user is in loop in the same question (because the short answer is wrong), then the input is not analyzed with the SA model
     prev_last_bot_event_text = None
     for e in events:
         if prev_last_bot_event_text != None and "text" in e and prev_last_bot_event_text == e["text"]:
-            return False
+            return True
         if prev_last_bot_event_text == None and e["event"] == "bot" and "text" in e:
             prev_last_bot_event_text = e["text"]
-    return True
+    return False
 
 def handleQuestion(tracker: Tracker, counter_slot, questionnaire, idxMax):
     responses_questionnaire_counter = int(tracker.get_slot(counter_slot))
@@ -197,15 +249,6 @@ def createPointsMessage(points, questionnaire):
 
 ########################################################### ACTIONS ###########################################################
 
-# Action: Responds to the user greeting
-class RespondGreeting(Action):
-    def name(self) -> Text:
-        return "action_respond_greeting"
-    def run(self, dispatcher: CollectingDispatcher,
-            tracker: Tracker,
-            domain: Dict[Text, Any]) -> Dict[Text, Any]:
-        dispatcher.utter_message((tracker.latest_message)['text'])
-
 # Action: apply sentiment analysis model to every user input
 class CustomActionListen(Action):
     def name(self) -> Text:
@@ -214,17 +257,18 @@ class CustomActionListen(Action):
     def run(self, dispatcher: CollectingDispatcher,
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
-        if canPerformSAAnalysis(tracker) == False:
+        userInQuestionnaire = userInMiddleOfQuestionnaires(tracker)
+        print(userInQuestionnaire)
+        if userInQuestionnaire == True:
             return [ActionExecuted("action_listen")]
-
         text = (tracker.latest_message)['text']
         if text == None:
             return [ActionExecuted("action_listen")]
         dispatcher.utter_message(json_message=predictSentiment(text))
-
-        return [ActionExecuted("action_listen")]   
-   
-
+        dispatcher.utter_message(generateLLMResponse(text, False))
+        print("message sent")
+        return [ActionExecuted("action_listen")]
+    
 ### Geriatric Depression Questionnaire ------------------------------------------------------------
 
 # Action: Submit the Geriatric Depression Questionnaire 
