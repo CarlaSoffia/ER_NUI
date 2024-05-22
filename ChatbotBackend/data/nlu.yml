@@ -1,10 +1,145 @@
 version: '3.1'
 nlu:
+- intent: Out_of_scope
+  examples: '- adeus
+
+  - alegria
+
+  - amigos
+
+  - amizade
+
+  - animais
+
+  - arte
+
+  - bem
+
+  - bem-estar
+
+  - biologia
+
+  - boa tarde
+
+  - bom dia
+
+  - boa noite
+
+  - casal
+
+  - cérebro
+
+  - ciência
+
+  - cirurgia
+
+  - comer
+
+  - comércio
+
+  - comida
+
+  - conhecimento
+
+  - conversa
+
+  - conversas
+
+  - cozinhar
+
+  - criatividade
+
+  - namoro
+
+  - dinheiro
+
+  - diversão
+
+  - educação
+
+  - empatia
+
+  - emoção
+
+  - engraçado
+
+  - estilo
+
+  - ética
+
+  - exames
+
+  - fé
+
+  - felicidade
+
+  - filosofia
+
+  - filme
+
+  - filmes
+
+  - história
+
+  - jogos
+
+  - leitura
+
+  - media
+
+  - música
+
+  - namorado
+
+  - namorada
+
+  - nome
+
+  - obrigada
+
+  - obrigado
+
+  - personalidade
+
+  - política
+
+  - psicologia
+
+  - racionalidade
+
+  - relação
+
+  - relações
+
+  - romance
+
+  - saúde
+
+  - sentido
+
+  - simpático
+
+  - social
+
+  - viagem
+
+  - viajar
+
+  - vida
+
+  - qualquer coisa
+
+  '
 - intent: Start_Geriatric_Questionnaire
   examples: '- start_geriatric_questionnaire
 
   - start_geriatric_form
   
+  - geriatric_form
+
+  - Start_geriatric_questionnaire
+  
+  - geriatric_questionnaire
   '
 
 - intent: Start_Oxford_Happiness_Questionnaire
@@ -12,4 +147,9 @@ nlu:
 
   - start_oxford_happiness_form
   
+  - oxford_happiness_form
+
+  - Start_oxford_happiness_questionnaire
+  
+  - oxford_happiness_questionnaire
   '
