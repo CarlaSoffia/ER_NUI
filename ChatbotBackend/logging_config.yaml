@@ -1,0 +1,49 @@
+version: 1
+disable_existing_loggers: false
+
+formatters:
+  simple:
+    format: '%(asctime)s - %(message)s'
+    datefmt: '%Y-%m-%d %H:%M:%S'
+  detailed:
+    format: '%(asctime)s - %(message)s'
+    datefmt: '%Y-%m-%d %H:%M:%S'
+
+handlers:
+  rasa_log_file:
+    class: logging.FileHandler
+    level: INFO
+    formatter: detailed
+    filename: ./logs/rasa.log
+    encoding: utf8
+
+loggers:
+  # good because it indicates when rasa model is loading 
+  rasa.core.processor:
+    level: INFO
+    handlers: [rasa_log_file]
+    propagate: false
+
+  # to prevent rasa_sdk.executor being written into the actions.log
+  rasa_sdk.executor:
+    level: WARNING
+    handlers: []
+    propagate: false
+
+  # to prevent rasa_sdk.executor being written into the actions.log
+  rasa_sdk.plugin:
+    level: WARNING
+    handlers: []
+    propagate: false
+
+  # good because it indicates when rasa actions endpoint is ready  
+  rasa_sdk.endpoint:
+    level: INFO
+    handlers: [rasa_log_file]
+    propagate: false
+
+# my custom logs for actions server + rasa server initiation
+root:
+  level: INFO
+  handlers: [rasa_log_file]
+  propagate: false
