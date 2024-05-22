@@ -168,23 +168,10 @@ def questionToAskOxford(counter):
     
 def userInMiddleOfQuestionnaires(tracker: Tracker):
     # If the user sent the codes to start the questionnaires, then the input is not analyzed with the SA model  
-    print(tracker.latest_message['intent']['name'])
-    if tracker.latest_message['intent']['name'] == "Start_Oxford_Happiness_Questionnaire" or tracker.latest_message['intent']['name'] == "Start_Geriatric_Questionnaire":
+    if 'metadata' not in tracker.latest_message:
+        return False
+    if 'questionnaire' in tracker.latest_message['metadata']:
         return True
-    
-    # If the user sent the questionnaires short/predefined answers, then the input is not analyzed with the SA model
-    events = reversed(tracker.events)
-    last_bot_event = next((e for e in events if e["event"] == "bot"), None)
-    if last_bot_event == None or "utter_action" in last_bot_event["metadata"] and last_bot_event["metadata"]["utter_action"] == "utter_ask_why":
-        return True
-    
-    # If the user is in loop in the same question (because the short answer is wrong), then the input is not analyzed with the SA model
-    prev_last_bot_event_text = None
-    for e in events:
-        if prev_last_bot_event_text != None and "text" in e and prev_last_bot_event_text == e["text"]:
-            return True
-        if prev_last_bot_event_text == None and e["event"] == "bot" and "text" in e:
-            prev_last_bot_event_text = e["text"]
     return False
 
 def handleQuestion(tracker: Tracker, counter_slot, questionnaire, idxMax):
@@ -249,7 +236,6 @@ def createPointsMessage(points, questionnaire):
 
 ########################################################### ACTIONS ###########################################################
 
-# Action: apply sentiment analysis model to every user input
 class CustomActionListen(Action):
     def name(self) -> Text:
         return "action_listen"
@@ -258,7 +244,6 @@ class CustomActionListen(Action):
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
         userInQuestionnaire = userInMiddleOfQuestionnaires(tracker)
-        print(userInQuestionnaire)
         if userInQuestionnaire == True:
             return [ActionExecuted("action_listen")]
         text = (tracker.latest_message)['text']
@@ -266,7 +251,6 @@ class CustomActionListen(Action):
             return [ActionExecuted("action_listen")]
         dispatcher.utter_message(json_message=predictSentiment(text))
         dispatcher.utter_message(generateLLMResponse(text, False))
-        print("message sent")
         return [ActionExecuted("action_listen")]
     
 ### Geriatric Depression Questionnaire ------------------------------------------------------------
