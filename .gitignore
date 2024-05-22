@@ -18,11 +18,14 @@ ChatbotERNUI/app/src/main/ml
 ChatbotBackend/.rasa
 ChatbotBackend/models
 ChatbotBackend/LLM
+ChatbotBackend/.env
 SentimentAnalysis/graphics
 SentimentAnalysis/models
 SentimentAnalysis/architectures
 SentimentAnalysis/lightning_logs
-
+SentimentAnalysis/glove.6B.50d.txt
+SentimentAnalysis/Kaggle/glove.6B.50d.txt
+SentimentAnalysis/KaggleTrainningResults/kaggle.json
 
 # Report
 *.abs
@@ -34,6 +37,3 @@ SentimentAnalysis/lightning_logs
 *.ist
 *.log
 *.synctex.gz
-SentimentAnalysis/glove.6B.50d.txt
-SentimentAnalysis/Kaggle/glove.6B.50d.txt
-SentimentAnalysis/KaggleTrainningResults/kaggle.json
