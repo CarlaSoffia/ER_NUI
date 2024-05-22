@@ -25,9 +25,13 @@ import logging
 
 # Env data load
 load_dotenv()
-DEEPL_KEY = os.getenv("DEEPL_KEY", None)
-DEEP_ACTIVE = os.getenv("DEEP_ACTIVE", False)   
+DEEPL_KEY = os.getenv("DEEPL_KEY", None)  
 API_URL = os.getenv("API_URL", "http://localhost/api")
+DEEPL_ACTIVE = os.getenv("DEEPL_ACTIVE")
+if DEEPL_ACTIVE == "True":
+    DEEPL_ACTIVE = True
+else:
+    DEEPL_ACTIVE = False  
 
 # SA Model configs
 models_dir = glob.glob(os.path.join('./SA/', '*.h5'))
@@ -50,7 +54,7 @@ NO_ERM = {"ERM": "false"}
 
 
 logging.info('##################################################################################################################')
-logging.info(f'[DeepL] - Active: {DEEP_ACTIVE}')
+logging.info(f'[DeepL] - Active: {DEEPL_ACTIVE}')
 logging.info(f'[Laravel API] - Url: {API_URL}')
 logging.info(f'[SA] - Model name: {MODEL_NAME}')
 logging.info('##################################################################################################################')
@@ -118,9 +122,9 @@ def loadLLMModel():
 llmModel, llmTokenizer = loadLLMModel()
 
 # Function to generate response
-def generateLLMResponse(msg_id, username, text, translate):
+def generateLLMResponse(msg_id, username, text):
     try:
-        if translate == True:
+        if DEEPL_ACTIVE == True:
             text = translateTextDeepL(text)
         # Encode user input
         bot_input_ids = llmTokenizer.encode(text + llmTokenizer.eos_token, return_tensors='pt')
@@ -138,7 +142,7 @@ def generateLLMResponse(msg_id, username, text, translate):
 
         # Decode and return response
         response = llmTokenizer.decode(chat_history_ids[:, bot_input_ids.shape[-1]:][0], skip_special_tokens=True)
-        if translate == True:
+        if DEEPL_ACTIVE == True:
                 response = translateTextDeepL(response)
     except Exception as e:
         logging.info(f'[LLM-{msg_id}] - Error processing {username}\'s message: {e}')
@@ -210,11 +214,13 @@ def questionToAskOxford(counter):
     if counter % 2 == 0 and counter >= 0 and counter <= 56:
         return (counter // 2) + 1
     
-def userInMiddleOfQuestionnaires(latest_message):
-    # If the user sent the codes to start the questionnaires, then the input is not analyzed with the SA model  
-    if 'metadata' not in latest_message:
-        return False
-    if 'questionnaire' in latest_message['metadata']:
+def userInMiddleOfQuestionnaires(tracker: Tracker):
+    # If the user sent the codes to start the questionnaires then its in the middle of them 
+    if tracker.latest_message['intent']['name'] == "Start_Oxford_Happiness_Questionnaire" or tracker.latest_message['intent']['name'] == "Start_Geriatric_Questionnaire":
+        return True
+
+    active_loop = tracker.active_loop.get("name")
+    if active_loop == "geriatric_questionnaire_form" or active_loop == "oxford_happiness_questionnaire":
         return True
     return False
 
@@ -292,13 +298,13 @@ class CustomActionListen(Action):
         message_id = (tracker.latest_message)['message_id']
         intent = (tracker.latest_message)['intent']['name']
         confidence = (tracker.latest_message)['intent']['confidence']
-        userInQuestionnaire = userInMiddleOfQuestionnaires(tracker.latest_message)
-        if userInQuestionnaire == True or text == None: 
-            logging.info(f'[MSG-QUESTIONNAIRE-{message_id}] - username /{username} / message: "{text}" / intent: {intent} / confidence: {confidence}')
+        userInQuestionnaire = userInMiddleOfQuestionnaires(tracker)
+        if userInQuestionnaire == True: 
+            logging.info(f'[MSG-QUESTIONNAIRE-{message_id}] - username {username} / message: "{text}" / intent: {intent} / confidence: {confidence}')
             return [ActionExecuted("action_listen")]
-        logging.info(f'[MSG-{message_id}] - username /{username} / message: "{text}" / intent: {intent} / confidence: {confidence}')
+        logging.info(f'[MSG-{message_id}] - username {username} / message: "{text}" / intent: {intent} / confidence: {confidence}')
         dispatcher.utter_message(json_message=predictSentiment(message_id, username, text))
-        dispatcher.utter_message(generateLLMResponse(message_id, username, text, DEEP_ACTIVE))
+        dispatcher.utter_message(generateLLMResponse(message_id, username, text))
         return [ActionExecuted("action_listen")]
     
 ### Geriatric Depression Questionnaire ------------------------------------------------------------
@@ -325,7 +331,8 @@ class ActionAskWhyQuestionGeriatricQuestionnaire(Action):
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[EventType]:
          username = tracker.sender_id
-         logging.info(f'[{GERIATRIC_QUEST}] - username /{username} / question: "utter_ask_why"')
+         message_id = (tracker.latest_message)['message_id']
+         logging.info(f'[{GERIATRIC_QUEST}-{message_id}] - username {username} / question: "utter_ask_why"')
          dispatcher.utter_message(response="utter_ask_why", json_message=NO_ERM)
          return []
 
@@ -340,8 +347,9 @@ class ActionAskResponseQuestionGeriatricQuestionnaire(Action):
         if idx == []:
             return []
         username = tracker.sender_id
-        question = get_question_by_number(questionsOxfordHappinessQuestionnaire,idx+1)
-        logging.info(f'[{GERIATRIC_QUEST}] - username /{username} / question: "{question}"')
+        message_id = (tracker.latest_message)['message_id']
+        question = get_question_by_number(questionsGeriatricQuestionnaire,idx+1)
+        logging.info(f'[{GERIATRIC_QUEST}-{message_id}] - username {username} / question: "{question}"')
         dispatcher.utter_message(get_question_by_number(questionsGeriatricQuestionnaire,idx+1), json_message=NO_ERM)
 
 # Action: Collects the user's response to a questionnaire's question
@@ -357,15 +365,16 @@ class ValidateQuestionForm(FormValidationAction):
         domain:  Dict[Text, Any],
     ) -> Dict[Text, Any]:   
         username = tracker.sender_id  
+        message_id = (tracker.latest_message)['message_id']
         questionsPointsNo = [1,5,7,11,13]
         responses_geriatric_questionnaire_counter = int(tracker.get_slot("responses_geriatric_questionnaire_counter"))
         newResponse, question = createQuestionnaireResponse(responses_geriatric_questionnaire_counter, slot_value, GERIATRIC_QUEST)
         if newResponse == None:
-            logging.info(f'[{GERIATRIC_QUEST}] - username /{username} / invalid response')
+            logging.info(f'[{GERIATRIC_QUEST}-{message_id}] - username {username} / invalid response')
             return {"response_question_geriatric_questionnaire": None}
         else:
             dispatcher.utter_message(json_message=newResponse)
-        logging.info(f'[{GERIATRIC_QUEST}] - username /{username} / response: "{newResponse}"')
+        logging.info(f'[{GERIATRIC_QUEST}-{message_id}] - username {username} / response: "{newResponse}"')
         responses_geriatric_questionnaire_counter = responses_geriatric_questionnaire_counter + 1
         if (slot_value == "Não" and question in questionsPointsNo) or (slot_value == "Sim" and question not in questionsPointsNo):
             return {"response_question_geriatric_questionnaire": slot_value,"responses_geriatric_questionnaire_counter": responses_geriatric_questionnaire_counter, "geriatric_questionnaire_points":tracker.get_slot("geriatric_questionnaire_points")+1.0, "why_question_geriatric_questionnaire": None}
@@ -380,13 +389,15 @@ class ValidateQuestionForm(FormValidationAction):
         domain:  Dict[Text, Any],
     ) -> Dict[Text, Any]:
         username = tracker.sender_id
+        message_id = (tracker.latest_message)['message_id']
         responses_geriatric_questionnaire_counter = int(tracker.get_slot("responses_geriatric_questionnaire_counter"))
         newResponse = createQuestionnaireResponseWhy(responses_geriatric_questionnaire_counter, slot_value, GERIATRIC_QUEST)
         dispatcher.utter_message(json_message=newResponse)
         responses_geriatric_questionnaire_counter = responses_geriatric_questionnaire_counter + 1
         questionsTotal = GERIATRIC_QUEST_ID+1
         counterTotal = questionsTotal + questionsTotal
-        logging.info(f'[{GERIATRIC_QUEST}] - username /{username} / response: "{newResponse}"')
+        logging.info(f'[{GERIATRIC_QUEST}-{message_id}] - username {username} / response: "{newResponse}"')
+        dispatcher.utter_message(json_message=predictSentiment(message_id, username, slot_value))
         if responses_geriatric_questionnaire_counter == counterTotal:
             points = tracker.get_slot("geriatric_questionnaire_points")
             json_points, message = createPointsMessage(points, GERIATRIC_QUEST)
@@ -404,7 +415,8 @@ class ActionAskWhyQuestionOxfordQuestionnaire(Action):
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[EventType]:
          username = tracker.sender_id
-         logging.info(f'[{OXFORD_QUEST}] - username /{username} / question: "utter_ask_why"')
+         message_id = (tracker.latest_message)['message_id']
+         logging.info(f'[{OXFORD_QUEST}-{message_id}] - username {username} / question: "utter_ask_why"')
          dispatcher.utter_message(response="utter_ask_why", json_message=NO_ERM)
          return []
 
@@ -419,8 +431,9 @@ class ActionAskResponseQuestionOxfordQuestionnaire(Action):
         if idx == []:
             return []
         username = tracker.sender_id
+        message_id = (tracker.latest_message)['message_id']
         question = get_question_by_number(questionsOxfordHappinessQuestionnaire,idx+1)
-        logging.info(f'[{OXFORD_QUEST}] - username /{username} / question: "{question}"')
+        logging.info(f'[{OXFORD_QUEST}-{message_id}] - username {username} / question: "{question}"')
         dispatcher.utter_message(question, json_message=NO_ERM)
       
 
@@ -437,14 +450,15 @@ class ValidateOxfordHappinessQuestionnaire(FormValidationAction):
         domain:  Dict[Text, Any],
     ) -> Dict[Text, Any]:
         username = tracker.sender_id
+        message_id = (tracker.latest_message)['message_id']
         responses_oxford_happiness_questionnaire_counter = int(tracker.get_slot("responses_oxford_happiness_questionnaire_counter"))
         newResponse, question = createQuestionnaireResponse(responses_oxford_happiness_questionnaire_counter, slot_value, OXFORD_QUEST)
         if newResponse == None:
-            logging.info(f'[{OXFORD_QUEST}] - username /{username} / invalid response')
+            logging.info(f'[{OXFORD_QUEST}-{message_id}] - username {username} / invalid response')
             return {"response_question_oxford_happiness_questionnaire": None}
         else:
             dispatcher.utter_message(json_message=newResponse)
-        logging.info(f'[{OXFORD_QUEST}] - username /{username} / response: "{newResponse}"')
+        logging.info(f'[{OXFORD_QUEST}-{message_id}] - username {username} / response: "{newResponse}"')
         questionsReversed = [1, 5, 6, 10, 13, 14, 19, 23, 24, 27, 28, 29]
         replacement = [6, 5, 4, 3, 2, 1]
         points = tracker.get_slot("oxford_happiness_questionnaire_points")
@@ -464,13 +478,15 @@ class ValidateOxfordHappinessQuestionnaire(FormValidationAction):
         domain:  Dict[Text, Any],
     ) -> Dict[Text, Any]:
         username = tracker.sender_id 
+        message_id = (tracker.latest_message)['message_id']
         responses_oxford_happiness_questionnaire_counter = int(tracker.get_slot("responses_oxford_happiness_questionnaire_counter"))
         newResponse = createQuestionnaireResponseWhy(responses_oxford_happiness_questionnaire_counter, slot_value, OXFORD_QUEST)
         dispatcher.utter_message(json_message=newResponse)        
         responses_oxford_happiness_questionnaire_counter = responses_oxford_happiness_questionnaire_counter + 1
         questionsTotal = OXFORD_QUEST_ID+1
         counterTotal = questionsTotal + questionsTotal
-        logging.info(f'[{GERIATRIC_QUEST}] - username /{username} / response: "{newResponse}"')
+        logging.info(f'[{OXFORD_QUEST_ID}-{message_id}] - username {username} / response: "{newResponse}"')
+        dispatcher.utter_message(json_message=predictSentiment(message_id, username, slot_value))
         if responses_oxford_happiness_questionnaire_counter == counterTotal:
             points = tracker.get_slot("oxford_happiness_questionnaire_points") / questionsTotal
             json_points, message = createPointsMessage(points, OXFORD_QUEST)
