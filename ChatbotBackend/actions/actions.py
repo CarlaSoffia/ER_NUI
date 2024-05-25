@@ -65,14 +65,12 @@ def request(endpoint):
         response = requests.request("GET", API_URL+"/questionnaires/"+endpoint, headers={}, data={})
         data = json.loads(response.text)['data']
         mappings = data['results_mappings']
-        questions = data['questions']     
+        questions = data['questions']   
+        logging.info(f'[{endpoint}] - Fetched questions and mapping from API with success')
+        return questions, mappings  
     except Exception as e:
         logging.info(f'[{endpoint}] - Error fetching from API: {e}')
-        return None, None
-    finally:
-        logging.info(f'[{endpoint}] - Fetched questions and mapping from API with success')
-        return questions, mappings   
-
+        exit(1)
 
 def get_question_by_number(questions, number):
     for question in questions:
@@ -112,12 +110,11 @@ def loadLLMModel():
     try:
         tokenizer = AutoTokenizer.from_pretrained('microsoft/DialoGPT-small', padding_side='left')
         model = AutoModelForCausalLM.from_pretrained('./LLM')
-    except Exception as e:
-        logging.info(f'[LLM] - Error loading model and tokenizer: {e}')
-        return None, None
-    finally:
         logging.info('[LLM] - Loaded model and tokenizer with success')
         return model, tokenizer
+    except Exception as e:
+        logging.info(f'[LLM] - Error loading model and tokenizer: {e}')
+        exit(1)
 
 llmModel, llmTokenizer = loadLLMModel()
 
@@ -144,12 +141,12 @@ def generateLLMResponse(msg_id, username, text):
         response = llmTokenizer.decode(chat_history_ids[:, bot_input_ids.shape[-1]:][0], skip_special_tokens=True)
         if DEEPL_ACTIVE == True:
                 response = translateTextDeepL(response)
+        logging.info(f'[LLM-{msg_id}] - Processed sucessfully {username}\'s message')
+        return response
     except Exception as e:
         logging.info(f'[LLM-{msg_id}] - Error processing {username}\'s message: {e}')
         return ""
-    finally:
-        logging.info(f'[LLM-{msg_id}] - Processed sucessfully {username}\'s message')
-        return response
+        
 
     
 
@@ -164,12 +161,12 @@ def loadModel():
         with open('./SA/stopwords/portuguese', 'rb') as handle:
             stopwords_pt = set(handle.read().splitlines())    
         stemmer = SnowballStemmer("portuguese")
-    except Exception as e:
-        logging.info(f'[SA] - Error loading model, tokenizer, stopwords and stemmer: {e}')
-        return None, None, None, None
-    finally:
         logging.info('[SA] - Loaded model, tokenizer, stopwords and stemmer with success')
         return model, tokenizerPT, stopwords_pt, stemmer
+    except Exception as e:
+        logging.info(f'[SA] - Error loading model, tokenizer, stopwords and stemmer: {e}')
+        exit(1)
+        
 
 model, tokenizerPT, stopwords_pt, stemmer = loadModel()
 
@@ -197,13 +194,12 @@ def predictSentiment(msg_id, username, text):
         for idx,pred in enumerate(predictions):
             emotion = LABELS[idx]
             sentiment["predictions"] += emotion + "#" + "{:.2f}".format(pred*100) +";"
-        sentiment["predictions"] = sentiment["predictions"][:-1]    
+        sentiment["predictions"] = sentiment["predictions"][:-1]
+        logging.info(f'[SA-{msg_id}] - Processed sucessfully {username}\'s message')
+        return sentiment
     except Exception as e:
         logging.info(f'[SA-{msg_id}] - Error processing {username}\'s message: {e}')
         return {}
-    finally:
-        logging.info(f'[SA-{msg_id}] - Processed sucessfully {username}\'s message')
-        return sentiment
 
 ######################################################### FUNCTIONS #########################################################
 def questionToAskGeriatric(counter):
