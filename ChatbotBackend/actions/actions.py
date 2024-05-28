@@ -93,6 +93,7 @@ def get_message_by_mapping(mappings, points):
         
 questionsGeriatricQuestionnaire, mappingsGeriatricQuestionnaire = request(GERIATRIC_QUEST)
 questionsOxfordHappinessQuestionnaire, mappingsOxfordHappinessQuestionnaire = request(OXFORD_QUEST)
+ 
 ##################################################### DEEPL TRANSLATOR #####################################################
 
 def loadDeepLTranslator():
@@ -107,11 +108,12 @@ def translateTextDeepL(text):
 ######################################################### LLM MODEL #########################################################
 # Load tokenizer and model
 def loadLLMModel():
-    try:
-        tokenizer = AutoTokenizer.from_pretrained('microsoft/DialoGPT-small', padding_side='left')
-        model = AutoModelForCausalLM.from_pretrained('./LLM')
+    try:        
+        logging.info('[LLM] - Started to load the model and tokenizer...')
+        tokenizerLLM = AutoTokenizer.from_pretrained('microsoft/DialoGPT-small', padding_side='left')
+        modelLLM = AutoModelForCausalLM.from_pretrained('./LLM')
         logging.info('[LLM] - Loaded model and tokenizer with success')
-        return model, tokenizer
+        return modelLLM, tokenizerLLM
     except Exception as e:
         logging.info(f'[LLM] - Error loading model and tokenizer: {e}')
         exit(1)
@@ -146,13 +148,11 @@ def generateLLMResponse(msg_id, username, text):
     except Exception as e:
         logging.info(f'[LLM-{msg_id}] - Error processing {username}\'s message: {e}')
         return ""
-        
-
     
-
 ######################################################### SA MODEL #########################################################
 def loadModel():
     try:
+        logging.info('[SA] - Started to load the model, tokenizer, stopwords and stemmer...')
         model = keras.models.load_model(MODEL_NAME)    
         with open('./SA/tokenizerPT.pickle', 'rb') as handle:
             unpickler = pickle.Unpickler(handle)
@@ -200,7 +200,7 @@ def predictSentiment(msg_id, username, text):
     except Exception as e:
         logging.info(f'[SA-{msg_id}] - Error processing {username}\'s message: {e}')
         return {}
-
+ 
 ######################################################### FUNCTIONS #########################################################
 def questionToAskGeriatric(counter):
     if counter % 2 == 0 and counter >= 0 and counter <= 28:
