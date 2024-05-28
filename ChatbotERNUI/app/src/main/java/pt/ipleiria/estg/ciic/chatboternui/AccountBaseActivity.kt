@@ -46,9 +46,9 @@ open class AccountBaseActivity : IBaseActivity, BaseActivity() {
     protected var password: MutableState<String> = mutableStateOf("")
     private lateinit var currentAccountActivity : IRequestActivity
     @Override
-    fun onCreateActivity(title: String, accountActivity: IRequestActivity) {
+    fun onCreateActivity(title: String, accountActivity: IRequestActivity, baseActivity: IBaseActivity) {
         super.instantiateInitialData()
-        super.onCreateBaseActivity(title)
+        super.onCreateBaseActivity(title, baseActivity)
         currentAccountActivity = accountActivity
     }
 

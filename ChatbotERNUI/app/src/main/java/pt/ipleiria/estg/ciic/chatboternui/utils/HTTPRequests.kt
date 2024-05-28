@@ -10,41 +10,8 @@ import org.json.JSONException
 import org.json.JSONObject
 import java.util.Objects
 
-private const val URL_API = "https://70e9-2001-8a0-f266-9800-4b95-f207-aacf-49e2.ngrok-free.app/api"
+private const val URL_API = "https://1f58-2001-8a0-f24e-5f00-1ae9-d2ec-237b-5682.ngrok-free.app/api"
 class HTTPRequests {
-    suspend fun requestFormData(apiURL:String, jsonBody:JSONObject, token:String): JSONObject{
-        return withContext(Dispatchers.IO) {
-            val okHttpClient = OkHttpClient()
-            val builder = MultipartBody.Builder().setType(MultipartBody.FORM)
-            // Add form data parts based on the properties of the JSON object
-            jsonBody.keys().forEach { key ->
-                val value = jsonBody[key].toString()
-                builder.addFormDataPart(key, value)
-            }
-            val body = builder.build()
-            val request = Request.Builder()
-                .url(URL_API+apiURL)
-                .post(body)
-                .addHeader("Authorization", "Bearer $token")
-                .build()
-            val result = JSONObject()
-            try{
-                // Use the OkHttp client to make an asynchronous request
-                val response = okHttpClient.newCall(request).execute()
-                result.put("status_code", response.code)
-                var data = JSONObject(response.body?.string()!!)
-                try{
-                    data = JSONObject(data.get("data").toString())
-                }catch(ex: JSONException){
-                    Log.i("Debug", "Error: ${ex.message}")
-                }
-                result.put("data", data)
-            }catch (ex: IOException) {
-                result.put("status_code", "503")
-                result.put("data", "Oops! No Internet Connection")
-            }
-        }
-    }
     suspend fun request(requestMethod:String,apiURL:String,body:String="",token:String=""): JSONObject{
         return withContext(Dispatchers.IO) {
             val isAuth = apiURL.contains("login")
@@ -82,9 +49,13 @@ class HTTPRequests {
                 val response = okHttpClient.newCall(request).execute()
                 val data = JSONObject(response.body?.string()!!)
                 result.put("status_code", response.code)
-                result.put("data", data.get("data").toString())
+                if(isAuth){
+                    result.put("data", data.toString())
+                }else{
+                    result.put("data", data.get("data").toString())
+                }
             }catch (ex: Exception) {
-                result.put("status_code", "ECONNREFUSED")
+                result.put("status_code", ex.message)
             }
         }
     }

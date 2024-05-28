@@ -79,6 +79,20 @@ class Others {
         return newDateFormatter.format(time)
     }
 
+    fun storeTokenExpiry(expiresIn: Int): Long {
+        val currentTime = Instant.now().epochSecond
+        return currentTime + expiresIn
+    }
+
+    fun isTokenExpired(expiryTime: Long): Boolean {
+        val currentTime = Instant.now().epochSecond
+        return currentTime >= expiryTime
+    }
+    fun addIntToStore(sharedPreferences:SharedPreferences, key: String, value: Int){
+        val editor = sharedPreferences.edit()
+        editor.putInt(key, value)
+        editor.apply()
+    }
     fun addStringToStore(sharedPreferences:SharedPreferences, key: String, value: String){
         val editor = sharedPreferences.edit()
         editor.putString(key, value)

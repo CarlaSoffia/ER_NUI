@@ -48,6 +48,8 @@ import pt.ipleiria.estg.ciic.chatboternui.utils.Others
 open class BaseActivity: ComponentActivity() {
     private lateinit var currentActivity: IBaseActivity
     protected var token: String = ""
+    protected var refreshToken: String = ""
+    protected var expiresIn : Int = 0
     protected val utils = Others()
     private var _modeDark : MutableState<Boolean> = mutableStateOf(false)
     private var showConnectivityError: MutableState<Boolean> = mutableStateOf(false)
@@ -59,9 +61,12 @@ open class BaseActivity: ComponentActivity() {
         sharedPreferences = getSharedPreferences("ERNUI", Context.MODE_PRIVATE)
         ThemeState.isDarkThemeEnabled = sharedPreferences.getBoolean("theme_mode_is_dark", false)
         token = sharedPreferences.getString("access_token", "").toString()
+        refreshToken = sharedPreferences.getString("refresh_token", "").toString()
+        expiresIn = sharedPreferences.getInt("expires_in", 0)
     }
 
-    fun onCreateBaseActivity(title: String) {
+    fun onCreateBaseActivity(title: String, activity : IBaseActivity) {
+        currentActivity = activity
         setContent {
             ChatbotERNUITheme {
                 HandleDialogs()

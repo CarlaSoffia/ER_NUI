@@ -87,16 +87,16 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener , TextTo
     private var tts: TextToSpeech? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        tts = TextToSpeech(this, this)
+        super.onCreateBaseActivityWithMenu(this)
         super.instantiateInitialData()
-         if(sharedPreferences.getString("access_token", "").toString() == ""){
+         if(token == "" || utils.isTokenExpired(utils.storeTokenExpiry(expiresIn))){
              utils.startDetailActivity(applicationContext,LoginActivity::class.java, this)
              return
          }
+        tts = TextToSpeech(this, this)
         checkPermission()
         getAllMessages()
         handleQuestionnaires()
-        super.onCreateBaseActivityWithMenu(this)
    }
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
@@ -242,7 +242,7 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener , TextTo
         _messages = mutableStateListOf()
 
         scope.launch {
-            val response = httpRequests.request("GET", "/messages?order=asc", token = token)
+            val response = httpRequests.request("GET", "/messages?order=asc&limit=50", token = token)
             if(handleConnectivityError(response["status_code"].toString(), activity)) return@launch
             val messages = JSONArray(response["data"].toString())
             for (i in 0 until messages.length()) {
