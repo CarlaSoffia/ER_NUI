@@ -37,3 +37,4 @@ SentimentAnalysis/KaggleTrainningResults/kaggle.json
 *.ist
 *.log
 *.synctex.gz
+/ChatbotBackend/actions/__pycache__
