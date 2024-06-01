@@ -1,23 +1,42 @@
 package pt.ipleiria.estg.ciic.chatboternui.utils
-import android.util.Log
+import android.content.SharedPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.*
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import okio.IOException
-import org.json.JSONArray
-import org.json.JSONException
+import okhttp3.Response
 import org.json.JSONObject
-import java.util.Objects
 
-private const val URL_API = "https://1f58-2001-8a0-f24e-5f00-1ae9-d2ec-237b-5682.ngrok-free.app/api"
+private const val URL_API = "https://ba17-2001-8a0-f24e-5f00-1ae9-d2ec-237b-5682.ngrok-free.app/api"
 class HTTPRequests {
-    suspend fun request(requestMethod:String,apiURL:String,body:String="",token:String=""): JSONObject{
+
+    protected val utils = Others()
+    private suspend fun refreshAccessToken(sharedPreferences: SharedPreferences) : String {
+        val expiresIn = sharedPreferences.getInt("expires_in", 0)
+        if(!utils.isTokenExpired(utils.storeTokenExpiry(expiresIn))){
+            return ""
+        }
+        val refreshToken = sharedPreferences.getString("refresh_token", "").toString()
+        val refreshBody = JSONObject()
+        refreshBody.put("refresh_token", refreshToken)
+        refreshBody.put("type","MobileApp")
+        // auth/refresh request with access_token and refresh_token
+        val response = request(sharedPreferences,"POST", "/auth/refresh", refreshBody.toString())
+        val data = JSONObject(response["data"].toString())
+        val token = data["access_token"].toString()
+        // Update shared preferences
+        utils.addStringToStore(sharedPreferences,"access_token", token)
+        utils.addStringToStore(sharedPreferences,"refresh_token", data["refresh_token"].toString())
+        utils.addIntToStore(sharedPreferences,"expires_in", data["expires_in"] as Int)
+        return token
+    }
+    suspend fun request(sharedPreferences: SharedPreferences, requestMethod:String,apiURL:String,body:String=""): JSONObject{
         return withContext(Dispatchers.IO) {
             val isAuth = apiURL.contains("login")
-            if (!isAuth && token.isEmpty()) {
-                throw IllegalArgumentException("[Error] - $requestMethod Request must have a token");
-            }
+            val isRefresh = apiURL.contains("refresh")
+            val token = sharedPreferences.getString("access_token", "").toString()
+
             val okHttpClient = OkHttpClient()
             val request: Request = if (requestMethod != "GET" && !isAuth) {
                 val requestBody = body.toRequestBody()
@@ -44,12 +63,22 @@ class HTTPRequests {
                     .build()
             }
             val result = JSONObject()
+            var response : Response
+            var attempts = 3
             try{
-                // Use the OkHttp client to make an asynchronous request
-                val response = okHttpClient.newCall(request).execute()
+               do {
+                   // Use the OkHttp client to make an asynchronous request
+                   response = okHttpClient.newCall(request).execute()
+                   if(!response.isSuccessful){
+                       refreshAccessToken(sharedPreferences)
+                       attempts -= 1
+                   }else{
+                       attempts = 0
+                   }
+                } while (attempts > 0)
                 val data = JSONObject(response.body?.string()!!)
                 result.put("status_code", response.code)
-                if(isAuth){
+                if(isAuth || isRefresh){
                     result.put("data", data.toString())
                 }else{
                     result.put("data", data.get("data").toString())

@@ -2,10 +2,7 @@ package pt.ipleiria.estg.ciic.chatboternui
 
 import android.app.Activity
 import android.os.Bundle
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.launch
-import org.json.JSONException
 import org.json.JSONObject
 import pt.ipleiria.estg.ciic.chatboternui.utils.IRequestActivity
 
@@ -18,8 +15,9 @@ class LoginActivity : IRequestActivity, AccountBaseActivity(){
         val bodyLogin = JSONObject()
         bodyLogin.put("email",email.value)
         bodyLogin.put("password",password.value)
+        bodyLogin.put("type","MobileApp")
         scope.launch {
-            val response = httpRequests.request("POST", "/auth/login", bodyLogin.toString())
+            val response = httpRequests.request(sharedPreferences, "POST", "/auth/login", bodyLogin.toString())
             if(handleConnectivityError(response["status_code"].toString(), activity)) return@launch
             val data = JSONObject(response["data"].toString())
             utils.addStringToStore(sharedPreferences,"access_token", data["access_token"].toString())

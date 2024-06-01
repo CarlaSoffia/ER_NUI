@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.content.SharedPreferences
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
@@ -45,11 +44,9 @@ import pt.ipleiria.estg.ciic.chatboternui.utils.CommonComposables
 import pt.ipleiria.estg.ciic.chatboternui.utils.HTTPRequests
 import pt.ipleiria.estg.ciic.chatboternui.utils.IBaseActivity
 import pt.ipleiria.estg.ciic.chatboternui.utils.Others
+
 open class BaseActivity: ComponentActivity() {
     private lateinit var currentActivity: IBaseActivity
-    protected var token: String = ""
-    protected var refreshToken: String = ""
-    protected var expiresIn : Int = 0
     protected val utils = Others()
     private var _modeDark : MutableState<Boolean> = mutableStateOf(false)
     private var showConnectivityError: MutableState<Boolean> = mutableStateOf(false)
@@ -60,9 +57,6 @@ open class BaseActivity: ComponentActivity() {
     fun instantiateInitialData(){
         sharedPreferences = getSharedPreferences("ERNUI", Context.MODE_PRIVATE)
         ThemeState.isDarkThemeEnabled = sharedPreferences.getBoolean("theme_mode_is_dark", false)
-        token = sharedPreferences.getString("access_token", "").toString()
-        refreshToken = sharedPreferences.getString("refresh_token", "").toString()
-        expiresIn = sharedPreferences.getInt("expires_in", 0)
     }
 
     fun onCreateBaseActivity(title: String, activity : IBaseActivity) {
@@ -74,6 +68,7 @@ open class BaseActivity: ComponentActivity() {
             }
         }
     }
+
 
     fun onCreateBaseActivityWithMenu(oldActivity: IBaseActivity) {
         currentActivity = oldActivity
@@ -116,7 +111,7 @@ open class BaseActivity: ComponentActivity() {
             )
         }
     }
-
+    
     fun handleConnectivityError(statusCode: String, activity: Activity? = null): Boolean{
         when(statusCode){
             "409" -> {
@@ -144,7 +139,7 @@ open class BaseActivity: ComponentActivity() {
                 addDivider = false
             ),
             MenuItem(
-                id = "mino",
+                id = "mimo",
                 title = "Conversa com o Mimo",
                 icon = R.drawable.email,
                 onClick = {

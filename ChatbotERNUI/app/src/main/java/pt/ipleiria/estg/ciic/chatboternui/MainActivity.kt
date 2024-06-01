@@ -5,6 +5,7 @@ import android.app.Activity
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -70,16 +71,13 @@ private const val STATE_READY = 1
 private const val STATE_DONE = 2
 private const val PERMISSIONS_REQUEST_RECORD_AUDIO = 1
 
-class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener , TextToSpeech.OnInitListener{
+class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToSpeech.OnInitListener {
     private var _messages = mutableStateListOf<Message>()
     private var _messageWritten : MutableState<String> = mutableStateOf("")
     private var _microActive : MutableState<Boolean> = mutableStateOf(true)
     private var _finishedLoading: MutableState<Int> = mutableStateOf(STATE_BEGIN)
-    private var iterations: MutableList<Pair<String,JSONObject>> = mutableListOf()
     private var middleGeriatricQuestionnaire: Boolean = false
     private var middleOxfordHappinessQuestionnaire: Boolean = false
-    private var idGeriatricQuestionnaire: Int = -1
-    private var idOxfordHappinessQuestionnaire: Int = -1
     private var model: Model? = null
     private var speechService: SpeechService? = null
     private var _showAlertGeriatricQuestionnaire : MutableState<Boolean> = mutableStateOf(false)
@@ -89,10 +87,10 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener , TextTo
         super.onCreate(savedInstanceState)
         super.onCreateBaseActivityWithMenu(this)
         super.instantiateInitialData()
-         if(token == "" || utils.isTokenExpired(utils.storeTokenExpiry(expiresIn))){
+        if(sharedPreferences.getString("access_token", "").toString() == ""){
              utils.startDetailActivity(applicationContext,LoginActivity::class.java, this)
              return
-         }
+        }
         tts = TextToSpeech(this, this)
         checkPermission()
         getAllMessages()
@@ -107,6 +105,30 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener , TextTo
                 }
             }
         }
+        tts!!.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+            override fun onStart(utteranceId: String?) {
+                // TTS started speaking
+                // Ensures the STT service stops listening when TTS start to speak
+                if(_microActive.value){
+                    speechService!!.setPause(true)
+                }
+            }
+
+            override fun onDone(utteranceId: String?) {
+                // TTS finished speaking
+                // Ensures the STT service resumes listening when TTS is done speaking
+                if(_microActive.value){
+                    speechService!!.setPause(false)
+                }
+            }
+
+            override fun onError(utteranceId: String?) {
+                // Handle TTS error
+                if(_microActive.value){
+                    speechService!!.setPause(false)
+                }
+            }
+        })
     }
     private fun handleQuestionnaires(){
         middleGeriatricQuestionnaire = sharedPreferences.getBoolean("middleGeriatricQuestionnaire", false)
@@ -210,39 +232,10 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener , TextTo
         _finishedLoading.value = STATE_DONE
     }
 
-    private fun handleIteration(sentiment: JSONObject){
-        val emotion = sentiment["emotion"].toString();
-        val iteration = iterations.find { it.first == emotion }
-        if(iterations.isNotEmpty() && iteration != null){
-            return
-        }
-        createIteration(emotion)
-    }
-    private fun createIteration(emotion: String){
-        val iterationBody = JSONObject()
-        iterationBody.put("macAddress", "00:00:00:00:00:00")
-        iterationBody.put("emotion", emotion)
-        iterationBody.put("type", "best")
-        var response: JSONObject
-        scope.launch {
-            response = httpRequests.request("POST", "/iterations", iterationBody.toString(), token = token)
-            if(handleConnectivityError(response["status_code"].toString(), activity)) return@launch
-            val data = JSONObject(response["data"].toString())
-            val iteration = JSONObject()
-                .put("iteration_id", data["id"].toString())
-                .put("iteration_usage_id", data["usage_id"].toString())
-            val index = iterations.indexOfFirst { it.first == emotion }
-            if(iterations.isNotEmpty() && index != -1){
-                iterations.removeAt(index)
-            }
-            iterations.add(emotion to iteration)
-        }
-    }
     private fun getAllMessages() {
         _messages = mutableStateListOf()
-
         scope.launch {
-            val response = httpRequests.request("GET", "/messages?order=asc&limit=50", token = token)
+            val response = httpRequests.request(sharedPreferences, "GET", "/messages?order=asc&limiy=100")
             if(handleConnectivityError(response["status_code"].toString(), activity)) return@launch
             val messages = JSONArray(response["data"].toString())
             for (i in 0 until messages.length()) {
@@ -277,90 +270,22 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener , TextTo
         messageSend.put("body", transcription)
         var response: JSONObject
         scope.launch {
-            response = httpRequests.request("POST", "/messages", messageSend.toString(), token = token)
+            response = httpRequests.request(sharedPreferences, "POST", "/messages", messageSend.toString())
             if(handleConnectivityError(response["status_code"].toString(), activity)) return@launch
             val messages = JSONArray(response["data"].toString())
             for (i in 0 until messages.length()) {
                 val message = JSONObject(messages[i].toString())
                 val body = message["body"].toString()
                 if(body == "start_geriatric_form" || body == "start_oxford_happiness_form"){
-                    continue;
+                    continue
                 }
                 val isChatbot = message["isChatbot"].toString() == "true"
                 val id = message["id"].toString()
-
-                if(body.contains("accuracy")){
-                    val sentiment = JSONObject(body)
-                    // Creates iteration if doesn't exists
-                    handleIteration(sentiment)
-                }
-                else if(body.contains("is_why")){
-                    val responseQuestion = JSONObject(body)
-                    handleResponseQuestionnaire(responseQuestion["question"].toString().toInt(), transcription, responseQuestion["is_why"].toString().toBoolean())
-                }
-                else if(body.contains("points")){
-                    val pointsResponse = JSONObject(body)
-                    handlePointsQuestionnaire(pointsResponse["points"].toString().toDouble())
-                }
-                else{
-                    _messages.add(Message(id = id.toLong(),
-                        text = body,
-                        isChatbot = isChatbot,
-                        time = utils.convertStringLocalDateTime(message["created_at"].toString())))
-                    if(isChatbot) tts!!.speak(body, TextToSpeech.QUEUE_ADD, null, id)
-                }
-            }
-        }
-
-    }
-
-    private fun handlePointsQuestionnaire(points: Double){
-        val apiURL = if(middleGeriatricQuestionnaire) "/geriatricQuestionnaires/${idGeriatricQuestionnaire}/points" else if (middleOxfordHappinessQuestionnaire) "/oxfordHappinessQuestionnaires/${idOxfordHappinessQuestionnaire}/points" else return
-        val pointsQuestionnaire = JSONObject()
-        pointsQuestionnaire.put("points", points)
-        scope.launch {
-            val response = httpRequests.request("PUT", apiURL, pointsQuestionnaire.toString(), token = token)
-            if(handleConnectivityError(response["status_code"].toString(), activity)) return@launch
-            JSONObject(response["data"].toString())
-            if(middleGeriatricQuestionnaire){
-                utils.addBooleanToStore(sharedPreferences, "middleGeriatricQuestionnaire", false)
-                utils.addStringToStore(sharedPreferences,"geriatricQuestionnaireCompletedDate",utils.getTimeNow())
-            }
-            if(middleOxfordHappinessQuestionnaire){
-                utils.addBooleanToStore(sharedPreferences, "middleOxfordHappinessQuestionnaire", false)
-                utils.addStringToStore(sharedPreferences,"oxfordHappinessQuestionnaireCompletedDate",utils.getTimeNow())
-            }
-        }
-    }
-    private fun handleResponseQuestionnaire(question: Int, response: String, isWhy: Boolean, emotion: String=""){
-        val apiURL = if(middleGeriatricQuestionnaire) "/geriatricQuestionnaires/${idGeriatricQuestionnaire}/responses" else if (middleOxfordHappinessQuestionnaire) "/oxfordHappinessQuestionnaires/${idOxfordHappinessQuestionnaire}/responses" else return
-
-        val responseQuestionnaire = JSONObject()
-        responseQuestionnaire.put("question", question)
-        responseQuestionnaire.put("response", response)
-        responseQuestionnaire.put("is_why", isWhy)
-        if(emotion != ""){
-            val iteration = iterations.find { it.first == emotion }
-            responseQuestionnaire.put("iteration_id", iteration?.second?.getString("iteration_id"))
-            responseQuestionnaire.put("iteration_usage_id", iteration?.second?.getString("iteration_usage_id"))
-        }
-        scope.launch {
-            val responseRequest = httpRequests.request("PUT", apiURL, responseQuestionnaire.toString(), token = token)
-            if(handleConnectivityError(responseRequest["status_code"].toString(), activity)) return@launch
-            JSONObject(responseRequest["data"].toString())
-        }
-    }
-    private fun createQuestionnaire(){
-        val apiURL = if(middleGeriatricQuestionnaire && idGeriatricQuestionnaire==-1) "/geriatricQuestionnaires" else if (middleOxfordHappinessQuestionnaire && idOxfordHappinessQuestionnaire==-1) "/oxfordHappinessQuestionnaires" else return
-        var response: JSONObject
-        scope.launch {
-            response = httpRequests.request("POST", apiURL, token = token)
-            if(handleConnectivityError(response["status_code"].toString(), activity)) return@launch
-            val data = JSONObject(response["data"].toString())
-            if(middleGeriatricQuestionnaire){
-                idGeriatricQuestionnaire = data["id"].toString().toInt()
-            }else{
-               idOxfordHappinessQuestionnaire = data["id"].toString().toInt()
+                _messages.add(Message(id = id.toLong(),
+                    text = body,
+                    isChatbot = isChatbot,
+                    time = utils.convertStringLocalDateTime(message["created_at"].toString())))
+                if(isChatbot) tts!!.speak(body, TextToSpeech.QUEUE_ADD, null, id)
             }
         }
     }
@@ -390,12 +315,6 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener , TextTo
     }
     @Composable
     fun ChatSection(modifier: Modifier = Modifier) {
-
-
-
-
-
-
         LazyColumn(
             modifier = modifier
                 .fillMaxSize()
@@ -577,7 +496,7 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener , TextTo
             if(_finishedLoading.value != STATE_READY){
                 LoadScreen()
             }
-            else if(_microActive.value){
+            else if(_microActive.value && !tts!!.isSpeaking){
                 recognizeMicrophone()
             }
         }
@@ -600,7 +519,6 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener , TextTo
                         _showAlertGeriatricQuestionnaire.value = false
                         _showAlertOxfordQuestionnaire.value = false
                         utils.addBooleanToStore(sharedPreferences, "middleGeriatricQuestionnaire", true)
-                        createQuestionnaire()
                         sendMessage("start_geriatric_form")
                     },onDismissRequest = {
                         _showAlertGeriatricQuestionnaire.value = false
@@ -619,7 +537,6 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener , TextTo
                             _showAlertOxfordQuestionnaire.value = false
                             _showAlertGeriatricQuestionnaire.value = false
                             utils.addBooleanToStore(sharedPreferences, "middleOxfordHappinessQuestionnaire", true)
-                            createQuestionnaire()
                             sendMessage("start_oxford_happiness_form")
                         },onDismissRequest = {
                             _showAlertOxfordQuestionnaire.value = false
