@@ -22,6 +22,7 @@ from nltk.tokenize import word_tokenize
 from nltk.stem.snowball import SnowballStemmer
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import logging
+import re
 
 # Env data load
 load_dotenv()
@@ -33,6 +34,8 @@ if DEEPL_ACTIVE == "True":
 else:
     DEEPL_ACTIVE = False  
 
+ATTEMPTS = 5
+INVALID_MESSAGE="Peço desculpa, mas não consegui compreender a sua mensagem..."
 # SA Model configs
 models_dir = glob.glob(os.path.join('./SA/', '*.h5'))
 models_dir = sorted(models_dir)
@@ -127,28 +130,46 @@ def generateLLMResponse(msg_id, username, text):
             text = translateTextDeepL(text)
         # Encode user input
         bot_input_ids = llmTokenizer.encode(text + llmTokenizer.eos_token, return_tensors='pt')
+        response = ""
+        isValid = False
+        attempts = ATTEMPTS
+        while isValid == False and attempts > 0:
+            # Generate response
+            chat_history_ids = llmModel.generate(
+                bot_input_ids, max_length=500,
+                pad_token_id=llmTokenizer.eos_token_id,
+                no_repeat_ngram_size=3,
+                do_sample=True,
+                top_k=10,
+                top_p=0.7,
+                temperature=0.8
+            )
 
-        # Generate response
-        chat_history_ids = llmModel.generate(
-            bot_input_ids, max_length=500,
-            pad_token_id=llmTokenizer.eos_token_id,
-            no_repeat_ngram_size=3,
-            do_sample=True,
-            top_k=10,
-            top_p=0.7,
-            temperature=0.8
-        )
+            # Decode and return response
+            response = llmTokenizer.decode(chat_history_ids[:, bot_input_ids.shape[-1]:][0], skip_special_tokens=True)
+            isValid = evaluateResponseQuality(msg_id, attempts, response)
+            if isValid == False:
+                attempts = attempts - 1
 
-        # Decode and return response
-        response = llmTokenizer.decode(chat_history_ids[:, bot_input_ids.shape[-1]:][0], skip_special_tokens=True)
+        if attempts == 0:
+            raise Exception(f'[LLM-{msg_id}] - Ran out of attempts...')
+        
         if DEEPL_ACTIVE == True:
-                response = translateTextDeepL(response)
+            response = translateTextDeepL(response)
         logging.info(f'[LLM-{msg_id}] - Processed sucessfully {username}\'s message')
         return response
     except Exception as e:
         logging.info(f'[LLM-{msg_id}] - Error processing {username}\'s message: {e}')
-        return ""
-    
+        return INVALID_MESSAGE
+
+def evaluateResponseQuality(msg_id, attempts, text):
+    pattern = r'!!|!!!|!!!!|!\'!|!\?!|!\.!|!,!'
+    if re.search(pattern, text):
+        logging.info(f'[LLM-{msg_id}] - attempt {attempts}/{ATTEMPTS} created invalid response: {text}')
+        return False
+    else:
+        return True
+       
 ######################################################### SA MODEL #########################################################
 def loadModel():
     try:
