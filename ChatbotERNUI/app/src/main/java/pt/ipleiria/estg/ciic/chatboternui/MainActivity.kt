@@ -85,11 +85,11 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
     private var tts: TextToSpeech? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        super.onCreateBaseActivityWithMenu(this)
         super.instantiateInitialData()
+        super.onCreateBaseActivityWithMenu(this)
         if(sharedPreferences.getString("access_token", "").toString() == ""){
-             utils.startDetailActivity(applicationContext,LoginActivity::class.java, this)
-             return
+            utils.startDetailActivity(applicationContext,LoginActivity::class.java, this)
+            return
         }
         tts = TextToSpeech(this, this)
         checkPermission()
@@ -105,6 +105,7 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
                 }
             }
         }
+
         tts!!.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(utteranceId: String?) {
                 // TTS started speaking
@@ -507,7 +508,7 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            TopBar("EmoCare", scaffoldState!!, scope!!)
+            TopBar("MIMO", scaffoldState!!, scope!!)
             ChatSection(Modifier.weight(1f))
             if(_showAlertGeriatricQuestionnaire.value){
                 CommonComposables.StartForm("Gostaria de responder a um questionário para avaliar sintomas de depressão?",
@@ -545,8 +546,6 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
             if(!_microActive.value){
                 onDestroy()
                 MessageSection()
-            }else {
-                recognizeMicrophone()
             }
         }
     }
