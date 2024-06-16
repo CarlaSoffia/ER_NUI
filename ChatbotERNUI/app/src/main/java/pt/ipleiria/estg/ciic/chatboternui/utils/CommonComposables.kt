@@ -24,7 +24,7 @@ import pt.ipleiria.estg.ciic.chatboternui.ui.theme.Typography
 object CommonComposables {
 
     @Composable
-    fun DialogConnectivity(onClick: () -> Unit, onDismissRequest: () -> Unit ){
+    fun DialogConnectivity(onClick: () -> Unit, onDismissRequest: () -> Unit , title: String , message : String){
         AlertDialog(
             containerColor = colorScheme.background,
             tonalElevation = 0.dp,
@@ -35,11 +35,11 @@ object CommonComposables {
                     modifier = Modifier.size(80.dp))
             },
             onDismissRequest = { onDismissRequest() },
-            title = { Text("Sem conexão à internet",
+            title = { Text(title,
                 color = colorScheme.onPrimary,
                 fontSize = Typography.titleSmall.fontSize,
                 fontWeight = Typography.titleSmall.fontWeight) },
-            text = { Text("Parece que está atualmente offline.\n\nVerifique as suas definições de Wi-Fi ou de dados móveis e certifique-se de que tem uma ligação estável à Internet.\n\nQuando estiver ligado, reinicie a aplicação para continuar a desfrutar das suas funcionalidades.",
+            text = { Text(message,
                 color = colorScheme.onPrimary,
                 fontSize = Typography.bodyMedium.fontSize,
                 fontWeight = Typography.bodyMedium.fontWeight,
@@ -131,7 +131,7 @@ object CommonComposables {
         Column(horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(0.dp, 30.dp, 0.dp, 0.dp)){
             Text(
-                text = "EmoCare",
+                text = "MIMO",
                 color = colorScheme.onPrimary,
                 fontSize = Typography.headlineLarge.fontSize,
                 fontWeight = Typography.headlineLarge.fontWeight,
@@ -140,7 +140,7 @@ object CommonComposables {
             Image(
                 painter = painterResource(id = R.drawable.chatbot),
                 modifier = Modifier.height(90.dp),
-                contentDescription = "EmoCare Logótipo")
+                contentDescription = "MIMO Logótipo")
             Spacer(modifier = Modifier.height(30.dp))
             Text (text = text,
                 color = colorScheme.onPrimary,
