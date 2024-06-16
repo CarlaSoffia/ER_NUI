@@ -52,6 +52,7 @@ open class BaseActivity: ComponentActivity() {
     private var showConnectivityError: MutableState<Boolean> = mutableStateOf(false)
     protected lateinit var sharedPreferences : SharedPreferences
     protected var alertMessage: MutableState<String> = mutableStateOf("")
+    protected var alertTitle: MutableState<String> = mutableStateOf("")
     protected val httpRequests = HTTPRequests()
     protected val scope = CoroutineScope(Dispatchers.Main)
     fun instantiateInitialData(){
@@ -107,19 +108,25 @@ open class BaseActivity: ComponentActivity() {
                     finish()
                 },onDismissRequest = {
                     showConnectivityError.value = false
-                }
+                },
+                alertTitle.value,
+                alertMessage.value
             )
         }
     }
     
     fun handleConnectivityError(statusCode: String, activity: Activity? = null): Boolean{
         when(statusCode){
-            "409" -> {
-                showConnectivityError.value = true
-                alertMessage.value = "Este email já está associado a uma conta"
-            }
             "ECONNREFUSED" -> {
                 showConnectivityError.value = true
+                alertTitle.value = "Sem conexão à internet"
+                alertMessage.value = "Parece que está atualmente offline.\n\nVerifique as suas definições de Wi-Fi ou de dados móveis e certifique-se de que tem uma ligação estável à Internet.\n\nQuando estiver ligado, reinicie a aplicação para continuar a desfrutar das suas funcionalidades."
+            }
+            "UNKNOWN_HOST" ->{
+                showConnectivityError.value = true
+                alertTitle.value = "Serviço indisponível"
+                alertMessage.value = "Parece que o serviço está indisponível.\n\nTente novamente mais tarde ou contacte o suporte através do email: carla.c.mendes@ipleiria.pt."
+
             }
             // TODO - handle navigation for good codes
             else -> {
