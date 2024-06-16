@@ -7,8 +7,9 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import org.json.JSONObject
+import java.net.UnknownHostException
 
-private const val URL_API = "https://ba17-2001-8a0-f24e-5f00-1ae9-d2ec-237b-5682.ngrok-free.app/api"
+private const val URL_API = "https://9333-2001-8a0-f24e-5f00-1ae9-d2ec-237b-5682.ngrok-free.app/api"
 class HTTPRequests {
 
     protected val utils = Others()
@@ -83,6 +84,8 @@ class HTTPRequests {
                 }else{
                     result.put("data", data.get("data").toString())
                 }
+            }catch (ex: UnknownHostException) {
+                result.put("status_code", "UNKNOWN_HOST")
             }catch (ex: Exception) {
                 result.put("status_code", ex.message)
             }
