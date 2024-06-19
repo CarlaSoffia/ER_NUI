@@ -1,7 +1,6 @@
 package pt.ipleiria.estg.ciic.chatboternui
 
 import android.annotation.SuppressLint
-import android.app.Activity
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.activity.ComponentActivity
@@ -144,13 +143,6 @@ open class BaseActivity: ComponentActivity() {
     private fun Drawer() {
         val menuItems = listOf(
             MenuItem(
-                id = "profile",
-                title = "Perfil",
-                icon = R.drawable.profile,
-                onClick = {},
-                addDivider = false
-            ),
-            MenuItem(
                 id = "mimo",
                 title = "Conversa com o Mimo",
                 icon = R.drawable.email,
@@ -171,7 +163,7 @@ open class BaseActivity: ComponentActivity() {
             MenuItem(
                 id = "information",
                 title = "Tutorial",
-                icon = R.drawable.information,
+                icon = R.drawable.help,
                 onClick = {},
                 addDivider = true
             ),
@@ -199,11 +191,6 @@ open class BaseActivity: ComponentActivity() {
                 .fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically){
-                Image(
-                    painter = painterResource(R.drawable.chatbot),
-                    contentDescription = "Chatbot",
-                    modifier = Modifier.size(75.dp)
-                )
                 Spacer(modifier = Modifier.width(25.dp))
                 Text(
                     text = "Menu",

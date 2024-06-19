@@ -290,10 +290,6 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Image(
-                painter = painterResource(R.drawable.chatbot),
-                contentDescription = "Chatbot"
-            )
             CircularProgressIndicator(
                 modifier = Modifier.padding(vertical = 26.dp),
                 color = colorScheme.onPrimary
@@ -461,7 +457,7 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
                 modifier = Modifier.align(Alignment.CenterVertically))
             Spacer(modifier = Modifier.fillMaxWidth(0.75f))
             Icon(
-                painter = painterResource(id = if (_microActive.value) R.drawable.write else R.drawable.speak),
+                painter = painterResource(id = if (_microActive.value) R.drawable.keyboard else R.drawable.microphone),
                 contentDescription = "Botão alternar entre voz e texto",
                 tint = colorScheme.onPrimary,
                 modifier = Modifier

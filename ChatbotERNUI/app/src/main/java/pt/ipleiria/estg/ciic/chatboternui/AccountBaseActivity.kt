@@ -56,13 +56,6 @@ open class AccountBaseActivity : IBaseActivity, BaseActivity() {
     @Composable
     override fun MainScreen(title: String?, scaffoldState: ScaffoldState?, scope: CoroutineScope?) {
         Box (modifier = Modifier.fillMaxSize()) {
-            Image(painter = painterResource (id = R.drawable.background),
-                contentDescription = "Imagem de fundo",
-                modifier = Modifier
-                    .fillMaxSize()
-                    .blur(6.dp),
-                contentScale = ContentScale.Crop
-            )
             Box (modifier = Modifier
                 .fillMaxSize()
                 .padding(20.dp)

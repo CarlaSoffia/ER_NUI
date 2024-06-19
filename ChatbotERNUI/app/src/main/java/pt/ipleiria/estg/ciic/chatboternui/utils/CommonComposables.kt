@@ -138,7 +138,7 @@ object CommonComposables {
                 modifier = Modifier.padding(bottom = 20.dp)
             )
             Image(
-                painter = painterResource(id = R.drawable.chatbot),
+                painter = painterResource(id = R.drawable.menu),
                 modifier = Modifier.height(90.dp),
                 contentDescription = "MIMO Logótipo")
             Spacer(modifier = Modifier.height(30.dp))
