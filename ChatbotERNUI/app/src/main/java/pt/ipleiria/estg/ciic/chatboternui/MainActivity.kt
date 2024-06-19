@@ -236,24 +236,11 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
     private fun getAllMessages() {
         _messages = mutableStateListOf()
         scope.launch {
-            val response = httpRequests.request(sharedPreferences, "GET", "/messages?order=asc&limiy=100")
-            if(handleConnectivityError(response["status_code"].toString(), activity)) return@launch
+            val response = httpRequests.request(sharedPreferences, "GET", "/messages?order=asc&limit=100")
+            if(handleConnectivityError(response["status_code"].toString())) return@launch
             val messages = JSONArray(response["data"].toString())
             for (i in 0 until messages.length()) {
                 val message = JSONObject(messages[i].toString())
-                if(message["body"].toString().contains("{")){
-                    if(message["body"].toString().contains("points")){
-                        val message = Message(id = message["id"].toString().toLong(),
-                            text = JSONObject(message["body"].toString())["message"] as String?,
-                            isChatbot = message["isChatbot"].toString() == "1",
-                            time = utils.convertStringLocalDateTime(message["created_at"].toString()))
-                        _messages.add(message)
-                    }
-                    continue
-                }
-                if (message["body"].toString() == "start_geriatric_form" || message["body"].toString() == "start_oxford_happiness_form") {
-                    continue
-                }
                 _messages.add(Message(id = message["id"].toString().toLong(),
                     text = message["body"] as String?,
                     isChatbot = message["isChatbot"].toString() == "1",
@@ -272,7 +259,7 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
         var response: JSONObject
         scope.launch {
             response = httpRequests.request(sharedPreferences, "POST", "/messages", messageSend.toString())
-            if(handleConnectivityError(response["status_code"].toString(), activity)) return@launch
+            if(handleConnectivityError(response["status_code"].toString())) return@launch
             val messages = JSONArray(response["data"].toString())
             for (i in 0 until messages.length()) {
                 val message = JSONObject(messages[i].toString())
@@ -287,6 +274,9 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
                     isChatbot = isChatbot,
                     time = utils.convertStringLocalDateTime(message["created_at"].toString())))
                 if(isChatbot) tts!!.speak(body, TextToSpeech.QUEUE_ADD, null, id)
+                if(body == "#IS_SHORT_QUESTION#"){
+                    // show the modal
+                }
             }
         }
     }

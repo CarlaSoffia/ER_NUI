@@ -18,7 +18,7 @@ class LoginActivity : IRequestActivity, AccountBaseActivity(){
         bodyLogin.put("type","MobileApp")
         scope.launch {
             val response = httpRequests.request(sharedPreferences, "POST", "/auth/login", bodyLogin.toString())
-            if(handleConnectivityError(response["status_code"].toString(), activity)) return@launch
+            if(handleConnectivityError(response["status_code"].toString())) return@launch
             val data = JSONObject(response["data"].toString())
             utils.addStringToStore(sharedPreferences,"access_token", data["access_token"].toString())
             utils.addStringToStore(sharedPreferences,"refresh_token", data["refresh_token"].toString())

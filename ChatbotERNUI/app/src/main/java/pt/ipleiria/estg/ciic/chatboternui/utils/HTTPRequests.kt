@@ -9,7 +9,7 @@ import okhttp3.Response
 import org.json.JSONObject
 import java.net.UnknownHostException
 
-private const val URL_API = "https://9333-2001-8a0-f24e-5f00-1ae9-d2ec-237b-5682.ngrok-free.app/api"
+private const val URL_API = "https://b794-2001-8a0-f24e-5f00-1ae9-d2ec-237b-5682.ngrok-free.app/api"
 class HTTPRequests {
 
     protected val utils = Others()
@@ -66,28 +66,32 @@ class HTTPRequests {
             val result = JSONObject()
             var response : Response
             var attempts = 3
+            var data = JSONObject()
             try{
                do {
                    // Use the OkHttp client to make an asynchronous request
                    response = okHttpClient.newCall(request).execute()
-                   if(!response.isSuccessful){
+                   if(response.isSuccessful){
+                       break
+                   }
+                   attempts -= 1
+                   if(!isAuth && !isRefresh){
                        refreshAccessToken(sharedPreferences)
-                       attempts -= 1
-                   }else{
-                       attempts = 0
                    }
                 } while (attempts > 0)
-                val data = JSONObject(response.body?.string()!!)
+                data = JSONObject(response.body?.string()!!)
                 result.put("status_code", response.code)
                 if(isAuth || isRefresh){
                     result.put("data", data.toString())
                 }else{
                     result.put("data", data.get("data").toString())
                 }
-            }catch (ex: UnknownHostException) {
-                result.put("status_code", "UNKNOWN_HOST")
             }catch (ex: Exception) {
-                result.put("status_code", ex.message)
+                if(data.has("message")){
+                    result.put("status_code", "MIMO_ERROR")
+                }else{
+                    result.put("status_code", "UNKNOWN_HOST") // Unavailable service
+                }
             }
         }
     }

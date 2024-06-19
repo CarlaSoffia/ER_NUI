@@ -115,12 +115,17 @@ open class BaseActivity: ComponentActivity() {
         }
     }
     
-    fun handleConnectivityError(statusCode: String, activity: Activity? = null): Boolean{
+    fun handleConnectivityError(statusCode: String): Boolean{
         when(statusCode){
-            "ECONNREFUSED" -> {
+            "403" -> {
                 showConnectivityError.value = true
-                alertTitle.value = "Sem conexão à internet"
-                alertMessage.value = "Parece que está atualmente offline.\n\nVerifique as suas definições de Wi-Fi ou de dados móveis e certifique-se de que tem uma ligação estável à Internet.\n\nQuando estiver ligado, reinicie a aplicação para continuar a desfrutar das suas funcionalidades."
+                alertTitle.value = "Credenciais incorretas"
+                alertMessage.value = "As suas credenciais não estão corretas. Verifique-as e tente iniciar sessão novamente mais tarde."
+            }
+            "MIMO_ERROR" -> {
+                showConnectivityError.value = true
+                alertTitle.value = "Ocorreu um erro"
+                alertMessage.value = "O agente conversacional MIMO está indisponível"
             }
             "UNKNOWN_HOST" ->{
                 showConnectivityError.value = true
