@@ -16,41 +16,64 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.ViewCompat
 import pt.ipleiria.estg.ciic.chatboternui.Objects.ThemeState
+import java.util.ResourceBundle
 
+var MidnightBlue = Color(0xFF141435)
+var DeepBlue = Color(0xFF252564)
+var LavenderBlue = Color(0xFFA0A0C0)
+var BabyBlue = Color(0xFFE0EEFF)
+var LightGray = Color(0xFFEFEFEF)
+var White = Color(0xFFFFFFFF)
+
+// Revise :) - cause they were just switched
 val DarkColorScheme = darkColorScheme(
-    primary = Color(0xFF64B5F6),
-    secondary = Color(0xFFC6E2FF),
-    tertiary = Color(0xFFa2d2ff),
-    background = Color.Black,
-    surface = Color.Black,
-    error = Color.White,
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color.White,
-    onSurface = Color.White,
-    onError = Color.White,
-    primaryContainer = Color(0xFF252525),
-    secondaryContainer = Color(0xFF0077b6),
-    tertiaryContainer = Color(0xFF444444)
+    background = MidnightBlue,
+    onBackground = White,
+
+    // non-clickable / non-interactive
+    surface = White,
+    onSurface = MidnightBlue,
+
+    // button: clickable / interactive - action
+    primary = White,
+    onPrimary = DeepBlue,
+
+    // button: clickable / interactive - cancel
+    secondary = MidnightBlue,
+    onSecondary = LavenderBlue,
+
+    // User chat container
+    primaryContainer = MidnightBlue,
+    onPrimaryContainer = LightGray,
+
+    // MIMO chat container
+    secondaryContainer = MidnightBlue,
+    onSecondaryContainer = BabyBlue
 )
 
 val LightColorScheme = lightColorScheme(
-    primary = Color(0xFF64B5F6),
-    secondary = Color(0xFFC6E2FF),
-    tertiary = Color(0xFFa2d2ff),
-    background = Color.White,
-    surface = Color.White,
-    error = Color.White,
-    onPrimary = Color(0xFF323232),
-    onSecondary = Color.Black,
-    onTertiary = Color.White,
-    onBackground = Color.Black,
-    onSurface = Color.Black,
-    onError = Color.Black,
-    primaryContainer = Color(0xFFf4f4f4),
-    secondaryContainer = Color(0xFF64dfdf),
-    tertiaryContainer = Color(0xFFf8f8f8)
+    background = White,
+    onBackground = MidnightBlue,
+
+    // non-clickable / non-interactive
+    surface = MidnightBlue,
+    onSurface = White,
+
+    // button: clickable / interactive - action
+    primary = DeepBlue,
+    onPrimary = White,
+
+    // button: clickable / interactive - cancel
+    secondary = LavenderBlue,
+    onSecondary = MidnightBlue,
+
+    // User chat container
+    primaryContainer = LightGray,
+    onPrimaryContainer = MidnightBlue,
+
+    // MIMO chat container
+    secondaryContainer = BabyBlue,
+    onSecondaryContainer = MidnightBlue
 )
 
 @Composable
