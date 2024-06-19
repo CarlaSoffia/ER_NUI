@@ -10,7 +10,7 @@ import pt.ipleiria.estg.ciic.chatboternui.R
 
 val arial = FontFamily(Font(R.font.arial))
 
-// Set of Material typography styles to start with
+// Revise this :) - new layout
 val Typography = Typography(
     headlineLarge = TextStyle(
         fontFamily = arial,
