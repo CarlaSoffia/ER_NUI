@@ -10,5 +10,5 @@ interface IBaseActivity {
     val activity: Activity
     @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
     @Composable
-    fun MainScreen(title: String?, scaffoldState: ScaffoldState?, scope: CoroutineScope?)
+    fun MainScreen(scaffoldState: ScaffoldState?, scope: CoroutineScope?)
 }

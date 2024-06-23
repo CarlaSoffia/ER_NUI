@@ -475,7 +475,7 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
         }
     }
     @Composable
-    override fun MainScreen(title: String?, scaffoldState: ScaffoldState?, scope: CoroutineScope?) {
+    override fun MainScreen(scaffoldState: ScaffoldState?, scope: CoroutineScope?) {
         if(!_microActive.value){
             _finishedLoading.value = STATE_DONE
         }

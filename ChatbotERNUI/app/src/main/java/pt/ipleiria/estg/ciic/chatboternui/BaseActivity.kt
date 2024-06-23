@@ -32,6 +32,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -58,13 +59,13 @@ open class BaseActivity: ComponentActivity() {
         sharedPreferences = getSharedPreferences("ERNUI", Context.MODE_PRIVATE)
         ThemeState.isDarkThemeEnabled = sharedPreferences.getBoolean("theme_mode_is_dark", false)
     }
-
-    fun onCreateBaseActivity(title: String, activity : IBaseActivity) {
+    
+    fun onCreateBaseActivity(activity : IBaseActivity) {
         currentActivity = activity
         setContent {
             ChatbotERNUITheme {
                 HandleDialogs()
-                currentActivity.MainScreen(title, null, null)
+                currentActivity.MainScreen(null, null)
             }
         }
     }
@@ -94,7 +95,7 @@ open class BaseActivity: ComponentActivity() {
             //customizing the drawer. Will also share this shape below.
             drawerElevation = 90.dp
         ) {//Here goes the whole content of our Screen
-            currentActivity.MainScreen("", scaffoldState, scopeState)
+            currentActivity.MainScreen( scaffoldState, scopeState)
         }
     }
 

@@ -1,12 +1,17 @@
 package pt.ipleiria.estg.ciic.chatboternui.utils
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.TextButton
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -15,9 +20,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import pt.ipleiria.estg.ciic.chatboternui.R
 import pt.ipleiria.estg.ciic.chatboternui.ui.theme.Typography
 
@@ -126,45 +136,60 @@ object CommonComposables {
         )
 
     }
+
     @Composable
-    fun AccountHeader(text:String) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(0.dp, 30.dp, 0.dp, 0.dp)){
+    fun LinkText(text:String, onClick: () -> Unit){
+        TextButton(
+            onClick = { onClick() },
+        ) {
             Text(
-                text = "MIMO",
-                color = colorScheme.onPrimary,
-                fontSize = Typography.headlineLarge.fontSize,
-                fontWeight = Typography.headlineLarge.fontWeight,
-                modifier = Modifier.padding(bottom = 20.dp)
+                text = text,
+                fontSize = Typography.bodyLarge.fontSize,
+                fontWeight = Typography.bodyLarge.fontWeight,
+                textDecoration = TextDecoration.Underline
             )
-            Image(
-                painter = painterResource(id = R.drawable.menu),
-                modifier = Modifier.height(90.dp),
-                contentDescription = "MIMO Logótipo")
-            Spacer(modifier = Modifier.height(30.dp))
-            Text (text = text,
-                color = colorScheme.onPrimary,
-                fontSize = Typography.titleLarge.fontSize,
-                fontWeight = Typography.titleLarge.fontWeight)
         }
+    }
+    @Composable
+    fun HeaderWithTitleAndImage(text:String, image: Int) {
+        Text(
+            text = text,
+            color = colorScheme.onBackground,
+            fontSize = Typography.titleLarge.fontSize,
+            fontWeight = Typography.titleLarge.fontWeight,
+            lineHeight = Typography.titleLarge.lineHeight,
+            textAlign = TextAlign.Center
+        )
+       Image(
+            painter = painterResource(id = image),
+            contentDescription = text,
+            modifier = Modifier.size(250.dp))
     }
 
     @Composable
-    fun AccountFooter(text:String, onClick: () -> Unit){
-        Column(horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(0.dp, 0.dp, 0.dp, 10.dp)){
-            // Submit button
-            Button(
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = colorScheme.primary
-                ),
-                onClick = { onClick() },
-                modifier = Modifier.fillMaxWidth()
+    fun ActionButton(text:String, icon: Int, onClick: () -> Unit, isActionStarted: Boolean){
+        Button(
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if(isActionStarted) colorScheme.primary else colorScheme.secondary
+            ),
+            modifier = Modifier.fillMaxWidth()
+                .padding(70.dp, 0.dp),
+            onClick = { onClick() },
+        ) {
+            Row(horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(5.dp)
             ) {
                 Text(text = text,
                     fontSize = Typography.bodyLarge.fontSize,
                     fontWeight = Typography.bodyLarge.fontWeight,
-                    color = colorScheme.onSurface)
+                    color = if(isActionStarted) colorScheme.onPrimary else colorScheme.onSecondary)
+                Image(
+                    painter = painterResource(id = icon),
+                    contentDescription = text,
+                    modifier = Modifier.scale(1.25F))
             }
         }
     }
