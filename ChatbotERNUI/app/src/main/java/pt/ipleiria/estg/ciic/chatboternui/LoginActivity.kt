@@ -52,6 +52,7 @@ class LoginActivity : IBaseActivity, BaseActivity(){
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        super.instantiateInitialData()
         super.onCreateBaseActivity(this)
     }
 
@@ -79,10 +80,10 @@ class LoginActivity : IBaseActivity, BaseActivity(){
                     "Palavra-passe"
                 )
                 // Error message
-                if(alertMessage.value.isNotEmpty()){
+                if(errorMsg.value.isNotEmpty()){
                     Text(
-                        text = alertMessage.value,
-                        color = MaterialTheme.colorScheme.onError,
+                        text = errorMsg.value,
+                        color = MaterialTheme.colorScheme.onBackground,
                         fontSize = Typography.bodyLarge.fontSize,
                         fontWeight = Typography.bodyLarge.fontWeight,
                         textAlign = TextAlign.Center,
@@ -153,7 +154,7 @@ class LoginActivity : IBaseActivity, BaseActivity(){
     }
     private fun accountRequest(){
         if (!areFieldsValid()) return
-        alertMessage.value = ""
+        errorMsg.value = ""
         scope.launch {
             apiRequest()
         }
@@ -165,13 +166,17 @@ class LoginActivity : IBaseActivity, BaseActivity(){
 
     private fun areFieldsValid(): Boolean {
         if(!utils.isEmailValid(email.value)){
-            alertMessage.value = "O seu endereço de email é inválido"
+            errorMsg.value = "O seu endereço de email é inválido"
+            return false
+        }
+        if(password.value.isEmpty() || password.value.isBlank()){
+            errorMsg.value = "Insira a sua palavra-passe"
             return false
         }
         return true
     }
 
-    suspend fun apiRequest() {
+    private suspend fun apiRequest() {
         val bodyLogin = JSONObject()
         bodyLogin.put("email",email.value)
         bodyLogin.put("password",password.value)

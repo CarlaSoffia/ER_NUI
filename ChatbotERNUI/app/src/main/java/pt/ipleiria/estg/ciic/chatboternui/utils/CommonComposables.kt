@@ -1,11 +1,12 @@
 package pt.ipleiria.estg.ciic.chatboternui.utils
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -21,50 +22,56 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import pt.ipleiria.estg.ciic.chatboternui.R
 import pt.ipleiria.estg.ciic.chatboternui.ui.theme.Typography
 
 object CommonComposables {
 
     @Composable
-    fun DialogConnectivity(onClick: () -> Unit, onDismissRequest: () -> Unit , title: String , message : String){
+    fun ShowAlertDialog(onClick: () -> Unit, onDismissRequest: () -> Unit , title: String , message : String){
         AlertDialog(
             containerColor = colorScheme.background,
             tonalElevation = 0.dp,
             icon = {
                 Image(
                     painter = painterResource(id = R.drawable.error),
-                    contentDescription = "Erro",
-                    modifier = Modifier.size(80.dp))
+                    modifier = Modifier.scale(2.0F),
+                    contentDescription = "Erro: $title"
+                )
             },
             onDismissRequest = { onDismissRequest() },
             title = { Text(title,
-                color = colorScheme.onPrimary,
-                fontSize = Typography.titleSmall.fontSize,
-                fontWeight = Typography.titleSmall.fontWeight) },
-            text = { Text(message,
-                color = colorScheme.onPrimary,
-                fontSize = Typography.bodyMedium.fontSize,
-                fontWeight = Typography.bodyMedium.fontWeight,
-                textAlign = TextAlign.Justify) },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        onClick()
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = colorScheme.secondary
-                    ),
-                    ) {
-                    Text("Ok")
+                color = colorScheme.onBackground,
+                fontSize = Typography.titleMedium.fontSize,
+                fontWeight = Typography.titleMedium.fontWeight,
+                lineHeight = Typography.bodyLarge.lineHeight) },
+            text = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.SpaceEvenly
+                ){
+                    Text(message,
+                        color = colorScheme.onBackground,
+                        fontSize = Typography.bodyLarge.fontSize,
+                        fontWeight = Typography.bodyLarge.fontWeight,
+                        lineHeight = Typography.bodyLarge.lineHeight,
+                        textAlign = TextAlign.Justify)
+                    Spacer(modifier = Modifier.height(20.dp))
+                    Text("carla.c.mendes@ipleiria.pt",
+                        color = colorScheme.onBackground,
+                        fontSize = Typography.bodyLarge.fontSize,
+                        fontWeight = Typography.bodyLarge.fontWeight,
+                        lineHeight = Typography.bodyLarge.lineHeight,
+                        textAlign = TextAlign.Center,
+                        textDecoration = TextDecoration.Underline)
                 }
+                },
+            confirmButton = {
+                ActionButton("Sair", R.drawable.logout, { onClick() }, true)
             },
             dismissButton = null
         )
@@ -173,7 +180,7 @@ object CommonComposables {
                 containerColor = if(isActionStarted) colorScheme.primary else colorScheme.secondary
             ),
             modifier = Modifier.fillMaxWidth()
-                .padding(70.dp, 0.dp),
+                .padding(60.dp, 0.dp),
             onClick = { onClick() },
         ) {
             Row(horizontalArrangement = Arrangement.SpaceBetween,

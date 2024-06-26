@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -16,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -32,7 +30,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -49,10 +46,12 @@ open class BaseActivity: ComponentActivity() {
     private lateinit var currentActivity: IBaseActivity
     protected val utils = Others()
     private var _modeDark : MutableState<Boolean> = mutableStateOf(false)
-    private var showConnectivityError: MutableState<Boolean> = mutableStateOf(false)
+    private var showAlertDialog : MutableState<Boolean> = mutableStateOf(false)
     protected lateinit var sharedPreferences : SharedPreferences
-    protected var alertMessage: MutableState<String> = mutableStateOf("")
-    protected var alertTitle: MutableState<String> = mutableStateOf("")
+    protected var errorMsg: MutableState<String> = mutableStateOf("")
+    private var alertMessage: MutableState<String> = mutableStateOf("")
+    private var alertTitle: MutableState<String> = mutableStateOf("")
+    private var showEmailInAlert: MutableState<Boolean> = mutableStateOf(false)
     protected val httpRequests = HTTPRequests()
     protected val scope = CoroutineScope(Dispatchers.Main)
     fun instantiateInitialData(){
@@ -64,7 +63,7 @@ open class BaseActivity: ComponentActivity() {
         currentActivity = activity
         setContent {
             ChatbotERNUITheme {
-                HandleDialogs()
+                HandleAlertDialog()
                 currentActivity.MainScreen(null, null)
             }
         }
@@ -75,7 +74,7 @@ open class BaseActivity: ComponentActivity() {
         currentActivity = oldActivity
         setContent {
             ChatbotERNUITheme {
-                HandleDialogs()
+                HandleAlertDialog()
                 AppScreen()
             }
         }
@@ -100,14 +99,14 @@ open class BaseActivity: ComponentActivity() {
     }
 
     @Composable
-    private fun HandleDialogs(){
-        if(showConnectivityError.value){
-            CommonComposables.DialogConnectivity(
+    private fun HandleAlertDialog(){
+        if(showAlertDialog.value){
+            CommonComposables.ShowAlertDialog(
                 onClick = {
-                    showConnectivityError.value = false
+                    showAlertDialog.value = false
                     finish()
                 },onDismissRequest = {
-                    showConnectivityError.value = false
+                    showAlertDialog.value = false
                 },
                 alertTitle.value,
                 alertMessage.value
@@ -118,27 +117,28 @@ open class BaseActivity: ComponentActivity() {
     fun handleConnectivityError(statusCode: String): Boolean{
         when(statusCode){
             "403" -> {
-                showConnectivityError.value = true
+                showAlertDialog.value = true
                 alertTitle.value = "Credenciais incorretas"
                 alertMessage.value = "As suas credenciais não estão corretas. Verifique-as e tente iniciar sessão novamente mais tarde."
+                showEmailInAlert.value = false
             }
             "MIMO_ERROR" -> {
-                showConnectivityError.value = true
+                showAlertDialog.value = true
                 alertTitle.value = "Ocorreu um erro"
-                alertMessage.value = "O agente conversacional MIMO está indisponível"
+                alertMessage.value = "O agente conversacional MIMO está indisponível.\n\nTente novamente mais tarde ou contacte o suporte através do email:"
+                showEmailInAlert.value = true
             }
             "UNKNOWN_HOST" ->{
-                showConnectivityError.value = true
+                showAlertDialog.value = true
                 alertTitle.value = "Serviço indisponível"
-                alertMessage.value = "Parece que o serviço está indisponível.\n\nTente novamente mais tarde ou contacte o suporte através do email: carla.c.mendes@ipleiria.pt."
-
+                alertMessage.value = "Parece que o serviço está indisponível.\n\nTente novamente mais tarde ou contacte o suporte através do email:"
+                showEmailInAlert.value = true
             }
-            // TODO - handle navigation for good codes
             else -> {
-                showConnectivityError.value = false
+                showAlertDialog.value = false
             }
         }
-        return showConnectivityError.value
+        return showAlertDialog.value
     }
     @Composable
     private fun Drawer() {
