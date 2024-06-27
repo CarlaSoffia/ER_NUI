@@ -24,7 +24,12 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".LoginActivity"
+            android:name=".SignInActivity"
+            android:exported="true"
+            android:theme="@style/Theme.ChatbotERNUI">
+        </activity>
+        <activity
+            android:name=".SignUpActivity"
             android:exported="true"
             android:theme="@style/Theme.ChatbotERNUI">
         </activity>

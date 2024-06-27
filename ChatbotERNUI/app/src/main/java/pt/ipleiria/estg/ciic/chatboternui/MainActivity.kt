@@ -6,7 +6,6 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -88,7 +87,7 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
         super.instantiateInitialData()
         super.onCreateBaseActivityWithMenu(this)
         if(sharedPreferences.getString("access_token", "").toString() == ""){
-            utils.startDetailActivity(applicationContext,LoginActivity::class.java, this)
+            utils.startActivity(applicationContext,SignInActivity::class.java, this)
             return
         }
         tts = TextToSpeech(this, this)

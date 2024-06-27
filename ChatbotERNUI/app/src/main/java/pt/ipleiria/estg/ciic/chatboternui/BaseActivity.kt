@@ -148,7 +148,7 @@ open class BaseActivity: ComponentActivity() {
                 title = "Conversa com o Mimo",
                 icon = R.drawable.email,
                 onClick = {
-                    utils.startDetailActivity(applicationContext, MainActivity::class.java, this)
+                    utils.startActivity(applicationContext, MainActivity::class.java, this)
                 },
                 addDivider = true
             ),
@@ -175,7 +175,7 @@ open class BaseActivity: ComponentActivity() {
                 onClick = {
                     utils.clearSharedPreferences(sharedPreferences)
                     ThemeState.isDarkThemeEnabled = false
-                    utils.startDetailActivity(applicationContext,LoginActivity::class.java, this)
+                    utils.startActivity(applicationContext,SignInActivity::class.java, this)
                 },
                 addDivider = false
             )

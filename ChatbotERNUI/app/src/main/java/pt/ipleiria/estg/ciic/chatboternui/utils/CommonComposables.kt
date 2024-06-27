@@ -1,17 +1,16 @@
 package pt.ipleiria.estg.ciic.chatboternui.utils
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material.TextButton
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -71,7 +70,12 @@ object CommonComposables {
                 }
                 },
             confirmButton = {
-                ActionButton("Sair", R.drawable.logout, { onClick() }, true)
+                // To override confirmButton's original position: aligned to right side
+                Row(modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center)
+                {
+                    ActionButton("Sair", R.drawable.logout, { onClick() }, true)
+                }
             },
             dismissButton = null
         )
@@ -179,20 +183,19 @@ object CommonComposables {
             colors = ButtonDefaults.buttonColors(
                 containerColor = if(isActionStarted) colorScheme.primary else colorScheme.secondary
             ),
-            modifier = Modifier.fillMaxWidth()
-                .padding(60.dp, 0.dp),
-            onClick = { onClick() },
+            onClick = { onClick() }
         ) {
-            Row(horizontalArrangement = Arrangement.SpaceBetween,
+            Row(horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .wrapContentSize()
                     .padding(5.dp)
             ) {
                 Text(text = text,
                     fontSize = Typography.bodyLarge.fontSize,
                     fontWeight = Typography.bodyLarge.fontWeight,
                     color = if(isActionStarted) colorScheme.onPrimary else colorScheme.onSecondary)
+                Spacer(modifier = Modifier.width(15.dp))
                 Image(
                     painter = painterResource(id = icon),
                     contentDescription = text,

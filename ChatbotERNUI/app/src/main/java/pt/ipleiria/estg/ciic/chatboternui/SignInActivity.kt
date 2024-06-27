@@ -5,7 +5,6 @@ import android.app.Activity
 import android.os.Bundle
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ScaffoldState
-import androidx.compose.material.TextButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -30,13 +28,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -45,7 +40,7 @@ import pt.ipleiria.estg.ciic.chatboternui.ui.theme.Typography
 import pt.ipleiria.estg.ciic.chatboternui.utils.CommonComposables
 import pt.ipleiria.estg.ciic.chatboternui.utils.IBaseActivity
 
-class LoginActivity : IBaseActivity, BaseActivity(){
+class SignInActivity : IBaseActivity, BaseActivity(){
     private var _passwordHidden: MutableState<Boolean> = mutableStateOf(true)
     private var email: MutableState<String> = mutableStateOf("")
     private var password: MutableState<String> = mutableStateOf("")
@@ -91,7 +86,13 @@ class LoginActivity : IBaseActivity, BaseActivity(){
                     )
                 }
                 CommonComposables.ActionButton("Iniciar sessão",R.drawable.login,{ accountRequest() }, true)
-                CommonComposables.LinkText("Não tem uma conta?", {})
+                CommonComposables.LinkText("Não tem uma conta?") {
+                    utils.startActivity(
+                        applicationContext,
+                        SignUpActivity::class.java,
+                        activity
+                    )
+                }
             }
         }
     }
@@ -142,7 +143,7 @@ class LoginActivity : IBaseActivity, BaseActivity(){
                     IconButton(onClick = { togglePasswordVisibility() }) {
                         Icon(
                             painter = painterResource(id = if(_passwordHidden.value) R.drawable.show else R.drawable.hide),
-                            contentDescription = "Esconder/mostrar a palavra-pass",
+                            contentDescription = "Esconder/mostrar a palavra-passe",
                             tint = MaterialTheme.colorScheme.onBackground)
                     }
                 },
@@ -188,10 +189,7 @@ class LoginActivity : IBaseActivity, BaseActivity(){
             utils.addStringToStore(sharedPreferences,"access_token", data["access_token"].toString())
             utils.addStringToStore(sharedPreferences,"refresh_token", data["refresh_token"].toString())
             utils.addIntToStore(sharedPreferences,"expires_in", data["expires_in"] as Int)
-            // Reset the values
-            email.value = ""
-            password.value = ""
-            utils.startDetailActivity(applicationContext, MainActivity::class.java, activity)
+            utils.startActivity(applicationContext, MainActivity::class.java, activity)
         }
 
     }

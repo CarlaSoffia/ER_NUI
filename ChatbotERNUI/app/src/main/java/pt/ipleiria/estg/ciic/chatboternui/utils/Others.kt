@@ -4,7 +4,6 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
-import android.provider.Settings.Secure
 import pt.ipleiria.estg.ciic.chatboternui.Objects.ThemeState
 import java.text.SimpleDateFormat
 import java.time.Duration
@@ -120,7 +119,7 @@ class Others {
         println(message)
     }
 
-    fun startDetailActivity(context: Context, activityClass: Class<*>, oldActivity: Activity) {
+    fun startActivity(context: Context, activityClass: Class<*>, oldActivity: Activity) {
         val intent = Intent(context, activityClass)
         intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
         context.startActivity(intent)
