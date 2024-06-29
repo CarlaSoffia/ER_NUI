@@ -1,16 +1,25 @@
 package pt.ipleiria.estg.ciic.chatboternui.utils
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.StartOffset
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.keyframes
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.TextButton
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -18,134 +27,237 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import pt.ipleiria.estg.ciic.chatboternui.R
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import pt.ipleiria.estg.ciic.chatboternui.ui.theme.Typography
+import pt.ipleiria.estg.ciic.chatboternui.utils.alerts.IAlert
+import java.lang.Math.PI
+import java.lang.Math.min
+import kotlin.math.absoluteValue
+import kotlin.math.cos
+import kotlin.math.roundToInt
+import kotlin.math.sin
 
 object CommonComposables {
 
+    private const val NumDots = 5
+    private const val AnimationDuration = 2000
+    private const val AnimationSegment = AnimationDuration / 10
+    private val MainDotSize = 14.dp
+
+    private val Float.alphaFromRadians: Float
+        get() {
+            val normalized = (this / (5f * PI)).toFloat()
+            return .5f + (normalized - .5f).absoluteValue
+        }
+
+    @Stable
+    interface ProgressState {
+        fun start(scope: CoroutineScope)
+        operator fun get(index: Int): Float
+    }
+
+    class ProgressStateImpl : ProgressState {
+        private val animationValues: List<MutableState<Float>> = List(NumDots) {
+            mutableStateOf(0f)
+        }
+
+        override operator fun get(index: Int) = animationValues[index].value
+
+        override fun start(scope: CoroutineScope) {
+            repeat(NumDots) { index ->
+                scope.launch {
+                    animate(
+                        initialValue = 0f,
+                        targetValue = (2f * PI).toFloat(),
+                        animationSpec = infiniteRepeatable(
+                            animation = keyframes {
+                                durationMillis = AnimationDuration
+                                0f at 0
+                                (.5 * PI).toFloat() at 2 * AnimationSegment
+                                PI.toFloat() at 3 * AnimationSegment
+                                (1.5 * PI).toFloat() at 4 * AnimationSegment
+                                (2f * PI).toFloat() at 6 * AnimationSegment
+                            },
+                            repeatMode = RepeatMode.Restart,
+                            initialStartOffset = StartOffset(offsetMillis = 100 * index)
+                        ),
+                    ) { value, _ ->
+                        animationValues[index].value = value
+                    }
+                }
+            }
+        }
+
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (javaClass != other?.javaClass) return false
+
+            other as ProgressStateImpl
+
+            if (animationValues != other.animationValues) return false
+
+            return true
+        }
+
+        override fun hashCode(): Int = animationValues.hashCode()
+    }
+
     @Composable
-    fun ShowAlertDialog(onClick: () -> Unit, onDismissRequest: () -> Unit , title: String , message : String){
+    fun rememberProgressState(): ProgressState = remember {
+        ProgressStateImpl()
+    }
+
+    @Composable
+    fun ProgressIndicator(
+        modifier: Modifier = Modifier,
+    ) {
+        val state = rememberProgressState()
+        LaunchedEffect(key1 = Unit) {
+            state.start(this)
+        }
+        Layout(
+            content = {
+                val minFactor = .3f
+                val step = minFactor / NumDots
+                repeat(NumDots) { index ->
+                    val size = MainDotSize * (1f - step * index)
+                    Dot(
+                        modifier = Modifier
+                            .requiredSize(size)
+                            .graphicsLayer {
+                                alpha = state[index].alphaFromRadians
+                            },
+                    )
+                }
+            },
+            modifier = modifier,
+        ) { measurables, constraints ->
+            val looseConstraints = constraints.copy(
+                minWidth = 0,
+                minHeight = 0,
+            )
+            val placeables = measurables.map { measurable -> measurable.measure(looseConstraints) }
+            layout(
+                width = constraints.maxWidth,
+                height = constraints.maxHeight,
+            ) {
+                val radius = min(constraints.maxWidth, constraints.maxHeight) / 2f
+                placeables.forEachIndexed { index, placeable ->
+                    val animatedValue = state[index]
+                    val x = (radius + radius * sin(animatedValue)).roundToInt()
+                    val y = (radius - radius * cos(animatedValue)).roundToInt()
+                    placeable.placeRelative(
+                        x = x,
+                        y = y,
+                    )
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun Dot(
+        modifier: Modifier = Modifier,
+    ) {
+        Box(
+            modifier = modifier
+                .clip(shape = CircleShape)
+                .background(color = colorScheme.onBackground)
+        )
+    }
+
+    @Composable
+    fun ShowAlertDialog(alert: IAlert){
         AlertDialog(
             containerColor = colorScheme.background,
             tonalElevation = 0.dp,
             icon = {
-                Image(
-                    painter = painterResource(id = R.drawable.error),
-                    modifier = Modifier.scale(2.0F),
-                    contentDescription = "Erro: $title"
-                )
+                if(alert.icon != null){
+                    Image(
+                        painter = painterResource(id = alert.icon!!),
+                        modifier = Modifier.scale(2.0F),
+                        contentDescription = "Erro: ${alert.title}"
+                    )
+                }
             },
-            onDismissRequest = { onDismissRequest() },
-            title = { Text(title,
+            onDismissRequest = {},
+            title = { Text(alert.title,
                 color = colorScheme.onBackground,
                 fontSize = Typography.titleMedium.fontSize,
                 fontWeight = Typography.titleMedium.fontWeight,
-                lineHeight = Typography.bodyLarge.lineHeight) },
+                lineHeight = Typography.titleMedium.lineHeight,
+                textAlign = TextAlign.Center)
+                    },
             text = {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.SpaceEvenly
                 ){
-                    Text(message,
+                    if(alert.image != null){
+                        Image(
+                            painter = painterResource(id = alert.image!!),
+                            contentDescription = alert.title,
+                            modifier = Modifier.size(250.dp))
+                    }
+                    Text(alert.text,
                         color = colorScheme.onBackground,
                         fontSize = Typography.bodyLarge.fontSize,
                         fontWeight = Typography.bodyLarge.fontWeight,
                         lineHeight = Typography.bodyLarge.lineHeight,
                         textAlign = TextAlign.Justify)
-                    Spacer(modifier = Modifier.height(20.dp))
-                    Text("carla.c.mendes@ipleiria.pt",
-                        color = colorScheme.onBackground,
-                        fontSize = Typography.bodyLarge.fontSize,
-                        fontWeight = Typography.bodyLarge.fontWeight,
-                        lineHeight = Typography.bodyLarge.lineHeight,
-                        textAlign = TextAlign.Center,
-                        textDecoration = TextDecoration.Underline)
+                    if(alert.showSupportEmail){
+                        Spacer(modifier = Modifier.height(20.dp))
+                        Text("Tente novamente mais tarde ou contacte o suporte através do email:",
+                            color = colorScheme.onBackground,
+                            fontSize = Typography.bodyLarge.fontSize,
+                            fontWeight = Typography.bodyLarge.fontWeight,
+                            lineHeight = Typography.bodyLarge.lineHeight,
+                            textAlign = TextAlign.Justify)
+                        Spacer(modifier = Modifier.height(20.dp))
+                        Text("carla.c.mendes@ipleiria.pt",
+                            color = colorScheme.onBackground,
+                            fontSize = Typography.bodyLarge.fontSize,
+                            fontWeight = Typography.bodyLarge.fontWeight,
+                            lineHeight = Typography.bodyLarge.lineHeight,
+                            textAlign = TextAlign.Center,
+                            textDecoration = TextDecoration.Underline)
+                    }
                 }
                 },
             confirmButton = {
-                // To override confirmButton's original position: aligned to right side
-                Row(modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center)
-                {
-                    ActionButton("Sair", R.drawable.logout, { onClick() }, true)
-                }
-            },
-            dismissButton = null
-        )
-    }
-    @Composable
-    fun StartForm(title:String, description: String, onClick: () -> Unit, onDismissRequest: () -> Unit){
-        AlertDialog(
-            containerColor = colorScheme.background,
-            tonalElevation = 0.dp,
-            icon = {
-                Image(
-                    painter = painterResource(id = R.drawable.questionnaire),
-                    contentDescription = "Questionnaire",
-                    modifier = Modifier.size(80.dp)
-                )
-            },
-            onDismissRequest = { onDismissRequest() },
-            title = {
-                Text(
-                    title,
-                    color = colorScheme.onPrimary,
-                    fontSize = Typography.titleSmall.fontSize,
-                    fontWeight = Typography.titleSmall.fontWeight,
-                    textAlign = TextAlign.Center
-                )
-            },
-            text = {
-                Text(
-                    description,
-                    color = colorScheme.onPrimary,
-                    fontSize = Typography.bodyMedium.fontSize,
-                    fontWeight = Typography.bodyMedium.fontWeight,
-                    textAlign = TextAlign.Justify
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        onClick()
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = colorScheme.secondary
-                    ),
-                    ) {
-                    Text(
-                        "Sim",
-                        fontSize = Typography.bodyMedium.fontSize,
-                        fontWeight = Typography.bodyMedium.fontWeight
-                    )
+                if(alert.dismissButton == null){
+                    // To override confirmButton's original position: aligned to right side
+                    Row(modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center)
+                    {
+                        ActionButton(alert.confirmButton.title, alert.confirmButton.icon, { alert.confirmButton.onClick?.let { it() } }, true)
+                    }
+                }else{
+                    ActionButton(alert.confirmButton.title, alert.confirmButton.icon, { alert.confirmButton.onClick?.let { it() } }, true)
                 }
             },
             dismissButton = {
-                Button(
-                    onClick = {
-                        onDismissRequest()
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = colorScheme.primaryContainer
-                    ),
-
-                    ) {
-                    Text(
-                        "Mais tarde",
-                        fontSize = Typography.bodyMedium.fontSize,
-                        fontWeight = Typography.bodyMedium.fontWeight
-                    )
+                if(alert.dismissButton != null){
+                    ActionButton(alert.dismissButton!!.title, alert.dismissButton!!.icon, { alert.dismissButton!!.onClick?.let { it() } }, false)
                 }
             }
         )
-
     }
 
     @Composable
@@ -171,35 +283,68 @@ object CommonComposables {
             lineHeight = Typography.titleLarge.lineHeight,
             textAlign = TextAlign.Center
         )
-       Image(
+        Image(
             painter = painterResource(id = image),
             contentDescription = text,
             modifier = Modifier.size(250.dp))
     }
 
     @Composable
-    fun ActionButton(text:String, icon: Int, onClick: () -> Unit, isActionStarted: Boolean){
+    fun ActionButton(text:String, icon: Int, onClick: () -> Unit, isActionStarter: Boolean) {
         Button(
             colors = ButtonDefaults.buttonColors(
-                containerColor = if(isActionStarted) colorScheme.primary else colorScheme.secondary
+                containerColor = if (isActionStarter) colorScheme.primary else colorScheme.secondary
             ),
             onClick = { onClick() }
         ) {
-            Row(horizontalArrangement = Arrangement.Center,
+            Row(
+                horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .wrapContentSize()
                     .padding(5.dp)
             ) {
-                Text(text = text,
+                Text(
+                    text = text,
                     fontSize = Typography.bodyLarge.fontSize,
                     fontWeight = Typography.bodyLarge.fontWeight,
-                    color = if(isActionStarted) colorScheme.onPrimary else colorScheme.onSecondary)
-                Spacer(modifier = Modifier.width(15.dp))
+                    color = if (isActionStarter) colorScheme.onPrimary else colorScheme.onSecondary
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Image(
+                    painter = painterResource(id = icon),
+                    contentDescription = text
+                )
+            }
+        }
+    }
+    @Composable
+    fun MenuButton(text:String, icon: Int, onClick: () -> Unit, isActionStarter: Boolean){
+        Button(
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if(isActionStarter) colorScheme.primary else colorScheme.secondary
+            ),
+            onClick = { onClick() }
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.Start,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(5.dp)
+            ) {
                 Image(
                     painter = painterResource(id = icon),
                     contentDescription = text,
-                    modifier = Modifier.scale(1.25F))
+                    modifier = Modifier.scale(1.25F)
+                )
+                Spacer(modifier = Modifier.width(15.dp))
+                Text(
+                    text = text,
+                    fontSize = Typography.bodyLarge.fontSize,
+                    fontWeight = Typography.bodyLarge.fontWeight,
+                    color = if (isActionStarter) colorScheme.onPrimary else colorScheme.onSecondary
+                )
             }
         }
     }

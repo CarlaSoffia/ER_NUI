@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -24,7 +25,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.ScaffoldState
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.Surface
@@ -38,6 +38,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -45,6 +46,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -59,10 +61,13 @@ import org.vosk.Recognizer
 import org.vosk.android.RecognitionListener
 import org.vosk.android.StorageService
 import pt.ipleiria.estg.ciic.chatboternui.models.Message
+import pt.ipleiria.estg.ciic.chatboternui.ui.theme.LavenderBlue
 import pt.ipleiria.estg.ciic.chatboternui.ui.theme.Typography
 import pt.ipleiria.estg.ciic.chatboternui.utils.CommonComposables
 import pt.ipleiria.estg.ciic.chatboternui.utils.IBaseActivity
 import pt.ipleiria.estg.ciic.chatboternui.utils.SpeechService
+import pt.ipleiria.estg.ciic.chatboternui.utils.alerts.DepressionQuestionnaireAlert
+import pt.ipleiria.estg.ciic.chatboternui.utils.alerts.HappinessQuestionnaireAlert
 
 
 private const val STATE_BEGIN = 0
@@ -90,11 +95,37 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
             utils.startActivity(applicationContext,SignInActivity::class.java, this)
             return
         }
+        defineQuestionnaireAlertOnClick(DepressionQuestionnaireAlert::class.simpleName.toString())
+        defineQuestionnaireAlertOnClick(HappinessQuestionnaireAlert::class.simpleName.toString())
+
         tts = TextToSpeech(this, this)
         checkPermission()
         getAllMessages()
         handleQuestionnaires()
    }
+    private fun defineQuestionnaireAlertOnClick(alertClassName: String){
+        val isDepressionQuestionnaireAlert = alertClassName == DepressionQuestionnaireAlert::class.simpleName.toString()
+        alerts[alertClassName]!!.confirmButton.onClick = {
+            _showAlertGeriatricQuestionnaire.value = false
+            _showAlertOxfordQuestionnaire.value = false
+            showAlertDialog.value = false
+            if(isDepressionQuestionnaireAlert){
+                utils.addBooleanToStore(sharedPreferences, "middleGeriatricQuestionnaire", true)
+                sendMessage("start_geriatric_form")
+            }else{
+                utils.addBooleanToStore(sharedPreferences, "middleOxfordHappinessQuestionnaire", true)
+                sendMessage("start_oxford_happiness_form")
+            }
+        }
+        alerts[alertClassName]!!.dismissButton!!.onClick =  {
+            showAlertDialog.value = false
+            if(isDepressionQuestionnaireAlert){
+                _showAlertGeriatricQuestionnaire.value = false
+            }else{
+                _showAlertOxfordQuestionnaire.value = false
+            }
+        }
+    }
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
             for (locale in tts!!.availableLanguages) {
@@ -285,18 +316,35 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(30.dp)
                 .background(colorScheme.background),
-            verticalArrangement = Arrangement.Center,
+            verticalArrangement = Arrangement.SpaceAround,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            CircularProgressIndicator(
-                modifier = Modifier.padding(vertical = 26.dp),
-                color = colorScheme.onPrimary
-            )
-            Text(text = "A Carregar...",
+            Text(text = "A carregar os seus dados...",
                 fontSize = Typography.titleLarge.fontSize,
-                fontWeight = Typography.titleLarge.fontWeight,
-                color = colorScheme.onPrimary)
+                lineHeight = Typography.titleLarge.lineHeight,
+                textAlign = TextAlign.Center,
+                color = colorScheme.onBackground
+            )
+            Image(
+                painter = painterResource(id = R.drawable.loading),
+                contentDescription = "Imagem de espera",
+                modifier = Modifier.size(250.dp))
+            Text(text = "Por favor aguarde...",
+                fontSize = Typography.titleMedium.fontSize,
+                lineHeight = Typography.titleMedium.lineHeight,
+                textAlign = TextAlign.Center,
+                color = colorScheme.onBackground
+            )
+            Row(modifier = Modifier
+                .width(100.dp)
+                .height(100.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically){
+                CommonComposables.ProgressIndicator()
+            }
+
         }
     }
     @Composable
@@ -496,37 +544,11 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
             TopBar("MIMO", scaffoldState!!, scope!!)
             ChatSection(Modifier.weight(1f))
             if(_showAlertGeriatricQuestionnaire.value){
-                CommonComposables.StartForm("Gostaria de responder a um questionário para avaliar sintomas de depressão?",
-                    "Este questionário que demora sensívelmente 6 minutos e contém 15 perguntas, às quais poderá responder com:\n"+
-                            "- Sim\n" +
-                            "- Não\n\n" +
-                            "Além disso, será solicitado que justifique a sua resposta anterior para cada uma dessas perguntas.",
-                    onClick = {
-                        _showAlertGeriatricQuestionnaire.value = false
-                        _showAlertOxfordQuestionnaire.value = false
-                        utils.addBooleanToStore(sharedPreferences, "middleGeriatricQuestionnaire", true)
-                        sendMessage("start_geriatric_form")
-                    },onDismissRequest = {
-                        _showAlertGeriatricQuestionnaire.value = false
-                    })
+                alert = alerts[DepressionQuestionnaireAlert::class.simpleName.toString()]!!
+                showAlertDialog.value = true
             }else if(_showAlertOxfordQuestionnaire.value){
-                    CommonComposables.StartForm("Gostaria de responder a um questionário para avaliar o seu nível de felicidade?",
-                        "Este questionário é composto por um total de 29 perguntas, onde poderá responder com:\n\n"+
-                                "- Discordo fortemente\n" +
-                                "- Discordo moderadamente\n" +
-                                "- Discordo levemente\n" +
-                                "- Concordo levemente\n" +
-                                "- Concordo moderadamente\n" +
-                                "- Concordo fortemente \n\n" +
-                                "Depois de responder a cada pergunta será lhe pedido para justificar a sua resposta.",
-                        onClick = {
-                            _showAlertOxfordQuestionnaire.value = false
-                            _showAlertGeriatricQuestionnaire.value = false
-                            utils.addBooleanToStore(sharedPreferences, "middleOxfordHappinessQuestionnaire", true)
-                            sendMessage("start_oxford_happiness_form")
-                        },onDismissRequest = {
-                            _showAlertOxfordQuestionnaire.value = false
-                        })
+                alert = alerts[HappinessQuestionnaireAlert::class.simpleName.toString()]!!
+                showAlertDialog.value = true
             }
             if(!_microActive.value){
                 onDestroy()

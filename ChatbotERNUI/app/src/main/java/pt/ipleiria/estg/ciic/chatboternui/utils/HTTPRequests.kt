@@ -9,8 +9,8 @@ import okhttp3.Response
 import org.json.JSONObject
 import java.net.UnknownHostException
 
-private const val URL_API = "https://eb0f-2001-8a0-f24e-5f00-1ae9-d2ec-237b-5682.ngrok-free.app/api"
-class HTTPRequests {
+private const val URL_API = "https://3858-2001-8a0-f24e-5f00-1ae9-d2ec-237b-5682.ngrok-free.app/api"
+open class HTTPRequests {
 
     protected val utils = Others()
     private suspend fun refreshAccessToken(sharedPreferences: SharedPreferences) : String {

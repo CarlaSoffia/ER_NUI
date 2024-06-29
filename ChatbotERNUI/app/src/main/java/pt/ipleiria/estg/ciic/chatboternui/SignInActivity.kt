@@ -44,7 +44,7 @@ class SignInActivity : IBaseActivity, BaseActivity(){
     private var _passwordHidden: MutableState<Boolean> = mutableStateOf(true)
     private var email: MutableState<String> = mutableStateOf("")
     private var password: MutableState<String> = mutableStateOf("")
-
+    private var errorMsg: MutableState<String> = mutableStateOf("")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         super.instantiateInitialData()
@@ -54,10 +54,9 @@ class SignInActivity : IBaseActivity, BaseActivity(){
     @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
     @Composable
     override fun MainScreen(scaffoldState: ScaffoldState?, scope: CoroutineScope?) {
-        Box (modifier = Modifier.fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)){
-            Column(
+        Column(
                 Modifier
+                    .background(MaterialTheme.colorScheme.background)
                     .fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceAround,
@@ -94,7 +93,6 @@ class SignInActivity : IBaseActivity, BaseActivity(){
                     )
                 }
             }
-        }
     }
     
     @Composable
