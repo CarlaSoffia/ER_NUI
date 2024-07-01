@@ -42,12 +42,6 @@ class Others {
         return LocalDateTime.ofInstant(instant, ZoneOffset.UTC)
     }
 
-    fun getTimeNow() :String{
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", portugal)
-        val currentTime = Calendar.getInstance().time
-        return dateFormat.format(currentTime)
-    }
-
     fun has24HoursPassed(previousTime: String): Boolean {
         val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", portugal)
         val currentTime = Calendar.getInstance().time
@@ -86,6 +80,11 @@ class Others {
     fun isTokenExpired(expiryTime: Long): Boolean {
         val currentTime = Instant.now().epochSecond
         return currentTime >= expiryTime
+    }
+    fun removeFromStore(sharedPreferences:SharedPreferences, key: String){
+        val editor = sharedPreferences.edit()
+        editor.remove(key)
+        editor.apply()
     }
     fun addIntToStore(sharedPreferences:SharedPreferences, key: String, value: Int){
         val editor = sharedPreferences.edit()

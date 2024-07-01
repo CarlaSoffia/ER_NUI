@@ -36,42 +36,75 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.json.JSONObject
+import pt.ipleiria.estg.ciic.chatboternui.Objects.ThemeState
 import pt.ipleiria.estg.ciic.chatboternui.ui.theme.Typography
 import pt.ipleiria.estg.ciic.chatboternui.utils.CommonComposables
 import pt.ipleiria.estg.ciic.chatboternui.utils.IBaseActivity
+import pt.ipleiria.estg.ciic.chatboternui.utils.alerts.ActivateAccountAlert
+import pt.ipleiria.estg.ciic.chatboternui.utils.alerts.SignOutAlert
 
 class SignInActivity : IBaseActivity, BaseActivity(){
     private var _passwordHidden: MutableState<Boolean> = mutableStateOf(true)
     private var email: MutableState<String> = mutableStateOf("")
     private var password: MutableState<String> = mutableStateOf("")
     private var errorMsg: MutableState<String> = mutableStateOf("")
+    private var showActivateAccountModal: MutableState<Boolean> = mutableStateOf(false)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         super.instantiateInitialData()
+        showActivateAccountModal.value = sharedPreferences.getBoolean("showActivateAccountModal", false)
         super.onCreateBaseActivity(this)
+        if(showActivateAccountModal.value){
+            // Initialize SignOutAlert alert dialog
+            val activateAccountAlert = ActivateAccountAlert()
+            activateAccountAlert.confirmButton.onClick = {
+                activateAccount()
+            }
+            activateAccountAlert.dismissButton.onClick = {
+                finish()
+            }
+            alerts[ActivateAccountAlert::class.simpleName.toString()] = activateAccountAlert
+        }
     }
+    private fun activateAccount(){
+        val activateAccount = JSONObject()
+        val email = sharedPreferences.getString( "email", "")
+        val password = sharedPreferences.getString( "password", "")
+        activateAccount.put("email", email)
+        activateAccount.put("password", password)
+        scope.launch {
+            val response = httpRequests.request(sharedPreferences, "PATCH", "/auth/activateClient", activateAccount.toString())
+            if(handleConnectivityError(response["status_code"].toString())) return@launch
+            utils.removeFromStore(sharedPreferences, "email")
+            utils.removeFromStore(sharedPreferences, "password")
+            showActivateAccountModal.value = false
+            utils.addBooleanToStore(sharedPreferences, "showActivateAccountModal", false)
+        }
 
+
+    }
     @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
     @Composable
     override fun MainScreen(scaffoldState: ScaffoldState?, scope: CoroutineScope?) {
+        if(showActivateAccountModal.value){
+            CommonComposables.ShowAlertDialog(alert = alerts[ActivateAccountAlert::class.simpleName.toString()]!!)
+        }
         Column(
-                Modifier
-                    .background(MaterialTheme.colorScheme.background)
-                    .fillMaxSize(),
+            Modifier
+                .background(MaterialTheme.colorScheme.background)
+                .fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceAround,
             ) {
                 CommonComposables.HeaderWithTitleAndImage("Bem vindo de volta ao Mimo!", R.drawable.session_background)
                 TextFieldAccount(email,"Email",
                     "Insira o seu email",
-                    R.drawable.email,
-                    "Email"
+                    R.drawable.email
                 )
                 TextFieldAccount(password,
                     "Palavra-passe",
                     "Insira a palavra-passe",
-                    R.drawable.password,
-                    "Palavra-passe"
+                    R.drawable.password
                 )
                 // Error message
                 if(errorMsg.value.isNotEmpty()){
@@ -96,7 +129,7 @@ class SignInActivity : IBaseActivity, BaseActivity(){
     }
     
     @Composable
-    fun TextFieldAccount(value: MutableState<String>, label: String, description: String, icon: Int, iconDescription: String){
+    fun TextFieldAccount(value: MutableState<String>, label: String, description: String, icon: Int){
         val isPassword = label=="Palavra-passe" || label=="Confirme a palavra-passe"
         Row(horizontalArrangement = Arrangement.Start,
             verticalAlignment = Alignment.CenterVertically,
@@ -141,8 +174,7 @@ class SignInActivity : IBaseActivity, BaseActivity(){
                     IconButton(onClick = { togglePasswordVisibility() }) {
                         Icon(
                             painter = painterResource(id = if(_passwordHidden.value) R.drawable.show else R.drawable.hide),
-                            contentDescription = "Esconder/mostrar a palavra-passe",
-                            tint = MaterialTheme.colorScheme.onBackground)
+                            contentDescription = "Esconder/mostrar a palavra-passe")
                     }
                 },
                 modifier = Modifier

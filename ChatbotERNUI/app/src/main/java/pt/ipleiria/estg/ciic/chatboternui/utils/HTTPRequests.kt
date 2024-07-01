@@ -9,7 +9,7 @@ import okhttp3.Response
 import org.json.JSONObject
 import java.net.UnknownHostException
 
-private const val URL_API = "https://3858-2001-8a0-f24e-5f00-1ae9-d2ec-237b-5682.ngrok-free.app/api"
+private const val URL_API = "https://974f-2001-8a0-f24e-5f00-1ae9-d2ec-237b-5682.ngrok-free.app/api"
 open class HTTPRequests {
 
     protected val utils = Others()
@@ -34,7 +34,7 @@ open class HTTPRequests {
     }
     suspend fun request(sharedPreferences: SharedPreferences, requestMethod:String,apiURL:String,body:String=""): JSONObject{
         return withContext(Dispatchers.IO) {
-            val isAuth = apiURL.contains("login")
+            val isAuth = apiURL.contains("login") || apiURL.contains("activateClient") || apiURL.contains("clients")
             val isRefresh = apiURL.contains("refresh")
             val token = sharedPreferences.getString("access_token", "").toString()
 
@@ -48,7 +48,7 @@ open class HTTPRequests {
                     .addHeader("Content-Type", "application/json")
                     .addHeader("Accept", "application/json")
                     .build()
-            } else if (requestMethod == "POST") {
+            } else if (requestMethod == "POST" || requestMethod == "PATCH") {
                 val requestBody = body.toRequestBody()
                 Request.Builder()
                     .method(requestMethod, requestBody)

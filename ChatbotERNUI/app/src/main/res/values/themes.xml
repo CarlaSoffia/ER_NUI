@@ -2,4 +2,8 @@
 <resources>
 
     <style name="Theme.ChatbotERNUI" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="DatePickerTheme" parent="android:Theme.Material.Light.Dialog">
+        <item name="android:colorSecondary">#FFFFFF</item>
+        <item name="android:colorAccent">#141435</item>
+    </style>
 </resources>

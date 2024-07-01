@@ -38,7 +38,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -463,7 +462,6 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
                 Icon(
                     painter = painterResource(id = R.drawable.send),
                     contentDescription = "Send",
-                    tint = colorScheme.onPrimary,
                     modifier = Modifier
                         .padding(5.dp, 0.dp)
                         .clickable {
@@ -489,7 +487,6 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
             Icon(
                 painter = painterResource(id = R.drawable.menu),
                 contentDescription = "Botão Menu",
-                tint = colorScheme.onPrimary,
                 modifier = Modifier
                     .clickable {
                         focusManager.clearFocus()
@@ -506,7 +503,6 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
             Icon(
                 painter = painterResource(id = if (_microActive.value) R.drawable.keyboard else R.drawable.microphone),
                 contentDescription = "Botão alternar entre voz e texto",
-                tint = colorScheme.onPrimary,
                 modifier = Modifier
                     .clickable {
                         _microActive.value = !_microActive.value
