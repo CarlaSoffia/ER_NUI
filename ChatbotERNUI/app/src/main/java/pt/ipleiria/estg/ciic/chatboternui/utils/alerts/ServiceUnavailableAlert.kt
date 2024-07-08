@@ -1,5 +1,4 @@
 package pt.ipleiria.estg.ciic.chatboternui.utils.alerts
-import androidx.activity.ComponentActivity
 import pt.ipleiria.estg.ciic.chatboternui.R
 
 class ServiceUnavailableAlert : IAlert {

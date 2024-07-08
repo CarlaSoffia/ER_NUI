@@ -6,7 +6,6 @@ import android.os.Bundle
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ScaffoldState
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -172,7 +170,7 @@ class SignInActivity : IBaseActivity, BaseActivity(){
                 },
                 trailingIcon = {if (isPassword)
                     IconButton(onClick = { togglePasswordVisibility() }) {
-                        Icon(
+                        Image(
                             painter = painterResource(id = if(_passwordHidden.value) R.drawable.show else R.drawable.hide),
                             contentDescription = "Esconder/mostrar a palavra-passe")
                     }

@@ -6,8 +6,15 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
+import androidx.compose.animation.animateColor
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,13 +26,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.LinearProgressIndicator
 import androidx.compose.material.ScaffoldState
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -33,11 +39,15 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -50,23 +60,25 @@ import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import okio.IOException
 import org.json.JSONArray
-import org.json.JSONException
 import org.json.JSONObject
 import org.vosk.Model
 import org.vosk.Recognizer
 import org.vosk.android.RecognitionListener
 import org.vosk.android.StorageService
 import pt.ipleiria.estg.ciic.chatboternui.models.Message
-import pt.ipleiria.estg.ciic.chatboternui.ui.theme.LavenderBlue
 import pt.ipleiria.estg.ciic.chatboternui.ui.theme.Typography
 import pt.ipleiria.estg.ciic.chatboternui.utils.CommonComposables
 import pt.ipleiria.estg.ciic.chatboternui.utils.IBaseActivity
 import pt.ipleiria.estg.ciic.chatboternui.utils.SpeechService
 import pt.ipleiria.estg.ciic.chatboternui.utils.alerts.DepressionQuestionnaireAlert
 import pt.ipleiria.estg.ciic.chatboternui.utils.alerts.HappinessQuestionnaireAlert
+import pt.ipleiria.estg.ciic.chatboternui.utils.alerts.RecordAudioAlert
+import pt.ipleiria.estg.ciic.chatboternui.utils.alerts.RecordedResultAlert
+import pt.ipleiria.estg.ciic.chatboternui.utils.alerts.ToggleInputModeAlert
 
 
 private const val STATE_BEGIN = 0
@@ -76,16 +88,20 @@ private const val PERMISSIONS_REQUEST_RECORD_AUDIO = 1
 
 class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToSpeech.OnInitListener {
     private var _messages = mutableStateListOf<Message>()
-    private var _messageWritten : MutableState<String> = mutableStateOf("")
-    private var _microActive : MutableState<Boolean> = mutableStateOf(true)
+    private var _userMessage : MutableState<String> = mutableStateOf("")
+    private var _chatbotWaitingMessage : Message = Message(id = Long.MAX_VALUE, time = null, text = "...", isChatbot = true, animate = true)
+    private var _microActive : MutableState<Boolean> = mutableStateOf(false)
+    private var _showRecordAudioAlert : MutableState<Boolean> = mutableStateOf(false)
+    private var _showRecordedResultAlert : MutableState<Boolean> = mutableStateOf(false)
+    private var _showInputModeAlert : MutableState<Boolean> = mutableStateOf(false)
     private var _finishedLoading: MutableState<Int> = mutableStateOf(STATE_BEGIN)
     private var middleGeriatricQuestionnaire: Boolean = false
     private var middleOxfordHappinessQuestionnaire: Boolean = false
-    private var model: Model? = null
-    private var speechService: SpeechService? = null
     private var _showAlertGeriatricQuestionnaire : MutableState<Boolean> = mutableStateOf(false)
     private var _showAlertOxfordQuestionnaire : MutableState<Boolean> = mutableStateOf(false)
-    private var tts: TextToSpeech? = null
+    private var sttModel: Model? = null
+    private var sttService: SpeechService? = null
+    private var ttsService: TextToSpeech? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         super.instantiateInitialData()
@@ -96,24 +112,58 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
         }
         defineQuestionnaireAlertOnClick(DepressionQuestionnaireAlert::class.simpleName.toString())
         defineQuestionnaireAlertOnClick(HappinessQuestionnaireAlert::class.simpleName.toString())
-
-        tts = TextToSpeech(this, this)
-        checkPermission()
-        getAllMessages()
+        defineToggleInputModeAlert()
+        defineAudioRecordAlerts()
+        ttsService = TextToSpeech(this, this)
+        initSttModel()
+        //getAllMessages()
         handleQuestionnaires()
    }
+    private fun defineAudioRecordAlerts(){
+        alerts[RecordAudioAlert::class.simpleName.toString()]!!.confirmButton.onClick = {
+            sttService!!.setPause(true)
+            _showRecordAudioAlert.value = false
+            _showRecordedResultAlert.value = true
+        }
+        alerts[RecordAudioAlert::class.simpleName.toString()]!!.dismissButton!!.onClick = {
+            sttService!!.setPause(true)
+            _showRecordAudioAlert.value = false
+            _userMessage.value = ""
+        }
+
+        alerts[RecordedResultAlert::class.simpleName.toString()]!!.confirmButton.onClick = {
+            sendMessage(_userMessage.value)
+            _userMessage.value = ""
+            _showRecordedResultAlert.value = false
+        }
+        alerts[RecordedResultAlert::class.simpleName.toString()]!!.dismissButton!!.onClick = {
+            _showRecordedResultAlert.value = false
+            _userMessage.value = ""
+        }
+    }
+    private fun defineToggleInputModeAlert(){
+        _microActive.value = sharedPreferences.getBoolean("microActive", false)
+        alerts[ToggleInputModeAlert::class.simpleName.toString()]!!.confirmButton.onClick = {
+            _microActive.value = !_microActive.value
+            utils.addBooleanToStore(sharedPreferences, "microActive", _microActive.value)
+            _showInputModeAlert.value = false
+        }
+        alerts[ToggleInputModeAlert::class.simpleName.toString()]!!.dismissButton!!.onClick = {
+            _showInputModeAlert.value = false
+        }
+    }
     private fun defineQuestionnaireAlertOnClick(alertClassName: String){
         val isDepressionQuestionnaireAlert = alertClassName == DepressionQuestionnaireAlert::class.simpleName.toString()
         alerts[alertClassName]!!.confirmButton.onClick = {
-            _showAlertGeriatricQuestionnaire.value = false
-            _showAlertOxfordQuestionnaire.value = false
             showAlertDialog.value = false
             if(isDepressionQuestionnaireAlert){
                 utils.addBooleanToStore(sharedPreferences, "middleGeriatricQuestionnaire", true)
                 sendMessage("start_geriatric_form")
+                _showAlertGeriatricQuestionnaire.value = false
             }else{
                 utils.addBooleanToStore(sharedPreferences, "middleOxfordHappinessQuestionnaire", true)
                 sendMessage("start_oxford_happiness_form")
+                _showAlertOxfordQuestionnaire.value = false
             }
         }
         alerts[alertClassName]!!.dismissButton!!.onClick =  {
@@ -127,20 +177,20 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
     }
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
-            for (locale in tts!!.availableLanguages) {
+            for (locale in ttsService!!.availableLanguages) {
                 if(locale.displayCountry.equals("Portugal")) {
-                    tts!!.language = locale
+                    ttsService!!.language = locale
                     break
                 }
             }
         }
 
-        tts!!.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+        ttsService!!.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(utteranceId: String?) {
                 // TTS started speaking
                 // Ensures the STT service stops listening when TTS start to speak
                 if(_microActive.value){
-                    speechService!!.setPause(true)
+                    sttService!!.setPause(true)
                 }
             }
 
@@ -148,14 +198,14 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
                 // TTS finished speaking
                 // Ensures the STT service resumes listening when TTS is done speaking
                 if(_microActive.value){
-                    speechService!!.setPause(false)
+                    sttService!!.setPause(false)
                 }
             }
 
             override fun onError(utteranceId: String?) {
                 // Handle TTS error
                 if(_microActive.value){
-                    speechService!!.setPause(false)
+                    sttService!!.setPause(false)
                 }
             }
         })
@@ -166,31 +216,26 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
         if(!middleGeriatricQuestionnaire && !middleOxfordHappinessQuestionnaire){
             val geriatricQuestionnaireCompletedDate = sharedPreferences.getString("geriatricQuestionnaireCompletedDate","")
             val oxfordHappinessQuestionnaireCompletedDate = sharedPreferences.getString("oxfordHappinessQuestionnaireCompletedDate","")
-            if(geriatricQuestionnaireCompletedDate != ""){
-                _showAlertGeriatricQuestionnaire.value = utils.has24HoursPassed(geriatricQuestionnaireCompletedDate!!)
+
+            _showAlertGeriatricQuestionnaire.value = if(geriatricQuestionnaireCompletedDate != ""){
+                utils.has24HoursPassed(geriatricQuestionnaireCompletedDate!!)
             }else{
-                _showAlertGeriatricQuestionnaire.value = true
+                true
             }
-            if(oxfordHappinessQuestionnaireCompletedDate != ""){
-                _showAlertOxfordQuestionnaire.value = utils.has24HoursPassed(oxfordHappinessQuestionnaireCompletedDate!!)
+
+            _showAlertOxfordQuestionnaire.value  = if(oxfordHappinessQuestionnaireCompletedDate != ""){
+                utils.has24HoursPassed(oxfordHappinessQuestionnaireCompletedDate!!)
             }else{
-                _showAlertOxfordQuestionnaire.value = true
+                true
             }
+
         }
     }
-    private fun recognizeMicrophone() {
-        if (speechService == null) {
-            try {
-                val rec = Recognizer(model, 16000.0f)
-                speechService = SpeechService(rec, 16000.0f)
-                speechService!!.startListening(this)
-                _finishedLoading.value = STATE_DONE
-            } catch (e: IOException) {
-                utils.setErrorState(e.message)
-            }
-        }
+
+    private fun listen(){
+        sttService!!.startListening(this)
     }
-    private fun checkPermission(){
+    private fun initSttModel(){
         // Check if user has given permission to record audio, init the model after permission is granted
         val permissionCheck = ContextCompat.checkSelfPermission(
             applicationContext, Manifest.permission.RECORD_AUDIO
@@ -202,24 +247,31 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
                 PERMISSIONS_REQUEST_RECORD_AUDIO
             )
         } else {
-            initModel()
+            StorageService.unpack(applicationContext, "model-pt", "model",
+                { model: Model? ->
+                    this.sttModel = model
+                    _finishedLoading.value = STATE_READY
+                }
+            ) { exception: IOException -> utils.setErrorState("Failed to unpack the model" + exception.message) }
         }
-        _microActive.value = sharedPreferences.getBoolean("microActive", false)
     }
-    private fun initModel() {
-        StorageService.unpack(applicationContext, "model-pt", "model",
-            { model: Model? ->
-                this.model = model
-                _finishedLoading.value = STATE_READY
+    private fun initSttService(){
+        if (sttService == null && sttModel != null) {
+            try {
+                val rec = Recognizer(sttModel, 16000.0f)
+                sttService = SpeechService(rec, 16000.0f)
+                _finishedLoading.value = STATE_DONE
+            } catch (e: IOException) {
+                utils.setErrorState(e.message!!)
             }
-        ) { exception: IOException -> utils.setErrorState("Failed to unpack the model" + exception.message) }
+        }
     }
     public override fun onDestroy() {
         super.onDestroy()
-        if (speechService != null) {
-            speechService!!.stop()
-            speechService!!.shutdown()
-            speechService = null
+        if (sttService != null) {
+            sttService!!.stop()
+            sttService!!.shutdown()
+            sttService = null
         }
     }
 
@@ -229,22 +281,7 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
 
     override fun onResult(hypothesis: String) {
         val result = JSONObject(hypothesis)
-        var confs = emptyArray<Double>()
-        val wordsConfs: JSONArray
-        try {
-            wordsConfs = result.getJSONArray("result")
-        }catch (e: JSONException){
-            return
-        }
-        for (i in 0 until wordsConfs.length()) {
-            val word = wordsConfs.getJSONObject(i)
-            confs = confs.plus(word.get("conf").toString().toDouble())
-        }
-        val medianAccuracy = utils.calculateRootMeanSquare(confs)
-        val transcription = result.getString("text")
-        if(medianAccuracy >= 0.60){
-            chatbotResponse(transcription = transcription)
-        }
+        _userMessage.value = result.getString("text")
     }
 
     override fun onFinalResult(hypothesis: String?) {
@@ -253,7 +290,7 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
 
     override fun onError(exception: Exception?) {
         if (exception != null) {
-            utils.setErrorState(exception.message)
+            utils.setErrorState(exception.message!!)
         }
     }
 
@@ -277,14 +314,16 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
             }
         }
     }
-    private fun chatbotResponse(transcription: String){
-        sendMessage(transcription)
-    }
 
-    private fun sendMessage(transcription: String) {
+    private fun sendMessage(userInput: String) {
+        _messages.add(Message(id = _messages.size.toLong(),
+            text = userInput,
+            isChatbot = false))
+        _messages.add(_chatbotWaitingMessage)
+
         val messageSend = JSONObject()
         messageSend.put("isChatbot", false)
-        messageSend.put("body", transcription)
+        messageSend.put("body", userInput)
         var response: JSONObject
         scope.launch {
             response = httpRequests.request(sharedPreferences, "POST", "/messages", messageSend.toString())
@@ -296,13 +335,16 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
                 if(body == "start_geriatric_form" || body == "start_oxford_happiness_form"){
                     continue
                 }
-                val isChatbot = message["isChatbot"].toString() == "true"
+                if(message["isChatbot"].toString() != "true"){
+                    continue
+                }
                 val id = message["id"].toString()
+                _messages.remove(_chatbotWaitingMessage)
                 _messages.add(Message(id = id.toLong(),
                     text = body,
-                    isChatbot = isChatbot,
+                    isChatbot = false,
                     time = utils.convertStringLocalDateTime(message["created_at"].toString())))
-                if(isChatbot) tts!!.speak(body, TextToSpeech.QUEUE_ADD, null, id)
+                ttsService!!.speak(body, TextToSpeech.QUEUE_ADD, null, id)
                 if(body == "#IS_SHORT_QUESTION#"){
                     // show the modal
                 }
@@ -336,55 +378,66 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
                 textAlign = TextAlign.Center,
                 color = colorScheme.onBackground
             )
-            Row(modifier = Modifier
-                .width(100.dp)
-                .height(100.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically){
-                CommonComposables.ProgressIndicator()
-            }
-
+            ProgressIndicator()
         }
     }
     @Composable
     fun ChatSection(modifier: Modifier = Modifier) {
         LazyColumn(
             modifier = modifier
-                .fillMaxSize()
-                .padding(16.dp),
+                .fillMaxSize(),
                 reverseLayout = true
         ) {
         items(_messages.reversed()) { chat ->
                 MessageItem(
                     messageText = chat.text,
-                    time = utils.formatDatePortugueseLocale(chat.time).toString(),
+                    time = if (chat.time == null) null else utils.formatDatePortugueseLocale(chat.time!!).toString(),
                     isChatbot = chat.isChatbot,
+                    animate = chat.animate
                 )
-                Spacer(modifier = Modifier.height(8.dp))
             }
         }
     }
-
     @Composable
     fun MessageItem(
         messageText: String?,
-        time: String,
-        isChatbot: Boolean
-        ) {
+        time: String?,
+        isChatbot: Boolean,
+        animate: Boolean = false
+    ) {
         val botChatBubbleShape = RoundedCornerShape(0.dp, 15.dp, 15.dp, 15.dp)
         val authorChatBubbleShape = RoundedCornerShape(15.dp, 0.dp, 15.dp, 15.dp)
+
+        // Define the two colors for the animation
+        val primaryContainer = colorScheme.primaryContainer
+        val secondaryContainer = colorScheme.secondaryContainer
+
+        // Create an infinite transition if animation is enabled
+        val infiniteTransition = rememberInfiniteTransition()
+        val animatedColor by infiniteTransition.animateColor(
+            initialValue = primaryContainer,
+            targetValue = secondaryContainer,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 1000, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse
+            )
+        )
+
+        // Determine the background color based on the animation state
+        val backgroundColor = if (animate) animatedColor else if (!isChatbot) primaryContainer else secondaryContainer
+
         Column(
             modifier = Modifier
-                .fillMaxWidth(),
+                .fillMaxWidth()
+                .padding(15.dp),
             horizontalAlignment = if (!isChatbot) Alignment.End else Alignment.Start
-        )
-        {
+        ) {
             if (!messageText.isNullOrEmpty()) {
                 Box(
                     modifier = Modifier
                         .background(
-                            if (!isChatbot) colorScheme.primaryContainer else colorScheme.secondary,
-                            if (!isChatbot) authorChatBubbleShape else botChatBubbleShape
+                            color = backgroundColor,
+                            shape = if (!isChatbot) authorChatBubbleShape else botChatBubbleShape
                         )
                         .padding(
                             top = 8.dp,
@@ -395,139 +448,192 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
                 ) {
                     Text(
                         text = messageText,
-                        color = colorScheme.onSurface,
+                        color = if (!isChatbot) colorScheme.onPrimaryContainer else colorScheme.onSecondaryContainer,
                         fontSize = Typography.bodyLarge.fontSize,
                         fontWeight = Typography.bodyLarge.fontWeight
                     )
                 }
-                Text(
-                    text = time,
-                    fontSize = Typography.bodySmall.fontSize,
-                    fontWeight = Typography.bodySmall.fontWeight,
-                    modifier = Modifier.padding(start = 8.dp),
-                    color = colorScheme.onSurface
-                )
+                if (time != null) {
+                    Text(
+                        text = time,
+                        fontSize = Typography.bodySmall.fontSize,
+                        fontWeight = Typography.bodySmall.fontWeight,
+                        modifier = Modifier.padding(start = 8.dp),
+                        color = colorScheme.onBackground
+                    )
+                }
             }
         }
     }
-    @Composable
-    fun MessageSection() {
-        val focusRequester = remember { FocusRequester() }
 
+    @Composable
+    fun InputSection() {
+        val focusRequester = remember { FocusRequester() }
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(focusRequester),
-            shadowElevation = 15.dp,
-            shape = RoundedCornerShape(25.dp, 25.dp, 0.dp, 0.dp)
+            shadowElevation = 25.dp
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .focusRequester(focusRequester)
                     .background(
                         color = colorScheme.background,
-                        shape = RoundedCornerShape(25.dp, 25.dp, 0.dp, 0.dp)
-                    ),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .focusRequester(focusRequester)
-                ) {
-                    TextField(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusRequester(focusRequester),
-                        value = _messageWritten.value,
-                        onValueChange = { _messageWritten.value = it },
-                        colors = TextFieldDefaults.outlinedTextFieldColors(
-                            focusedBorderColor = Color.Transparent,
-                            unfocusedBorderColor = Color.Transparent
-                        ),
-                        placeholder = {
-                            Text("Escreva uma mensagem",
-                                fontSize = Typography.bodyLarge.fontSize,
-                                fontWeight = Typography.bodyLarge.fontWeight,
-                                color = colorScheme.onBackground)
+                    )
+                    .padding(horizontal = 20.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ){
+                if(_microActive.value){
+                    CommonComposables.CircleButton( R.drawable.keyboard, "Alterar modo de entrada") {
+                        _showInputModeAlert.value = true
+                    }
+                    CommonComposables.ActionButton(
+                        text = "Gravar áudio",
+                        icon = R.drawable.microphone,
+                        onClick = {
+                            initSttService()
+                            listen()
+                            _showRecordAudioAlert.value = true
                         },
-                        textStyle = TextStyle.Default.copy(fontSize = Typography.bodyLarge.fontSize,
-                            fontWeight = Typography.bodyLarge.fontWeight,
-                            color = colorScheme.onBackground
-                        ),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
+                        isActionStarter = true
+                    )
+                }else{
+                    CommonComposables.CircleButton( R.drawable.microphone, "Alterar modo de entrada") {
+                        _showInputModeAlert.value = true
+                    }
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .focusRequester(focusRequester)
+                    ) {
+                        TextField(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusRequester(focusRequester),
+                            value = _userMessage.value,
+                            onValueChange = { _userMessage.value = it },
+                            colors = TextFieldDefaults.outlinedTextFieldColors(
+                                focusedBorderColor = Color.Transparent,
+                                unfocusedBorderColor = Color.Transparent
+                            ),
+                            placeholder = {
+                                Text("Escreva uma mensagem",
+                                    fontSize = Typography.bodyLarge.fontSize,
+                                    fontWeight = Typography.bodyLarge.fontWeight,
+                                    color = colorScheme.onBackground)
+                            },
+                            textStyle = TextStyle.Default.copy(fontSize = Typography.bodyLarge.fontSize,
+                                fontWeight = Typography.bodyLarge.fontWeight,
+                                color = colorScheme.onBackground
+                            ),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
+                        )
+                    }
+                    Image(
+                        painter = painterResource(id = R.drawable.send_dark),
+                        contentDescription = "Send",
+                        modifier = Modifier
+                            .clickable {
+                                sendMessage(_userMessage.value)
+                                _userMessage.value = ""
+                            }
+                            .scale(1.5F)
                     )
                 }
-                Icon(
-                    painter = painterResource(id = R.drawable.send),
-                    contentDescription = "Send",
-                    modifier = Modifier
-                        .padding(5.dp, 0.dp)
-                        .clickable {
-                            chatbotResponse(transcription = _messageWritten.value)
-                            _messageWritten.value = ""
-                        }
-                )
-                Spacer(modifier = Modifier.width(5.dp))
             }
         }
     }
 
     @Composable
-    fun TopBar(title: String, scaffoldState: ScaffoldState, scopeState: CoroutineScope){
+    fun TopBar(scaffoldState: ScaffoldState, scopeState: CoroutineScope){
         val focusManager = LocalFocusManager.current
         Row(modifier = Modifier
             .fillMaxWidth()
-            .height(60.dp)
-            .background(colorScheme.tertiary)
-            .padding(10.dp, 0.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.End) {
-            Icon(
-                painter = painterResource(id = R.drawable.menu),
-                contentDescription = "Botão Menu",
-                modifier = Modifier
-                    .clickable {
-                        focusManager.clearFocus()
-                        scopeState.launch { scaffoldState.drawerState.open() }
-                    }
-                    .size(30.dp)
+            .background(colorScheme.primary),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween){
+            CommonComposables.ActionTransparentButton("Menu", R.drawable.menu, onClick = {
+                focusManager.clearFocus()
+                scopeState.launch { scaffoldState.drawerState.open() }
+            }, true)
+            CommonComposables.ActionTransparentButton("Ajuda", R.drawable.help, onClick = {/*something*/}, false)
+        }
+    }
+
+    @Composable
+    fun ToggleInputContent(){
+        Text(text = "A trocar entre:",
+            fontSize = Typography.bodyLarge.fontSize,
+            fontWeight = Typography.bodyLarge.fontWeight,
+            color = colorScheme.onBackground)
+        CommonComposables.InputMode(
+            if (_microActive.value) R.drawable.microphone else R.drawable.keyboard,
+            if (_microActive.value) "Áudio" else "Escrita"
+        )
+        Image(painter = painterResource(R.drawable.resource_switch), contentDescription = "Alterar modo de entrada")
+        CommonComposables.InputMode(
+            if (_microActive.value) R.drawable.keyboard else R.drawable.microphone,
+            if (_microActive.value) "Escrita" else "Áudio"
+        )
+        Text(alert.text,
+            color = colorScheme.onBackground,
+            fontSize = Typography.bodyLarge.fontSize,
+            fontWeight = Typography.bodyLarge.fontWeight,
+            lineHeight = Typography.bodyLarge.lineHeight,
+            textAlign = TextAlign.Justify)
+    }
+
+    @Composable
+    fun ProgressIndicator(){
+        LinearProgressIndicator(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(0.dp, 25.dp),
+            color = colorScheme.onSecondaryContainer,
+            backgroundColor = colorScheme.secondaryContainer,
+        )
+    }
+    @Composable
+    fun RecordedAudioContent(){
+        if(_userMessage.value.isEmpty()){
+            Text(
+                text = "Não foi capturada nenhuma mensagem, por favor tente novamente...",
+                color = colorScheme.onBackground,
+                fontSize = Typography.bodyLarge.fontSize,
+                fontWeight = Typography.bodyLarge.fontWeight,
+                textAlign = TextAlign.Justify,
+                modifier = Modifier.fillMaxWidth()
             )
-            Spacer(modifier = Modifier.fillMaxWidth(0.3f))
-            Text(title,
-                fontSize = Typography.titleLarge.fontSize,
-                color = colorScheme.onPrimary,
-                modifier = Modifier.align(Alignment.CenterVertically))
-            Spacer(modifier = Modifier.fillMaxWidth(0.75f))
-            Icon(
-                painter = painterResource(id = if (_microActive.value) R.drawable.keyboard else R.drawable.microphone),
-                contentDescription = "Botão alternar entre voz e texto",
-                modifier = Modifier
-                    .clickable {
-                        _microActive.value = !_microActive.value
-                        utils.addBooleanToStore(
-                            sharedPreferences,
-                            "microActive",
-                            _microActive.value
-                        )
-                    }
-                    .align(Alignment.CenterVertically)
-                    .size(30.dp)
-            )
+        }else{
+            Box(modifier = Modifier
+                .background(color = colorScheme.background)
+                .border(1.dp, colorScheme.onBackground, shape = RoundedCornerShape(25.dp))
+                .fillMaxWidth()
+                .height(200.dp),
+            ){
+                Text(
+                    text = _userMessage.value,
+                    color = colorScheme.onBackground,
+                    fontSize = Typography.bodyLarge.fontSize,
+                    fontWeight = Typography.bodyLarge.fontWeight,
+                    textAlign = TextAlign.Justify,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(15.dp)
+                )
+            }
         }
     }
     @Composable
     override fun MainScreen(scaffoldState: ScaffoldState?, scope: CoroutineScope?) {
         if(!_microActive.value){
             _finishedLoading.value = STATE_DONE
-        }
-        if(_finishedLoading.value != STATE_DONE){
+            onDestroy()
+        }else if(_finishedLoading.value != STATE_DONE){
             if(_finishedLoading.value != STATE_READY){
                 LoadScreen()
-            }
-            else if(_microActive.value && !tts!!.isSpeaking){
-                recognizeMicrophone()
             }
         }
         Column(
@@ -537,8 +643,16 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            TopBar("MIMO", scaffoldState!!, scope!!)
+            TopBar(scaffoldState!!, scope!!)
             ChatSection(Modifier.weight(1f))
+            InputSection()
+            if(_showInputModeAlert.value){
+                alert = alerts[ToggleInputModeAlert::class.simpleName.toString()]!!
+                //CommonComposables.ShowAlertDialog(alert)
+                CommonComposables.ShowAlertDialogWithContent(alert){
+                    ToggleInputContent()
+                }
+            }
             if(_showAlertGeriatricQuestionnaire.value){
                 alert = alerts[DepressionQuestionnaireAlert::class.simpleName.toString()]!!
                 showAlertDialog.value = true
@@ -546,9 +660,17 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
                 alert = alerts[HappinessQuestionnaireAlert::class.simpleName.toString()]!!
                 showAlertDialog.value = true
             }
-            if(!_microActive.value){
-                onDestroy()
-                MessageSection()
+            if(_showRecordAudioAlert.value){
+                alert = alerts[RecordAudioAlert::class.simpleName.toString()]!!
+                CommonComposables.ShowAlertDialogWithContent(alert){
+                    ProgressIndicator()
+                }
+            }
+            if(_showRecordedResultAlert.value){
+                alert = alerts[RecordedResultAlert::class.simpleName.toString()]!!
+                CommonComposables.ShowAlertDialogWithContent(alert, _userMessage.value.isNotEmpty()){
+                    RecordedAudioContent()
+                }
             }
         }
     }

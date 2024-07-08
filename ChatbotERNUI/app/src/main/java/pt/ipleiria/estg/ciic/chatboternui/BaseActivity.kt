@@ -3,7 +3,6 @@ package pt.ipleiria.estg.ciic.chatboternui
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.SharedPreferences
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
@@ -48,8 +47,11 @@ import pt.ipleiria.estg.ciic.chatboternui.utils.alerts.DepressionQuestionnaireAl
 import pt.ipleiria.estg.ciic.chatboternui.utils.alerts.HappinessQuestionnaireAlert
 import pt.ipleiria.estg.ciic.chatboternui.utils.alerts.IAlert
 import pt.ipleiria.estg.ciic.chatboternui.utils.alerts.IncorrectCredentialsAlert
+import pt.ipleiria.estg.ciic.chatboternui.utils.alerts.RecordAudioAlert
+import pt.ipleiria.estg.ciic.chatboternui.utils.alerts.RecordedResultAlert
 import pt.ipleiria.estg.ciic.chatboternui.utils.alerts.ServiceUnavailableAlert
 import pt.ipleiria.estg.ciic.chatboternui.utils.alerts.SignOutAlert
+import pt.ipleiria.estg.ciic.chatboternui.utils.alerts.ToggleInputModeAlert
 
 open class BaseActivity: ComponentActivity() {
     private lateinit var currentActivity: IBaseActivity
@@ -137,6 +139,15 @@ open class BaseActivity: ComponentActivity() {
 
         // Initialize HappinessQuestionnaireAlert alert dialog
         alerts[HappinessQuestionnaireAlert::class.simpleName.toString()] = HappinessQuestionnaireAlert()
+
+        // Initialize ToggleInputModeAlert alert dialog
+        alerts[ToggleInputModeAlert::class.simpleName.toString()] = ToggleInputModeAlert()
+
+        // Initialize RecordAudioAlert alert dialog
+        alerts[RecordAudioAlert::class.simpleName.toString()] = RecordAudioAlert()
+
+        // Initialize RecordedResultAlert alert dialog
+        alerts[RecordedResultAlert::class.simpleName.toString()] = RecordedResultAlert()
     }
     fun onCreateBaseActivity(activity : IBaseActivity) {
         currentActivity = activity

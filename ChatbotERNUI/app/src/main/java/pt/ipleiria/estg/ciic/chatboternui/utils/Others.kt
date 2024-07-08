@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.util.Log
 import pt.ipleiria.estg.ciic.chatboternui.Objects.ThemeState
 import java.text.SimpleDateFormat
 import java.time.Duration
@@ -114,8 +115,8 @@ class Others {
         return ThemeState.isDarkThemeEnabled
     }
 
-    fun setErrorState(message: String?) {
-        println(message)
+    fun setErrorState(message: String) {
+        Log.e("CRASH", message)
     }
 
     fun startActivity(context: Context, activityClass: Class<*>, oldActivity: Activity) {

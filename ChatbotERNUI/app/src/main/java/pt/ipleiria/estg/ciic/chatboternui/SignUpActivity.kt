@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.DatePickerDialog
 import android.os.Bundle
-import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -17,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ScaffoldState
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -210,14 +208,14 @@ class SignUpActivity : IBaseActivity, BaseActivity() {
                        IconButton(onClick = {
                            datePickerDialog.show()
                         }) {
-                            Icon(
+                           Image(
                                 painter = painterResource(id = R.drawable.calendar),
                                 contentDescription = "Escolher uma data")
                         }
                     }
                     if (isPassword){
                     IconButton(onClick = { togglePasswordVisibility() }) {
-                        Icon(
+                        Image(
                             painter = painterResource(id = if(passwordHidden.value) R.drawable.show else R.drawable.hide),
                             contentDescription = "Esconder/mostrar a palavra-passe")
                     }
