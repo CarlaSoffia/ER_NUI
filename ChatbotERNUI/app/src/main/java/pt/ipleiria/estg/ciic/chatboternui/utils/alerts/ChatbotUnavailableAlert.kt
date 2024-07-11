@@ -4,7 +4,7 @@ import pt.ipleiria.estg.ciic.chatboternui.R
 
 class ChatbotUnavailableAlert : IAlert {
     override val icon: Int = R.drawable.error
-    override val title: String = "MIMO indisponível"
+    override var title: String = "MIMO indisponível"
     override val text: String = "O agente conversacional MIMO está indisponível."
     override val image: Int? = null
     override val showSupportEmail: Boolean = true

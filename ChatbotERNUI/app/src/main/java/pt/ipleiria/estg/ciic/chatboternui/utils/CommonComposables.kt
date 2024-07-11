@@ -14,7 +14,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.RadioButton
+import androidx.compose.material.RadioButtonColors
+import androidx.compose.material.RadioButtonDefaults
 import androidx.compose.material.TextButton
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -22,6 +26,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,6 +35,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -325,5 +332,71 @@ object CommonComposables {
                 )
             }
         }
+    }
+
+
+    @Composable
+    fun MultipleRadioButtons(title: String, items: List<String>, onClick: (String) -> Unit) {
+        val selectedValue = remember { mutableStateOf("") }
+
+        val isSelectedItem: (String) -> Boolean = { selectedValue.value == it }
+        val onChangeState: (String) -> Unit = {
+            selectedValue.value = it
+            onClick(selectedValue.value)
+        }
+        AlertDialog(
+            containerColor = colorScheme.background,
+            tonalElevation = 0.dp,
+            onDismissRequest = {
+                // Nothing to do here
+            },
+            icon = {
+                // Nothing to do here
+            },
+            title = {
+                Text(title,
+                    color = colorScheme.onBackground,
+                    fontSize = Typography.titleMedium.fontSize,
+                    fontWeight = Typography.titleMedium.fontWeight,
+                    lineHeight = Typography.titleMedium.lineHeight,
+                    textAlign = TextAlign.Center)
+            },
+            text = {
+                Column {
+                    items.forEach { item ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.selectable(
+                                selected = isSelectedItem(item),
+                                onClick = { onChangeState(item) },
+                                role = Role.RadioButton
+                            ).padding(5.dp, 10.dp)
+                        ) {
+                            RadioButton(
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = colorScheme.surface
+                                ),
+                                selected = isSelectedItem(item),
+                                onClick = { onChangeState(item) }
+                            )
+                            Text(
+                                text = item,
+                                color = colorScheme.onBackground,
+                                fontSize = Typography.bodyLarge.fontSize,
+                                fontWeight = Typography.bodyLarge.fontWeight,
+                                lineHeight = Typography.bodyLarge.lineHeight,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                // Nothing to do here
+            },
+            dismissButton = {
+                // Nothing to do here
+            }
+        )
     }
 }

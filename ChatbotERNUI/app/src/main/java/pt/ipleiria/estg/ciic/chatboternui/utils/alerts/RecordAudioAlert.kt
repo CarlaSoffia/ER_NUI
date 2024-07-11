@@ -4,7 +4,7 @@ import pt.ipleiria.estg.ciic.chatboternui.R
 
 class RecordAudioAlert : IAlert {
     override val icon: Int? = null
-    override val title: String = "A gravar o áudio..."
+    override var title: String = "A gravar o áudio..."
     override val showSupportEmail: Boolean = false
     override val text: String = ""
     override val image: Int? = null

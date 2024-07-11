@@ -99,6 +99,8 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
     private var middleOxfordHappinessQuestionnaire: Boolean = false
     private var _showAlertGeriatricQuestionnaire : MutableState<Boolean> = mutableStateOf(false)
     private var _showAlertOxfordQuestionnaire : MutableState<Boolean> = mutableStateOf(false)
+    private var _showAlertGeriatricQuestionnaireShortQuestion : MutableState<Boolean> = mutableStateOf(false)
+    private var _showAlertOxfordQuestionnaireShortQuestion : MutableState<Boolean> = mutableStateOf(false)
     private var sttModel: Model? = null
     private var sttService: SpeechService? = null
     private var ttsService: TextToSpeech? = null
@@ -116,7 +118,7 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
         defineAudioRecordAlerts()
         ttsService = TextToSpeech(this, this)
         initSttModel()
-        //getAllMessages()
+        getAllMessages()
         handleQuestionnaires()
    }
     private fun defineAudioRecordAlerts(){
@@ -155,19 +157,17 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
     private fun defineQuestionnaireAlertOnClick(alertClassName: String){
         val isDepressionQuestionnaireAlert = alertClassName == DepressionQuestionnaireAlert::class.simpleName.toString()
         alerts[alertClassName]!!.confirmButton.onClick = {
-            showAlertDialog.value = false
             if(isDepressionQuestionnaireAlert){
                 utils.addBooleanToStore(sharedPreferences, "middleGeriatricQuestionnaire", true)
-                sendMessage("start_geriatric_form")
+                sendMessage("start_geriatric_form", false)
                 _showAlertGeriatricQuestionnaire.value = false
             }else{
                 utils.addBooleanToStore(sharedPreferences, "middleOxfordHappinessQuestionnaire", true)
-                sendMessage("start_oxford_happiness_form")
+                sendMessage("start_oxford_happiness_form", false)
                 _showAlertOxfordQuestionnaire.value = false
             }
         }
         alerts[alertClassName]!!.dismissButton!!.onClick =  {
-            showAlertDialog.value = false
             if(isDepressionQuestionnaireAlert){
                 _showAlertGeriatricQuestionnaire.value = false
             }else{
@@ -211,7 +211,7 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
         })
     }
     private fun handleQuestionnaires(){
-        middleGeriatricQuestionnaire = sharedPreferences.getBoolean("middleGeriatricQuestionnaire", false)
+       middleGeriatricQuestionnaire = sharedPreferences.getBoolean("middleGeriatricQuestionnaire", false)
         middleOxfordHappinessQuestionnaire = sharedPreferences.getBoolean("middleOxfordHappinessQuestionnaire", false)
         if(!middleGeriatricQuestionnaire && !middleOxfordHappinessQuestionnaire){
             val geriatricQuestionnaireCompletedDate = sharedPreferences.getString("geriatricQuestionnaireCompletedDate","")
@@ -228,7 +228,6 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
             }else{
                 true
             }
-
         }
     }
 
@@ -302,7 +301,7 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
     private fun getAllMessages() {
         _messages = mutableStateListOf()
         scope.launch {
-            val response = httpRequests.request(sharedPreferences, "GET", "/messages?order=asc&limit=100")
+            val response = httpRequests.request(sharedPreferences, "GET", "/messages?order=asc")
             if(handleConnectivityError(response["status_code"].toString())) return@launch
             val messages = JSONArray(response["data"].toString())
             for (i in 0 until messages.length()) {
@@ -315,10 +314,12 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
         }
     }
 
-    private fun sendMessage(userInput: String) {
-        _messages.add(Message(id = _messages.size.toLong(),
-            text = userInput,
-            isChatbot = false))
+    private fun sendMessage(userInput: String, addInputToMessages: Boolean = true) {
+        if(addInputToMessages){
+            _messages.add(Message(id = _messages.size.toLong(),
+                text = userInput,
+                isChatbot = false))
+        }
         _messages.add(_chatbotWaitingMessage)
 
         val messageSend = JSONObject()
@@ -332,22 +333,38 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
             for (i in 0 until messages.length()) {
                 val message = JSONObject(messages[i].toString())
                 val body = message["body"].toString()
-                if(body == "start_geriatric_form" || body == "start_oxford_happiness_form"){
-                    continue
-                }
                 if(message["isChatbot"].toString() != "true"){
                     continue
                 }
+                if(body == "start_geriatric_form" || body == "start_oxford_happiness_form"){
+                    continue
+                }
+                if(body.contains("#IS_SHORT_QUESTION#")){
+                    // fetch the message previous to this one
+                    val shortQuestionMessage = JSONObject(messages[i-1].toString())["body"]
+                    val regex = "#IS_SHORT_QUESTION#(.*)".toRegex()
+                    val questionnaireType = regex.find(body)?.groups?.get(1)?.value
+                    if(questionnaireType == "GeriatricQuestionnaire"){
+                        alerts[DepressionQuestionnaireAlert::class.simpleName.toString()]!!.title = shortQuestionMessage.toString()
+                        _showAlertGeriatricQuestionnaireShortQuestion.value = true
+                    }
+                    if(questionnaireType == "OxfordHappinessQuestionnaire"){
+                        alerts[HappinessQuestionnaireAlert::class.simpleName.toString()]!!.title = shortQuestionMessage.toString()
+                        _showAlertOxfordQuestionnaireShortQuestion.value = true
+                    }
+                }
                 val id = message["id"].toString()
+
+                if(id == "null"){
+                    continue
+                }
+
                 _messages.remove(_chatbotWaitingMessage)
                 _messages.add(Message(id = id.toLong(),
                     text = body,
-                    isChatbot = false,
+                    isChatbot = true,
                     time = utils.convertStringLocalDateTime(message["created_at"].toString())))
                 ttsService!!.speak(body, TextToSpeech.QUEUE_ADD, null, id)
-                if(body == "#IS_SHORT_QUESTION#"){
-                    // show the modal
-                }
             }
         }
     }
@@ -648,17 +665,17 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
             InputSection()
             if(_showInputModeAlert.value){
                 alert = alerts[ToggleInputModeAlert::class.simpleName.toString()]!!
-                //CommonComposables.ShowAlertDialog(alert)
                 CommonComposables.ShowAlertDialogWithContent(alert){
                     ToggleInputContent()
                 }
             }
             if(_showAlertGeriatricQuestionnaire.value){
                 alert = alerts[DepressionQuestionnaireAlert::class.simpleName.toString()]!!
-                showAlertDialog.value = true
-            }else if(_showAlertOxfordQuestionnaire.value){
+                CommonComposables.ShowAlertDialog(alert)
+            }
+            if(_showAlertOxfordQuestionnaire.value){
                 alert = alerts[HappinessQuestionnaireAlert::class.simpleName.toString()]!!
-                showAlertDialog.value = true
+                CommonComposables.ShowAlertDialog(alert)
             }
             if(_showRecordAudioAlert.value){
                 alert = alerts[RecordAudioAlert::class.simpleName.toString()]!!
@@ -670,6 +687,24 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
                 alert = alerts[RecordedResultAlert::class.simpleName.toString()]!!
                 CommonComposables.ShowAlertDialogWithContent(alert, _userMessage.value.isNotEmpty()){
                     RecordedAudioContent()
+                }
+            }
+            if(_showAlertGeriatricQuestionnaireShortQuestion.value){
+                CommonComposables.MultipleRadioButtons(alerts[DepressionQuestionnaireAlert::class.simpleName.toString()]!!.title,
+                    listOf("Não", "Sim")
+                ) { msg ->
+                    sendMessage(msg)
+                    _showAlertGeriatricQuestionnaireShortQuestion.value = false
+                }
+            }
+
+            if(_showAlertOxfordQuestionnaireShortQuestion.value){
+                CommonComposables.MultipleRadioButtons(alerts[HappinessQuestionnaireAlert::class.simpleName.toString()]!!.title,
+                    listOf("Discordo totalmente", "Discordo moderadamente", "Discordo levemente",
+                        "Concordo levemente", "Concordo moderadamente", "Concordo totalmente"
+                    )){ msg ->
+                    sendMessage(msg)
+                    _showAlertOxfordQuestionnaireShortQuestion.value = false
                 }
             }
         }

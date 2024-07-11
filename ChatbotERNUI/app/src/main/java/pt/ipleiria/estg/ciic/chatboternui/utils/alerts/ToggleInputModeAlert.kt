@@ -4,7 +4,7 @@ import pt.ipleiria.estg.ciic.chatboternui.R
 
 class ToggleInputModeAlert : IAlert {
     override val icon: Int? = null
-    override val title: String = "Modo de entrada"
+    override var title: String = "Modo de entrada"
     override val showSupportEmail: Boolean = false
     override val text: String = "Tem a certeza que quer alterar o método de entrada?"
     override val image: Int? = null

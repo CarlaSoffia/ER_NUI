@@ -10,6 +10,7 @@ import java.text.SimpleDateFormat
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDateTime
+import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Calendar
@@ -40,7 +41,7 @@ class Others {
 
     fun convertStringLocalDateTime(date: String): LocalDateTime {
         val instant = Instant.ofEpochSecond(date.toLong())
-        return LocalDateTime.ofInstant(instant, ZoneOffset.UTC)
+        return LocalDateTime.ofInstant(instant, ZoneId.of("Europe/Lisbon"))
     }
 
     fun has24HoursPassed(previousTime: String): Boolean {

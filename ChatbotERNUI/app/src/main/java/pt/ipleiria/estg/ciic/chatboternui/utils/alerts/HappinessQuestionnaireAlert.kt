@@ -4,7 +4,7 @@ import pt.ipleiria.estg.ciic.chatboternui.R
 
 class HappinessQuestionnaireAlert: IAlert {
     override val icon: Int = R.drawable.questionnaire
-    override val title: String = "Questionário de felicidade"
+    override var title: String = "Questionário de felicidade"
     override val text: String = "Este questionário permite avaliar o seu nível de felicidade.\n" +
             "\n" +
             "Contém 58 perguntas: 29 de resposta curta e 29 para justificar as respostas curtas.\n" +

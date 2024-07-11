@@ -4,7 +4,7 @@ import pt.ipleiria.estg.ciic.chatboternui.utils.IBaseActivity
 
 interface IAlert {
     val icon: Int?
-    val title: String
+    var title: String
     val text: String
     val image: Int?
     val showSupportEmail: Boolean

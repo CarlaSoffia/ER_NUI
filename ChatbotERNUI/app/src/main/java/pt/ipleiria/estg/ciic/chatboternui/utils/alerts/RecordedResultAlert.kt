@@ -4,7 +4,7 @@ import pt.ipleiria.estg.ciic.chatboternui.R
 
 class RecordedResultAlert : IAlert {
     override val icon: Int? = null
-    override val title: String = "Mensagem"
+    override var title: String = "Mensagem"
     override val showSupportEmail: Boolean = false
     override val text: String = ""
     override val image: Int? = null

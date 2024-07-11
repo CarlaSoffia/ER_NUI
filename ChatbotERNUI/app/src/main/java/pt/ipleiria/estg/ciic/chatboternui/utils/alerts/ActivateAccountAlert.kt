@@ -4,7 +4,7 @@ import pt.ipleiria.estg.ciic.chatboternui.R
 
 class ActivateAccountAlert :  IAlert {
     override val icon: Int = R.drawable.success
-    override val title: String = "Conta criada com sucesso!"
+    override var title: String = "Conta criada com sucesso!"
     override val text: String = "Para utilizar o nosso sistema, a sua conta tem de ser activada.\n" +
             "\n" +
             "Ao ativar a sua conta, aceita que os seus dados sejam utilizados para fins académicos e de investigação.\n" +

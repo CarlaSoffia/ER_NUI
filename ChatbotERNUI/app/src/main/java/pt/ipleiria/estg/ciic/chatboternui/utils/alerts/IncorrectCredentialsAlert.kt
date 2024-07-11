@@ -5,7 +5,7 @@ import pt.ipleiria.estg.ciic.chatboternui.R
 
 class IncorrectCredentialsAlert : IAlert{
     override val icon: Int = R.drawable.warning
-    override val title: String = "Credenciais incorretas"
+    override var title: String = "Credenciais incorretas"
     override val text: String = "As suas credenciais não estão corretas.\n\nVerifique-as e tente iniciar sessão novamente mais tarde."
     override val showSupportEmail: Boolean = false
     override val image: Int? = null

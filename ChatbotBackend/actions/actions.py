@@ -53,9 +53,11 @@ GERIATRIC_QUEST = 'GeriatricQuestionnaire'
 GERIATRIC_QUEST_ID = 14
 OXFORD_QUEST = 'OxfordHappinessQuestionnaire'
 OXFORD_QUEST_ID = 28
-IS_NOT_SHORT_QUESTION = {"IS_SHORT_QUESTION": "false", "ERM": "false"}
-IS_SHORT_QUESTION = {"IS_SHORT_QUESTION": "true", "ERM": "false"}
+IS_NOT_SHORT_QUESTION_GERIATRIC = {"IS_SHORT_QUESTION": "false", "questionnaire": GERIATRIC_QUEST, "ERM": "false"}
+IS_SHORT_QUESTION_GERIATRIC = {"IS_SHORT_QUESTION": "true", "questionnaire": GERIATRIC_QUEST, "ERM": "false"}
 
+IS_NOT_SHORT_QUESTION_OXFORD = {"IS_SHORT_QUESTION": "false", "questionnaire": OXFORD_QUEST, "ERM": "false"}
+IS_SHORT_QUESTION_OXFORD = {"IS_SHORT_QUESTION": "true", "questionnaire": OXFORD_QUEST, "ERM": "false"}
 
 logging.info('##################################################################################################################')
 logging.info(f'[DeepL] - Active: {DEEPL_ACTIVE}')
@@ -351,7 +353,7 @@ class ActionAskWhyQuestionGeriatricQuestionnaire(Action):
          username = tracker.sender_id
          message_id = (tracker.latest_message)['message_id']
          logging.info(f'[{GERIATRIC_QUEST}-{message_id}] - username {username} / question: "utter_ask_why"')
-         dispatcher.utter_message(response="utter_ask_why", json_message=IS_NOT_SHORT_QUESTION)
+         dispatcher.utter_message(response="utter_ask_why", json_message=IS_NOT_SHORT_QUESTION_GERIATRIC)
          return []
 
 # Action: Dynamically show questions 
@@ -368,7 +370,7 @@ class ActionAskResponseQuestionGeriatricQuestionnaire(Action):
         message_id = (tracker.latest_message)['message_id']
         question = get_question_by_number(questionsGeriatricQuestionnaire,idx+1)
         logging.info(f'[{GERIATRIC_QUEST}-{message_id}] - username {username} / question: "{question}"')
-        dispatcher.utter_message(question, json_message=IS_SHORT_QUESTION)
+        dispatcher.utter_message(question, json_message=IS_SHORT_QUESTION_GERIATRIC)
 
 # Action: Collects the user's response to a questionnaire's question
 class ValidateQuestionForm(FormValidationAction):
@@ -435,7 +437,7 @@ class ActionAskWhyQuestionOxfordQuestionnaire(Action):
          username = tracker.sender_id
          message_id = (tracker.latest_message)['message_id']
          logging.info(f'[{OXFORD_QUEST}-{message_id}] - username {username} / question: "utter_ask_why"')
-         dispatcher.utter_message(response="utter_ask_why", json_message=IS_NOT_SHORT_QUESTION)
+         dispatcher.utter_message(response="utter_ask_why", json_message=IS_NOT_SHORT_QUESTION_OXFORD)
          return []
 
 # Action: Dynamically show questions 
@@ -452,7 +454,7 @@ class ActionAskResponseQuestionOxfordQuestionnaire(Action):
         message_id = (tracker.latest_message)['message_id']
         question = get_question_by_number(questionsOxfordHappinessQuestionnaire,idx+1)
         logging.info(f'[{OXFORD_QUEST}-{message_id}] - username {username} / question: "{question}"')
-        dispatcher.utter_message(question, json_message=IS_SHORT_QUESTION)
+        dispatcher.utter_message(question, json_message=IS_SHORT_QUESTION_OXFORD)
       
 
 # Action: Collects the user's response to a questionnaire's question
