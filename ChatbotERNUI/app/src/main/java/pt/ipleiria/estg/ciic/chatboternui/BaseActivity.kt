@@ -57,40 +57,13 @@ open class BaseActivity: ComponentActivity() {
     private lateinit var currentActivity: IBaseActivity
     protected val utils = Others()
     private var _modeDark : MutableState<Boolean> = mutableStateOf(false)
-    protected var showAlertDialog : MutableState<Boolean> = mutableStateOf(false)
+    private var showAlertDialog : MutableState<Boolean> = mutableStateOf(false)
     protected lateinit var sharedPreferences : SharedPreferences
     protected val httpRequests = HTTPRequests()
     protected val scope = CoroutineScope(Dispatchers.Main)
     protected var alerts : MutableMap<String, IAlert> = mutableMapOf()
     protected lateinit var alert : IAlert
-    private val menuItems = listOf(
-        MenuItem(
-            id = "mode",
-            title = if (!_modeDark.value) "Modo escuro" else "Modo claro",
-            icon = if (!_modeDark.value) R.drawable.dark else R.drawable.light,
-            onClick = {
-                _modeDark.value = utils.changeMode(sharedPreferences)
-            },
-            addDivider = false
-        ),
-        MenuItem(
-            id = "information",
-            title = "Tutorial",
-            icon = R.drawable.help,
-            onClick = {},
-            addDivider = true
-        ),
-        MenuItem(
-            id = "logout",
-            title = "Terminar sessão",
-            icon = R.drawable.logout,
-            onClick = {
-                alert = alerts[SignOutAlert::class.simpleName.toString()]!!
-                showAlertDialog.value = true
-            },
-            addDivider = false
-        )
-    )
+
     fun instantiateInitialData(){
         sharedPreferences = getSharedPreferences("ERNUI", Context.MODE_PRIVATE)
         ThemeState.isDarkThemeEnabled = sharedPreferences.getBoolean("theme_mode_is_dark", false)
@@ -257,13 +230,15 @@ open class BaseActivity: ComponentActivity() {
             Image(
                 painter = painterResource(id = R.drawable.menu_background),
                 contentDescription = "Imagem do menu",
-                modifier = Modifier.size(250.dp))
-            for (item in menuItems){
-                CommonComposables.MenuButton(item.title, item.icon, item.onClick, isActionStarter = true)
-                if(item.addDivider){
-                    Divider(color = MaterialTheme.colorScheme.onBackground, thickness = 2.dp)
-                }
-            }
+                modifier = Modifier.size(250.dp)
+            )
+
+            CommonComposables.MenuButton("Tutorial", R.drawable.help, {}, isActionStarter = true)
+            Divider(color = MaterialTheme.colorScheme.onBackground, thickness = 2.dp)
+            CommonComposables.MenuButton("Terminar sessão", R.drawable.logout, {
+                alert = alerts[SignOutAlert::class.simpleName.toString()]!!
+                showAlertDialog.value = true
+            }, isActionStarter = true)
         }
     }
 }
