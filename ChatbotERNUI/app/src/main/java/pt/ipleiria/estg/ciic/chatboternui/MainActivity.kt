@@ -570,12 +570,11 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
             .fillMaxWidth()
             .background(colorScheme.primary),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween){
+        horizontalArrangement = Arrangement.Start){
             CommonComposables.ActionTransparentButton("Menu", R.drawable.menu, onClick = {
                 focusManager.clearFocus()
                 scopeState.launch { scaffoldState.drawerState.open() }
             }, true)
-            CommonComposables.ActionTransparentButton("Ajuda", R.drawable.help, onClick = {/*something*/}, false)
         }
     }
 
