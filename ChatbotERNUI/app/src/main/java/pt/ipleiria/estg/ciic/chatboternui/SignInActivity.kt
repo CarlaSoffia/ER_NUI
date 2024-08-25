@@ -2,6 +2,7 @@ package pt.ipleiria.estg.ciic.chatboternui
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.media.MediaPlayer
 import android.os.Bundle
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -47,6 +48,7 @@ class SignInActivity : IBaseActivity, BaseActivity(){
     private var password: MutableState<String> = mutableStateOf("")
     private var errorMsg: MutableState<String> = mutableStateOf("")
     private var showActivateAccountModal: MutableState<Boolean> = mutableStateOf(false)
+    private lateinit var mediaPlayer: MediaPlayer
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         super.instantiateInitialData()
@@ -72,7 +74,11 @@ class SignInActivity : IBaseActivity, BaseActivity(){
         activateAccount.put("password", password)
         scope.launch {
             val response = httpRequests.request(sharedPreferences, "PATCH", "/auth/activateClient", activateAccount.toString())
-            if(handleConnectivityError(response["status_code"].toString())) return@launch
+            if(handleConnectivityError(response["status_code"].toString())) {
+                mediaPlayer = utils.playSound(R.raw.error, applicationContext)
+                return@launch
+            }
+            mediaPlayer = utils.playSound(R.raw.success, applicationContext)
             utils.removeFromStore(sharedPreferences, "email")
             utils.removeFromStore(sharedPreferences, "password")
             showActivateAccountModal.value = false
@@ -212,7 +218,11 @@ class SignInActivity : IBaseActivity, BaseActivity(){
         bodyLogin.put("type","MobileApp")
         scope.launch {
             val response = httpRequests.request(sharedPreferences, "POST", "/auth/login", bodyLogin.toString())
-            if(handleConnectivityError(response["status_code"].toString())) return@launch
+            if(handleConnectivityError(response["status_code"].toString())) {
+                mediaPlayer = utils.playSound(R.raw.error, applicationContext)
+                return@launch
+            }
+            mediaPlayer = utils.playSound(R.raw.success, applicationContext)
             val data = JSONObject(response["data"].toString())
             utils.addStringToStore(sharedPreferences,"access_token", data["access_token"].toString())
             utils.addStringToStore(sharedPreferences,"refresh_token", data["refresh_token"].toString())
@@ -223,4 +233,13 @@ class SignInActivity : IBaseActivity, BaseActivity(){
     }
     override val activity: Activity
         get() = this
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // Release MediaPlayer resources when activity is destroyed
+        if (mediaPlayer.isPlaying) {
+            mediaPlayer.stop()
+        }
+        mediaPlayer.release()
+    }
 }

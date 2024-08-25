@@ -6,5 +6,6 @@ data class Message(
     var text: String?=null,
     var time: LocalDateTime? = LocalDateTime.now(),
     var isChatbot: Boolean = false,
+    var contentType: String?=null,
     var animate: Boolean = false
 )

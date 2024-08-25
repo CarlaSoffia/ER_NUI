@@ -4,8 +4,10 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.media.MediaPlayer
 import android.util.Log
 import pt.ipleiria.estg.ciic.chatboternui.Objects.ThemeState
+import pt.ipleiria.estg.ciic.chatboternui.R
 import java.text.SimpleDateFormat
 import java.time.Duration
 import java.time.Instant
@@ -34,7 +36,11 @@ class Others {
         root = sqrt(mean)
         return root
     }
-
+    fun playSound(sound: Int, context: Context) : MediaPlayer{
+        val mediaPlayer = MediaPlayer.create(context, sound)
+        mediaPlayer.start()
+        return mediaPlayer
+    }
     fun isEmailValid(email: String): Boolean {
         return android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
     }

@@ -3,6 +3,7 @@ package pt.ipleiria.estg.ciic.chatboternui
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.DatePickerDialog
+import android.media.MediaPlayer
 import android.os.Bundle
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -54,8 +55,7 @@ class SignUpActivity : IBaseActivity, BaseActivity() {
     private var showingPartOneModal: MutableState<Boolean> = mutableStateOf(true)
     private var formatter : DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy/M/d")
     private var today : LocalDate = LocalDate.now()
-    private var showActivateAccountModal: MutableState<Boolean> = mutableStateOf(false)
-
+    private lateinit var mediaPlayer: MediaPlayer
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         super.instantiateInitialData()
@@ -133,7 +133,11 @@ class SignUpActivity : IBaseActivity, BaseActivity() {
         bodySignIn.put("name", name.value)
        scope.launch {
             val response = httpRequests.request(sharedPreferences, "POST", "/clients", bodySignIn.toString())
-            if(handleConnectivityError(response["status_code"].toString())) return@launch
+            if(handleConnectivityError(response["status_code"].toString()))  {
+                mediaPlayer = utils.playSound(R.raw.error, applicationContext)
+                return@launch
+            }
+            mediaPlayer = utils.playSound(R.raw.success, applicationContext)
             utils.addStringToStore(sharedPreferences, "email", email.value)
             utils.addStringToStore(sharedPreferences, "password", password.value)
             utils.addBooleanToStore(sharedPreferences, "showActivateAccountModal", true)
@@ -244,6 +248,7 @@ class SignUpActivity : IBaseActivity, BaseActivity() {
                 errorMsg.value = "O seu aniversário não pode ser hoje nem no futuro"
                 return false
             }
+            mediaPlayer = utils.playSound(R.raw.success, applicationContext)
             showingPartOneModal.value = false
         }else{
             if(!utils.isEmailValid(email.value)){
@@ -266,4 +271,12 @@ class SignUpActivity : IBaseActivity, BaseActivity() {
     }
     override val activity: Activity
         get() = this
+    override fun onDestroy() {
+        super.onDestroy()
+        // Release MediaPlayer resources when activity is destroyed
+        if (mediaPlayer.isPlaying) {
+            mediaPlayer.stop()
+        }
+        mediaPlayer.release()
+    }
 }

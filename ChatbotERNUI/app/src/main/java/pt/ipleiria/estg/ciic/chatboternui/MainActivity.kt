@@ -3,9 +3,11 @@ package pt.ipleiria.estg.ciic.chatboternui
 import android.Manifest
 import android.app.Activity
 import android.content.pm.PackageManager
+import android.media.MediaPlayer
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
+import android.util.Log
 import androidx.compose.animation.animateColor
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -20,7 +22,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -38,6 +39,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -45,22 +47,28 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import coil.compose.AsyncImage
+import coil.compose.rememberAsyncImagePainter
+import coil.compose.rememberImagePainter
+import com.google.android.exoplayer2.ExoPlayer
+import com.google.android.exoplayer2.MediaItem
+import com.google.android.exoplayer2.ui.PlayerView
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import okio.IOException
 import org.json.JSONArray
@@ -104,10 +112,17 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
     private var sttModel: Model? = null
     private var sttService: SpeechService? = null
     private var ttsService: TextToSpeech? = null
+    private lateinit var mediaPlayer: MediaPlayer
+    private val TEXT = "text"
+    private val IMAGE = "image"
+    private val VIDEO = "video"
+    private val AUDIO = "audio"
+    private val URL_API = "https://dane-vocal-gecko.ngrok-free.app"
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         super.instantiateInitialData()
         super.onCreateBaseActivityWithMenu(this)
+
         if(sharedPreferences.getString("access_token", "").toString() == ""){
             utils.startActivity(applicationContext,SignInActivity::class.java, this)
             return
@@ -124,6 +139,7 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
     private fun defineAudioRecordAlerts(){
         alerts[RecordAudioAlert::class.simpleName.toString()]!!.confirmButton.onClick = {
             sttService!!.setPause(true)
+            mediaPlayer = utils.playSound(R.raw.success, applicationContext)
             _showRecordAudioAlert.value = false
             _showRecordedResultAlert.value = true
         }
@@ -136,6 +152,7 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
         alerts[RecordedResultAlert::class.simpleName.toString()]!!.confirmButton.onClick = {
             sendMessage(_userMessage.value)
             _userMessage.value = ""
+            mediaPlayer = utils.playSound(R.raw.success, applicationContext)
             _showRecordedResultAlert.value = false
         }
         alerts[RecordedResultAlert::class.simpleName.toString()]!!.dismissButton!!.onClick = {
@@ -149,6 +166,7 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
             _microActive.value = !_microActive.value
             utils.addBooleanToStore(sharedPreferences, "microActive", _microActive.value)
             _showInputModeAlert.value = false
+            mediaPlayer = utils.playSound(R.raw.success, applicationContext)
         }
         alerts[ToggleInputModeAlert::class.simpleName.toString()]!!.dismissButton!!.onClick = {
             _showInputModeAlert.value = false
@@ -166,6 +184,7 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
                 sendMessage("start_oxford_happiness_form", false)
                 _showAlertOxfordQuestionnaire.value = false
             }
+            mediaPlayer = utils.playSound(R.raw.success, applicationContext)
         }
         alerts[alertClassName]!!.dismissButton!!.onClick =  {
             if(isDepressionQuestionnaireAlert){
@@ -272,6 +291,10 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
             sttService!!.shutdown()
             sttService = null
         }
+        if (mediaPlayer.isPlaying) {
+            mediaPlayer.stop()
+        }
+        mediaPlayer.release()
     }
 
     override fun onPartialResult(hypothesis: String) {
@@ -302,33 +325,49 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
         _messages = mutableStateListOf()
         scope.launch {
             val response = httpRequests.request(sharedPreferences, "GET", "/messages?order=asc")
-            if(handleConnectivityError(response["status_code"].toString())) return@launch
+            if(handleConnectivityError(response["status_code"].toString())) {
+                mediaPlayer = utils.playSound(R.raw.error, applicationContext)
+                return@launch
+            }
             val messages = JSONArray(response["data"].toString())
             for (i in 0 until messages.length()) {
                 val message = JSONObject(messages[i].toString())
-                _messages.add(Message(id = message["id"].toString().toLong(),
+                /*_messages.add(Message(id = message["id"].toString().toLong(),
                     text = message["body"] as String?,
+                    contentType = message["content_type"] as String?,
                     isChatbot = message["isChatbot"].toString() == "1",
+                    time = utils.convertStringLocalDateTime(message["created_at"].toString())))*/
+
+                _messages.add(Message(id = message["id"].toString().toLong(),
+                    text = "/storage/ERMContents/client_1/video/potato.mp4",
+                    contentType = VIDEO,
+                    isChatbot = true,
                     time = utils.convertStringLocalDateTime(message["created_at"].toString())))
+                break
             }
         }
     }
 
     private fun sendMessage(userInput: String, addInputToMessages: Boolean = true) {
+        mediaPlayer = utils.playSound(R.raw.success, applicationContext)
         if(addInputToMessages){
             _messages.add(Message(id = _messages.size.toLong(),
                 text = userInput,
+                contentType = TEXT,
                 isChatbot = false))
         }
         _messages.add(_chatbotWaitingMessage)
-
         val messageSend = JSONObject()
         messageSend.put("isChatbot", false)
         messageSend.put("body", userInput)
         var response: JSONObject
         scope.launch {
             response = httpRequests.request(sharedPreferences, "POST", "/messages", messageSend.toString())
-            if(handleConnectivityError(response["status_code"].toString())) return@launch
+            if(handleConnectivityError(response["status_code"].toString())) {
+                mediaPlayer = utils.playSound(R.raw.error, applicationContext)
+                return@launch
+            }
+            mediaPlayer = utils.playSound(R.raw.notification, applicationContext)
             val messages = JSONArray(response["data"].toString())
             for (i in 0 until messages.length()) {
                 val message = JSONObject(messages[i].toString())
@@ -363,6 +402,7 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
                 _messages.add(Message(id = id.toLong(),
                     text = body,
                     isChatbot = true,
+                    contentType = message["content_type"] as String?,
                     time = utils.convertStringLocalDateTime(message["created_at"].toString())))
                 ttsService!!.speak(body, TextToSpeech.QUEUE_ADD, null, id)
             }
@@ -407,19 +447,56 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
         ) {
         items(_messages.reversed()) { chat ->
                 MessageItem(
-                    messageText = chat.text,
+                    messageContent = chat.text,
                     time = if (chat.time == null) null else utils.formatDatePortugueseLocale(chat.time!!).toString(),
                     isChatbot = chat.isChatbot,
+                    contentType = chat.contentType,
                     animate = chat.animate
                 )
             }
         }
     }
+
+    @Composable
+    fun VideoPlayer(url: String) {
+        // Initialize ExoPlayer
+        val context = LocalContext.current
+        val exoPlayer = remember {
+            ExoPlayer.Builder(context).build().apply {
+                val mediaItem = MediaItem.fromUri(url)
+                setMediaItem(mediaItem)
+                prepare()
+                playWhenReady = true
+            }
+        }
+
+        // Dispose of the ExoPlayer when the composable leaves the composition
+        DisposableEffect(
+            AndroidView(
+                modifier = Modifier.fillMaxSize(),
+                factory = {
+                    PlayerView(context).apply {
+                        player = exoPlayer
+                        useController = true
+                        ViewCompat.setOnApplyWindowInsetsListener(this) { _, insets ->
+                            insets
+                        }
+                    }
+                }
+            )
+        ) {
+            onDispose {
+                exoPlayer.release()
+            }
+        }
+    }
+
     @Composable
     fun MessageItem(
-        messageText: String?,
+        messageContent: String?,
         time: String?,
         isChatbot: Boolean,
+        contentType: String?,
         animate: Boolean = false
     ) {
         val botChatBubbleShape = RoundedCornerShape(0.dp, 15.dp, 15.dp, 15.dp)
@@ -442,14 +519,13 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
 
         // Determine the background color based on the animation state
         val backgroundColor = if (animate) animatedColor else if (!isChatbot) primaryContainer else secondaryContainer
-
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(15.dp),
             horizontalAlignment = if (!isChatbot) Alignment.End else Alignment.Start
         ) {
-            if (!messageText.isNullOrEmpty()) {
+            if (!messageContent.isNullOrEmpty()) {
                 Box(
                     modifier = Modifier
                         .background(
@@ -463,12 +539,30 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
                             end = 16.dp
                         )
                 ) {
-                    Text(
-                        text = messageText,
-                        color = if (!isChatbot) colorScheme.onPrimaryContainer else colorScheme.onSecondaryContainer,
-                        fontSize = Typography.bodyLarge.fontSize,
-                        fontWeight = Typography.bodyLarge.fontWeight
-                    )
+                    when (contentType) {
+                        IMAGE -> {
+                            AsyncImage(
+                                model = URL_API + messageContent,
+                                error = painterResource(id = R.drawable.error),
+                                contentDescription = URL_API + messageContent,
+                            )
+                        }
+                        VIDEO -> {
+                            VideoPlayer(URL_API + messageContent)
+                        }
+                        AUDIO -> {
+                            // Audio player that shows the file name as text and when clicked shows audio
+                        }
+                        else -> {
+                            Text(
+                                text = messageContent,
+                                color = if (!isChatbot) colorScheme.onPrimaryContainer else colorScheme.onSecondaryContainer,
+                                fontSize = Typography.bodyLarge.fontSize,
+                                fontWeight = Typography.bodyLarge.fontWeight
+                            )
+                        }
+                    }
+
                 }
                 if (time != null) {
                     Text(

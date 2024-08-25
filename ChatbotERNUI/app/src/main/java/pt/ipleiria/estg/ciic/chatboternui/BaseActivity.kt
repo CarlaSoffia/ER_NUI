@@ -3,6 +3,7 @@ package pt.ipleiria.estg.ciic.chatboternui
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.SharedPreferences
+import android.media.MediaPlayer
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
@@ -63,6 +64,7 @@ open class BaseActivity: ComponentActivity() {
     protected val scope = CoroutineScope(Dispatchers.Main)
     protected var alerts : MutableMap<String, IAlert> = mutableMapOf()
     protected lateinit var alert : IAlert
+    private lateinit var mediaPlayer: MediaPlayer
 
     fun instantiateInitialData(){
         sharedPreferences = getSharedPreferences("ERNUI", Context.MODE_PRIVATE)
@@ -99,7 +101,7 @@ open class BaseActivity: ComponentActivity() {
         signOutAlert.confirmButton.onClick = {
             showAlertDialog.value = false
             utils.clearSharedPreferences(sharedPreferences)
-            ThemeState.isDarkThemeEnabled = false
+            mediaPlayer = utils.playSound(R.raw.success, applicationContext)
             utils.startActivity(applicationContext,SignInActivity::class.java, this)
         }
         signOutAlert.dismissButton.onClick = {
