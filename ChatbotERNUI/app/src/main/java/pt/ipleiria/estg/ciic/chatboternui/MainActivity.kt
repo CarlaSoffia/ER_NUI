@@ -7,7 +7,6 @@ import android.media.MediaPlayer
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
-import android.util.Log
 import androidx.compose.animation.animateColor
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -22,11 +21,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -40,6 +41,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -61,13 +63,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.core.view.ViewCompat
 import coil.compose.AsyncImage
-import coil.compose.rememberAsyncImagePainter
-import coil.compose.rememberImagePainter
 import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.MediaItem
+import com.google.android.exoplayer2.Player
+import com.google.android.exoplayer2.ui.AspectRatioFrameLayout
 import com.google.android.exoplayer2.ui.PlayerView
+import com.google.android.exoplayer2.video.VideoSize
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import okio.IOException
@@ -112,7 +114,7 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
     private var sttModel: Model? = null
     private var sttService: SpeechService? = null
     private var ttsService: TextToSpeech? = null
-    private lateinit var mediaPlayer: MediaPlayer
+    private var mediaPlayer: MediaPlayer? = null
     private val TEXT = "text"
     private val IMAGE = "image"
     private val VIDEO = "video"
@@ -291,23 +293,24 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
             sttService!!.shutdown()
             sttService = null
         }
-        if (mediaPlayer.isPlaying) {
-            mediaPlayer.stop()
+        if(mediaPlayer == null){
+            return
         }
-        mediaPlayer.release()
+        if (mediaPlayer!!.isPlaying) {
+            mediaPlayer!!.stop()
+        }
+        mediaPlayer!!.release()
     }
 
     override fun onPartialResult(hypothesis: String) {
-        // Nothing
+        val result = JSONObject(hypothesis)
+        _userMessage.value = result.getString("partial")
     }
 
     override fun onResult(hypothesis: String) {
-        val result = JSONObject(hypothesis)
-        _userMessage.value = result.getString("text")
     }
 
     override fun onFinalResult(hypothesis: String?) {
-        // Nothing
     }
 
     override fun onError(exception: Exception?) {
@@ -332,18 +335,11 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
             val messages = JSONArray(response["data"].toString())
             for (i in 0 until messages.length()) {
                 val message = JSONObject(messages[i].toString())
-                /*_messages.add(Message(id = message["id"].toString().toLong(),
+                _messages.add(Message(id = message["id"].toString().toLong(),
                     text = message["body"] as String?,
                     contentType = message["content_type"] as String?,
                     isChatbot = message["isChatbot"].toString() == "1",
-                    time = utils.convertStringLocalDateTime(message["created_at"].toString())))*/
-
-                _messages.add(Message(id = message["id"].toString().toLong(),
-                    text = "/storage/ERMContents/client_1/video/potato.mp4",
-                    contentType = VIDEO,
-                    isChatbot = true,
                     time = utils.convertStringLocalDateTime(message["created_at"].toString())))
-                break
             }
         }
     }
@@ -456,41 +452,88 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
             }
         }
     }
-
     @Composable
     fun VideoPlayer(url: String) {
-        // Initialize ExoPlayer
         val context = LocalContext.current
-        val exoPlayer = remember {
-            ExoPlayer.Builder(context).build().apply {
-                val mediaItem = MediaItem.fromUri(url)
-                setMediaItem(mediaItem)
-                prepare()
-                playWhenReady = true
-            }
+        val exoPlayer = remember { ExoPlayer.Builder(context).build() }
+
+        // Create a MediaItem for the video
+        val mediaItem = MediaItem.fromUri(url)
+
+        // Prepare the video when the Composable is recomposed
+        LaunchedEffect(mediaItem) {
+            exoPlayer.setMediaItem(mediaItem)
+            exoPlayer.prepare()
         }
 
-        // Dispose of the ExoPlayer when the composable leaves the composition
-        DisposableEffect(
-            AndroidView(
-                modifier = Modifier.fillMaxSize(),
-                factory = {
-                    PlayerView(context).apply {
-                        player = exoPlayer
-                        useController = true
-                        ViewCompat.setOnApplyWindowInsetsListener(this) { _, insets ->
-                            insets
-                        }
-                    }
-                }
-            )
-        ) {
+        // Release the player when no longer needed
+        DisposableEffect(Unit) {
             onDispose {
                 exoPlayer.release()
             }
         }
-    }
 
+        // Observe video dimensions to get the aspect ratio
+        val aspectRatio = remember { mutableStateOf(1 / 1f) } // Default aspect ratio
+
+        // Listen to ExoPlayer's video size changes
+        exoPlayer.addListener(object : Player.Listener {
+            override fun onVideoSizeChanged(videoSize: VideoSize) {
+                val ratio = if (videoSize.height != 0) {
+                    videoSize.width / videoSize.height.toFloat()
+                } else {
+                    1 / 1f
+                }
+                aspectRatio.value = ratio
+            }
+        })
+
+        // Set up PlayerView with resizeMode to fit video within aspect ratio
+        AndroidView(
+            factory = { ctx ->
+                PlayerView(ctx).apply {
+                    player = exoPlayer
+                    useController = true  // Enable controls
+                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT // Adjust to video size
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(aspectRatio.value) // Dynamically set aspect ratio based on video
+        )
+    }
+    @Composable
+    fun AudioPlayer(url: String) {
+        val context = LocalContext.current
+        val exoPlayer = remember { ExoPlayer.Builder(context).build() }
+
+        // Create a MediaItem for the video
+        val mediaItem = MediaItem.fromUri(url)
+
+        // Prepare the video when the Composable is recomposed
+        LaunchedEffect(mediaItem) {
+            exoPlayer.setMediaItem(mediaItem)
+            exoPlayer.prepare()
+        }
+
+        // Release the player when no longer needed
+        DisposableEffect(Unit) {
+            onDispose {
+                exoPlayer.release()
+            }
+        }
+        AndroidView(
+            factory = { ctx ->
+                PlayerView(ctx).apply {
+                    player = exoPlayer
+                    useController = true  // Enable controls
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(100.dp)
+        )
+    }
     @Composable
     fun MessageItem(
         messageContent: String?,
@@ -516,7 +559,6 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
                 repeatMode = RepeatMode.Reverse
             )
         )
-
         // Determine the background color based on the animation state
         val backgroundColor = if (animate) animatedColor else if (!isChatbot) primaryContainer else secondaryContainer
         Column(
@@ -532,12 +574,7 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
                             color = backgroundColor,
                             shape = if (!isChatbot) authorChatBubbleShape else botChatBubbleShape
                         )
-                        .padding(
-                            top = 8.dp,
-                            bottom = 8.dp,
-                            start = 16.dp,
-                            end = 16.dp
-                        )
+                        .padding(10.dp)
                 ) {
                     when (contentType) {
                         IMAGE -> {
@@ -551,7 +588,7 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
                             VideoPlayer(URL_API + messageContent)
                         }
                         AUDIO -> {
-                            // Audio player that shows the file name as text and when clicked shows audio
+                            AudioPlayer(URL_API + messageContent)
                         }
                         else -> {
                             Text(
