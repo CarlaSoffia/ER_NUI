@@ -1,6 +1,19 @@
 version: '3.1'
 
 slots:
+
+  startTimePredictionsByEmotion:
+    type: any
+    initial_value: {}
+    mappings:
+    - type: custom
+    influence_conversation: false
+    
+  emotionsSettings:
+    type: any
+    mappings:
+    - type: custom
+    influence_conversation: false
   # Geriatric Questionnaire ----------------------------------------------------
 
   geriatric_questionnaire_points:

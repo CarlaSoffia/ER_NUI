@@ -9,6 +9,7 @@ COPY requirements.txt .
 RUN pip install --upgrade pip
 
 # Install the dependencies
+RUN pip install --no-cache-dir --default-timeout=120 tensorflow==2.11.1
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
