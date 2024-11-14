@@ -259,7 +259,6 @@ def emitEmotionPredictionNotification(userId, emotion, accuracy, startTimePredic
     else:
         startTimePrediction = None
     endTimerPrediction = startTimePrediction + emotionSetting["duration"]
-
     if int(time.time()) >= endTimerPrediction and predictionAboveAccuracyLimit == True:
         # Send notification 
         for emotionInfo in emotionsDetails:
@@ -285,17 +284,9 @@ def emitSocketNotification(title, content, userId):
             "userId": int(userId),
             "title": title,
             "content": content,
-            "created_at": datetime.now().strftime("%H:%M %d/%m/%Y")
-        }    
-        logging.info(f'[WebSockets] - Emitting {userId}\'s newNotificationMessage: {title}: {content}')
-        sio.emit('newNotificationMessage',{"data": data })
-        logging.info(f'[WebSockets] - Emited sucessfully {userId}\'s newNotificationMessage')
-        payload = json.dumps(data)
-        headers = {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
+            "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
-        requests.request("POST", API_URL + "/notifications", headers=headers, data=payload)
+        sio.emit('newNotificationMessage', data)
         logging.info(f'[WebSockets] - Processed sucessfully {userId}\'s message: {title}')
     except Exception as e:
         logging.info(f'[WebSockets] - Error processing {userId}\'s message: {title}')
@@ -380,7 +371,7 @@ def createAndEmitPointsMessage(points, questionnaire, userId):
         "points" : points
     }
     title = title + " concluído!"
-    notificationMsg = shortMessage + " (" + points + " pontos)"
+    notificationMsg = shortMessage + " (" + str(points) + " pontos)"
     emitSocketNotification(title, notificationMsg, userId)
     return finalPoints, message
 
