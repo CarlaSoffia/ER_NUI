@@ -173,6 +173,7 @@ def generateLLMResponse(msg_id, userId, text):
         if attempts == 0:
             raise Exception(f'[LLM-{msg_id}] - Ran out of attempts...')
         
+        logging.info(f'[LLM-{msg_id}] - Processed sucessfully {userId}\'s message - response "{response}"')
         if DEEPL_ACTIVE == True:
             response = translateTextDeepL(response)
         logging.info(f'[LLM-{msg_id}] - Processed sucessfully {userId}\'s message')
