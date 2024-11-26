@@ -603,7 +603,7 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
                         else -> {
                             Text(
                                 text = messageContent,
-                                color = if (!isChatbot) colorScheme.onPrimaryContainer else colorScheme.onSecondaryContainer,
+                                color = colorScheme.onPrimaryContainer,
                                 fontSize = Typography.bodyLarge.fontSize,
                                 fontWeight = Typography.bodyLarge.fontWeight
                             )

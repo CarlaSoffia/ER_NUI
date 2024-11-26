@@ -265,10 +265,10 @@ object CommonComposables {
         }
     }
     @Composable
-    fun ActionButton(text:String, icon: Int, onClick: () -> Unit, isActionStarter: Boolean, isButtonTransparent: Boolean = false) {
+    fun ActionButton(text:String, icon: Int, onClick: () -> Unit, isActionStarter: Boolean) {
         Button(
             colors = ButtonDefaults.buttonColors(
-                containerColor = if (isButtonTransparent) Color.Transparent else if (isActionStarter) colorScheme.primary else colorScheme.secondary
+                containerColor = if (isActionStarter) colorScheme.primary else colorScheme.secondary
             ),
             onClick = { onClick() }
         ) {
@@ -283,7 +283,7 @@ object CommonComposables {
                     text = text,
                     fontSize = Typography.bodyLarge.fontSize,
                     fontWeight = Typography.bodyLarge.fontWeight,
-                    color = if (isButtonTransparent) colorScheme.onSurface else if (isActionStarter) colorScheme.onPrimary else colorScheme.onSecondary
+                    color = if (isActionStarter) colorScheme.onPrimary else colorScheme.onSecondary
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Image(
@@ -294,10 +294,10 @@ object CommonComposables {
         }
     }
     @Composable
-    fun MenuButton(text:String, icon: Int, onClick: () -> Unit, isActionStarter: Boolean){
+    fun MenuButton(text:String, icon: Int, onClick: () -> Unit){
         Button(
             colors = ButtonDefaults.buttonColors(
-                containerColor = if(isActionStarter) colorScheme.primary else colorScheme.secondary
+                containerColor = colorScheme.primary
             ),
             onClick = { onClick() }
         ) {
@@ -318,7 +318,7 @@ object CommonComposables {
                     text = text,
                     fontSize = Typography.bodyLarge.fontSize,
                     fontWeight = Typography.bodyLarge.fontWeight,
-                    color = if (isActionStarter) colorScheme.onPrimary else colorScheme.onSecondary
+                    color = colorScheme.onPrimary
                 )
             }
         }

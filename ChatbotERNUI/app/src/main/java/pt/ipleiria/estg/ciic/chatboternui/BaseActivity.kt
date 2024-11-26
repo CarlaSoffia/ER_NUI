@@ -235,10 +235,10 @@ open class BaseActivity: ComponentActivity() {
                 modifier = Modifier.size(250.dp)
             )
 
-            CommonComposables.MenuButton("Terminar sessão", R.drawable.logout, {
+            CommonComposables.MenuButton("Terminar sessão", R.drawable.logout) {
                 alert = alerts[SignOutAlert::class.simpleName.toString()]!!
                 showAlertDialog.value = true
-            }, isActionStarter = true)
+            }
         }
     }
 }
