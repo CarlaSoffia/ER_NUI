@@ -46,16 +46,6 @@ import pt.ipleiria.estg.ciic.chatboternui.utils.alerts.IAlert
 object CommonComposables {
 
     @Composable
-    private fun Dot(
-        modifier: Modifier = Modifier,
-    ) {
-        Box(
-            modifier = modifier
-                .clip(shape = CircleShape)
-                .background(color = colorScheme.onBackground)
-        )
-    }
-    @Composable
     fun InputMode(icon: Int, text: String){
         Row(horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,
