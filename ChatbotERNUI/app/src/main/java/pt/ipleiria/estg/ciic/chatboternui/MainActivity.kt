@@ -7,6 +7,7 @@ import android.media.MediaPlayer
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
+import android.util.Log
 import androidx.compose.animation.animateColor
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -27,7 +28,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -181,9 +181,11 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
                 utils.addBooleanToStore(sharedPreferences, "middleGeriatricQuestionnaire", true)
                 sendMessage("start_geriatric_form", false)
                 _showAlertGeriatricQuestionnaire.value = false
+                _showAlertOxfordQuestionnaire.value = false
             }else{
                 utils.addBooleanToStore(sharedPreferences, "middleOxfordHappinessQuestionnaire", true)
                 sendMessage("start_oxford_happiness_form", false)
+                _showAlertGeriatricQuestionnaire.value = false
                 _showAlertOxfordQuestionnaire.value = false
             }
             mediaPlayer = utils.playSound(R.raw.success, applicationContext)
@@ -253,6 +255,7 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
     }
 
     private fun listen(){
+        sttService!!.setPause(false)
         sttService!!.startListening(this)
     }
     private fun initSttModel(){
@@ -288,26 +291,35 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
     }
     public override fun onDestroy() {
         super.onDestroy()
-        if (sttService != null) {
-            sttService!!.stop()
-            sttService!!.shutdown()
-            sttService = null
+        // Safely handle the sttService
+        sttService?.apply {
+            stop()
+            shutdown()
         }
-        if(mediaPlayer == null){
-            return
+        sttService = null
+
+        // Safely handle the mediaPlayer
+        mediaPlayer?.let {
+            try {
+                if (it.isPlaying) {
+                    it.stop()
+                }
+            } catch (e: IllegalStateException) {
+                // Log or handle the error if the media player is in an invalid state
+                e.printStackTrace()
+            } finally {
+                it.release()
+            }
         }
-        if (mediaPlayer!!.isPlaying) {
-            mediaPlayer!!.stop()
-        }
-        mediaPlayer!!.release()
+        mediaPlayer = null
     }
 
     override fun onPartialResult(hypothesis: String) {
-        val result = JSONObject(hypothesis)
-        _userMessage.value = result.getString("partial")
     }
 
     override fun onResult(hypothesis: String) {
+        val result = JSONObject(hypothesis)
+        _userMessage.value += " " + result.getString("text")
     }
 
     override fun onFinalResult(hypothesis: String?) {
@@ -320,8 +332,6 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
     }
 
     override fun onTimeout() {
-        // got quiet after a long while
-        _finishedLoading.value = STATE_DONE
     }
 
     private fun getAllMessages() {
@@ -829,10 +839,9 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
             }
 
             if(_showAlertOxfordQuestionnaireShortQuestion.value){
+                var list = listOf("Discordo fortemente", "Discordo moderadamente", "Discordo levemente","Concordo levemente", "Concordo moderadamente", "Concordo fortemente"                )
                 CommonComposables.MultipleRadioButtons(alerts[HappinessQuestionnaireAlert::class.simpleName.toString()]!!.title,
-                    listOf("Discordo totalmente", "Discordo moderadamente", "Discordo levemente",
-                        "Concordo levemente", "Concordo moderadamente", "Concordo totalmente"
-                    )){ msg ->
+                    list){ msg ->
                     sendMessage(msg)
                     _showAlertOxfordQuestionnaireShortQuestion.value = false
                 }

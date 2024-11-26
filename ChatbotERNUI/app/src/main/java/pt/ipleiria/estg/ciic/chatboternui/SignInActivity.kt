@@ -48,7 +48,7 @@ class SignInActivity : IBaseActivity, BaseActivity(){
     private var password: MutableState<String> = mutableStateOf("")
     private var errorMsg: MutableState<String> = mutableStateOf("")
     private var showActivateAccountModal: MutableState<Boolean> = mutableStateOf(false)
-    private lateinit var mediaPlayer: MediaPlayer
+    private var mediaPlayer: MediaPlayer? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         super.instantiateInitialData()
@@ -236,10 +236,19 @@ class SignInActivity : IBaseActivity, BaseActivity(){
 
     override fun onDestroy() {
         super.onDestroy()
-        // Release MediaPlayer resources when activity is destroyed
-        if (mediaPlayer.isPlaying) {
-            mediaPlayer.stop()
+        // Safely handle the mediaPlayer
+        mediaPlayer?.let {
+            try {
+                if (it.isPlaying) {
+                    it.stop()
+                }
+            } catch (e: IllegalStateException) {
+                // Log or handle the error if the media player is in an invalid state
+                e.printStackTrace()
+            } finally {
+                it.release()
+            }
         }
-        mediaPlayer.release()
+        mediaPlayer = null
     }
 }
