@@ -123,8 +123,8 @@ def loadDeepLTranslator():
 
 translator = loadDeepLTranslator()
 
-def translateTextDeepL(text):
-    result = translator.translate_text(text, target_lang="PT-PT")
+def translateTextDeepL(text, language):
+    result = translator.translate_text(text, target_lang=language)
     return result.text
 
 ######################################################### LLM MODEL #########################################################
@@ -146,7 +146,7 @@ llmModel, llmTokenizer = loadLLMModel()
 def generateLLMResponse(msg_id, userId, text):
     try:
         if DEEPL_ACTIVE == True:
-            text = translateTextDeepL(text)
+            text = translateTextDeepL(text, "EN-GB")
         # Encode user input
         bot_input_ids = llmTokenizer.encode(text + llmTokenizer.eos_token, return_tensors='pt')
         response = ""
@@ -175,7 +175,7 @@ def generateLLMResponse(msg_id, userId, text):
         
         logging.info(f'[LLM-{msg_id}] - Processed sucessfully {userId}\'s message - response "{response}"')
         if DEEPL_ACTIVE == True:
-            response = translateTextDeepL(response)
+            response = translateTextDeepL(response, "PT-PT")
         logging.info(f'[LLM-{msg_id}] - Processed sucessfully {userId}\'s message')
         return response
     except Exception as e:
