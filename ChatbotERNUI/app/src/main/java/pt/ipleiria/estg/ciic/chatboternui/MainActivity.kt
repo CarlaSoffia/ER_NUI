@@ -410,7 +410,9 @@ class MainActivity : IBaseActivity, BaseActivity(), RecognitionListener ,TextToS
                     isChatbot = true,
                     contentType = message["content_type"] as String?,
                     time = utils.convertStringLocalDateTime(message["created_at"].toString())))
-                ttsService!!.speak(body, TextToSpeech.QUEUE_ADD, null, id)
+                if(message["content_type"] == "text"){
+                    ttsService!!.speak(body, TextToSpeech.QUEUE_ADD, null, id)
+                }
             }
         }
     }
